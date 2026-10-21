@@ -23,7 +23,13 @@ public record ImportJob(
         ImportProgress progress,
         ImportResult result,
         RollbackData rollbackData,
-        ImportSummary summary
+        ImportSummary summary,
+
+        /**
+         * The document version this job was read at, so the save that follows is conditional
+         * (task F57). Null means it has not been stored yet.
+         */
+        Long version
 ) {
 
     // ============ Factory Methods ============
@@ -72,6 +78,8 @@ public record ImportJob(
                 progress,
                 result,
                 rollbackData,
+                null,
+                // a job being created has no stored version yet (F57)
                 null
         );
     }
@@ -98,7 +106,8 @@ public record ImportJob(
                 newProgress,
                 result,
                 rollbackData,
-                summary
+                summary,
+                version
         );
     }
 
@@ -122,7 +131,8 @@ public record ImportJob(
                 newProgress,
                 result,
                 rollbackData,
-                summary
+                summary,
+                version
         );
     }
 
@@ -151,7 +161,8 @@ public record ImportJob(
                 newProgress,
                 result,
                 rollbackData,
-                summary
+                summary,
+                version
         );
     }
 
@@ -172,7 +183,8 @@ public record ImportJob(
                 progress,
                 newResult,
                 newRollbackData,
-                summary
+                summary,
+                version
         );
     }
 
@@ -193,7 +205,8 @@ public record ImportJob(
                 progress,
                 newResult,
                 newRollbackData,
-                summary
+                summary,
+                version
         );
     }
 
@@ -213,7 +226,8 @@ public record ImportJob(
                 progress,
                 newResult,
                 rollbackData,
-                summary
+                summary,
+                version
         );
     }
 
@@ -246,7 +260,8 @@ public record ImportJob(
                 finalProgress,
                 result,
                 newRollbackData,
-                importSummary
+                importSummary,
+                version
         );
     }
 
@@ -266,7 +281,8 @@ public record ImportJob(
                 progress,
                 newResult,
                 rollbackData,
-                summary
+                summary,
+                version
         );
     }
 
@@ -299,7 +315,8 @@ public record ImportJob(
                 progress,
                 result,
                 newRollbackData,
-                newSummary
+                newSummary,
+                version
         );
     }
 
@@ -321,7 +338,8 @@ public record ImportJob(
                 progress,
                 result,
                 rollbackData,
-                summary
+                summary,
+                version
         );
     }
 
@@ -346,7 +364,8 @@ public record ImportJob(
                 progress,
                 result,
                 newRollbackData,
-                summary
+                summary,
+                version
         );
     }
 

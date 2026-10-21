@@ -91,6 +91,14 @@ public class PortfolioSpec {
     private ZonedDateTime lastRecomputedAt;
 
     /**
+     * What storage said this specification's version was when it was read (task F57). A
+     * specification is answered, recomputed and finally confirmed - every one of those loads it,
+     * changes it and stores it whole, and {@code confirm} also creates a portfolio, so losing a
+     * concurrent change here could attach the wrong one.
+     */
+    private Long version;
+
+    /**
      * Builds a specification from the difference between a snapshot and what is already known.
      *
      * @throws NothingToSynchroniseException when the two agree, because an empty spec is a
@@ -152,6 +160,19 @@ public class PortfolioSpec {
      * whichever difference looks closest: the specification is untrusted input and the snapshot
      * is the anchor (§4.7).
      */
+    /**
+     * Storage telling this object which version it now is (task F57).
+     *
+     * <p>Without it, a flow that saves the same instance twice - and there are such flows - sends a
+     * version of null on the second save, which Spring Data reads as "new document": the update
+     * becomes an insert and Mongo answers {@code DuplicateKeyException} on the id. Keeping the
+     * instance in step with storage is safer than asking every caller to use what {@code save}
+     * returned, because a caller can forget.
+     */
+    public void applyStoredVersion(Long version) {
+        this.version = version;
+    }
+
     public void answer(Ticker ticker, SubName subName, Quantity quantity, Answer given,
                        ZonedDateTime now) {
         requireNotTerminal("answer");

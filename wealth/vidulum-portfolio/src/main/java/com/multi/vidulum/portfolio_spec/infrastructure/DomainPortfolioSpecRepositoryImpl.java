@@ -18,7 +18,12 @@ public class DomainPortfolioSpecRepositoryImpl implements DomainPortfolioSpecRep
 
     @Override
     public PortfolioSpec save(PortfolioSpec spec) {
-        return mongoRepository.save(PortfolioSpecEntity.from(spec)).toDomain();
+        PortfolioSpec stored = mongoRepository.save(PortfolioSpecEntity.from(spec)).toDomain();
+
+        // keep the caller's instance in step with storage, so a second save of it is a conditional
+        // update rather than an insert (task F57)
+        spec.applyStoredVersion(stored.getVersion());
+        return stored;
     }
 
     @Override

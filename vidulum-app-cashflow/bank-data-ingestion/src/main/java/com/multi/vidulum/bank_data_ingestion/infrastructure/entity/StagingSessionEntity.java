@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -108,6 +109,19 @@ public class StagingSessionEntity {
     private Instant importStartedAt;
     private Instant importCompletedAt;
     private Integer importedTransactionsCount;
+
+    /**
+     * Turns every save into a conditional update (task F57). A staging session is a state machine -
+     * HAS_UNMAPPED_CATEGORIES through READY_FOR_IMPORT to COMPLETED - and four command handlers
+     * (ai-categorize, force-uncategorized, revalidate, start-import) load this document, change its
+     * status or summary and store it whole. Two of them arriving together used to let the later one
+     * decide, so a session could report counts from one run and a status from another.
+     *
+     * <p>No threading needed here, unlike the aggregates: the handlers pass this entity itself
+     * around, so the version they read is the version they save.
+     */
+    @Version
+    private Long version;
 
     // ============ Lifecycle Methods ============
 

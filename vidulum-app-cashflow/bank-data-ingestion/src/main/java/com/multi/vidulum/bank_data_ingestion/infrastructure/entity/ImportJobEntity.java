@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -43,6 +44,14 @@ public class ImportJobEntity {
     private ResultDocument result;
     private RollbackDataDocument rollbackData;
     private SummaryDocument summary;
+
+    /**
+     * Turns every save into a conditional update (task F57). An import job walks PENDING →
+     * PROCESSING → COMPLETED/FAILED, and each phase stores its progress, so a redelivered start or
+     * a retried phase used to be able to write over a later status with an earlier one.
+     */
+    @Version
+    private Long version;
 
     // ============ Nested Documents ============
 
@@ -403,6 +412,7 @@ public class ImportJobEntity {
                 .result(ResultDocument.fromDomain(job.result()))
                 .rollbackData(RollbackDataDocument.fromDomain(job.rollbackData()))
                 .summary(SummaryDocument.fromDomain(job.summary()))
+                .version(job.version())
                 .build();
     }
 
@@ -417,7 +427,8 @@ public class ImportJobEntity {
                 progress.toDomain(),
                 result.toDomain(),
                 rollbackData.toDomain(),
-                summary != null ? summary.toDomain() : null
+                summary != null ? summary.toDomain() : null,
+                version
         );
     }
 

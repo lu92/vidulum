@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -50,6 +51,15 @@ public class CategoryMappingEntity {
 
     private Date updatedAt;
 
+    /**
+     * Turns every save into a conditional update (task F57).
+     * {@code ConfigureCategoryMappingCommandHandler} loads an existing mapping, rebuilds it through
+     * {@code CategoryMapping.update} and stores it - so two requests remapping the same bank
+     * category used to have the later one win in silence.
+     */
+    @Version
+    private Long version;
+
     public static CategoryMappingEntity fromDomain(CategoryMapping mapping) {
         return CategoryMappingEntity.builder()
                 .mappingId(mapping.mappingId().id())
@@ -62,6 +72,7 @@ public class CategoryMappingEntity {
                 .confidence(mapping.confidence())
                 .createdAt(Date.from(mapping.createdAt().toInstant()))
                 .updatedAt(Date.from(mapping.updatedAt().toInstant()))
+                .version(mapping.version())
                 .build();
     }
 
@@ -76,7 +87,8 @@ public class CategoryMappingEntity {
                 action,
                 confidence,
                 ZonedDateTime.ofInstant(createdAt.toInstant(), ZoneOffset.UTC),
-                ZonedDateTime.ofInstant(updatedAt.toInstant(), ZoneOffset.UTC)
+                ZonedDateTime.ofInstant(updatedAt.toInstant(), ZoneOffset.UTC),
+                version
         );
     }
 }

@@ -23,6 +23,12 @@ public class OrderSnapshot implements EntitySnapshot<OrderId> {
     Order.OrderParameters parameters;
     ZonedDateTime occurredDateTime;
 
+    /**
+     * The document version this order was read at, so the save that follows is conditional
+     * (task F57). Null means it has not been stored yet.
+     */
+    Long version;
+
     @Override
     public OrderId id() {
         return orderId;

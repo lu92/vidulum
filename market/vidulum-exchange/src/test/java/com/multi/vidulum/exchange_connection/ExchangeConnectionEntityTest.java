@@ -121,6 +121,9 @@ class ExchangeConnectionEntityTest {
                         Date.from(SNAPSHOT_AT.toInstant()),
                         Date.from(SYNC_AT.toInstant()),
                         Date.from(SYNC_AT.toInstant()),
-                        Date.from(CREATED.toInstant())));
+                        Date.from(CREATED.toInstant()),
+                        // the connection under test was built in memory, never read from storage,
+                        // so it carries no version yet (task F57)
+                        null));
     }
 }

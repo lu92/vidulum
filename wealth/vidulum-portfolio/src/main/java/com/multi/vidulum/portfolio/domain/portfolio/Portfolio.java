@@ -67,7 +67,27 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
     private Set<TradeId> appliedTrades;
     private PortfolioStatus status;
     private Currency allowedDepositCurrency;
+
+    /**
+     * What storage said this portfolio's version was when it was read (task F57). The aggregate does
+     * not use it for anything - it carries it so the repository can make the next save conditional.
+     */
+    private Long version;
+
     private List<DomainEvent> uncommittedEvents;
+
+    /**
+     * Storage telling this object which version it now is (task F57).
+     *
+     * <p>Without it, a flow that saves the same instance twice - and there are such flows - sends a
+     * version of null on the second save, which Spring Data reads as "new document": the update
+     * becomes an insert and Mongo answers {@code DuplicateKeyException} on the id. Keeping the
+     * instance in step with storage is safer than asking every caller to use what {@code save}
+     * returned, because a caller can forget.
+     */
+    public void applyStoredVersion(Long version) {
+        this.version = version;
+    }
 
     @Override
     public PortfolioSnapshot getSnapshot() {
@@ -100,7 +120,8 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 List.copyOf(contributions),
                 List.copyOf(realisedResults),
                 Set.copyOf(appliedTrades()),
-                allowedDepositCurrency
+                allowedDepositCurrency,
+                version
         );
     }
 
@@ -138,6 +159,7 @@ public class Portfolio implements Aggregate<PortfolioId, PortfolioSnapshot> {
                 .realisedResults(new LinkedList<>(snapshot.getRealisedResults()))
                 .appliedTrades(new LinkedHashSet<>(snapshot.getAppliedTrades()))
                 .allowedDepositCurrency(snapshot.getAllowedDepositCurrency())
+                .version(snapshot.getVersion())
                 .build();
     }
 

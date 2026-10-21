@@ -58,9 +58,13 @@ public class DomainPortfolioRepositoryImpl implements DomainPortfolioRepository 
             domainEvents.addAll(domainEvents2);
             return domainEvents;
         });
-        return Portfolio.from(
+        Portfolio stored = Portfolio.from(
                 portfolioMongoRepository.save(PortfolioEntity.fromSnapshot(aggregate.getSnapshot()))
                         .toSnapshot());
+
+        // keep the caller's instance in step with storage (task F57)
+        aggregate.applyStoredVersion(stored.getVersion());
+        return stored;
     }
 
     @Override

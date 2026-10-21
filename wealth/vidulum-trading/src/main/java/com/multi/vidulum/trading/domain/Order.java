@@ -25,7 +25,20 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
     OrderState state;
     OrderParameters parameters;
     ZonedDateTime occurredDateTime;
+
+    /** What storage said this order's version was when it was read (task F57). */
+    Long version;
+
     private List<DomainEvent> uncommittedEvents;
+
+    /**
+     * Storage telling this order which version it now is (task F57) - see
+     * {@code Portfolio.applyStoredVersion} for why the instance is updated instead of relying on
+     * what {@code save} returned.
+     */
+    public void applyStoredVersion(Long version) {
+        this.version = version;
+    }
 
     @Override
     public OrderSnapshot getSnapshot() {
@@ -37,7 +50,8 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 symbol,
                 state,
                 parameters,
-                occurredDateTime
+                occurredDateTime,
+                version
         );
     }
 
@@ -51,6 +65,7 @@ public class Order implements Aggregate<OrderId, OrderSnapshot> {
                 .state(snapshot.getState())
                 .parameters(snapshot.getParameters())
                 .occurredDateTime(snapshot.getOccurredDateTime())
+                .version(snapshot.getVersion())
                 .build();
     }
 

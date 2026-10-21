@@ -5,6 +5,7 @@ import com.multi.vidulum.cashflow.app.commands.rollover.RolloverMonthResult;
 import com.multi.vidulum.cashflow.domain.CashFlow;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
+import com.multi.vidulum.shared.concurrency.RetryOnConflict;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,13 @@ import java.util.List;
 @Component
 @AllArgsConstructor
 public class MonthlyRolloverScheduler {
+
+    /**
+     * Three is enough: a conflict here means the owner was writing at 02:00, which does not last.
+     * The loop below is guarded by {@code isBefore(targetMonth)}, so a repeated attempt can only
+     * advance the period it has not advanced yet.
+     */
+    private static final int ATTEMPTS_ON_CONFLICT = 3;
 
     private final DomainCashFlowRepository domainCashFlowRepository;
     private final CommandGateway commandGateway;
@@ -103,9 +111,12 @@ public class MonthlyRolloverScheduler {
 
         // Rollover each month until we reach the target
         while (currentPeriod.isBefore(targetMonth)) {
-            RolloverMonthResult result = commandGateway.send(
-                    new RolloverMonthCommand(cashFlowId, now)
-            );
+            // retried on a conflict rather than dropped: the handler re-reads the cash flow, so the
+            // second attempt rolls over from whatever the person's own write left behind. Dropping
+            // it would mean the month does not roll over at all until the next run (task F57).
+            RolloverMonthResult result = RetryOnConflict.call(ATTEMPTS_ON_CONFLICT,
+                    "rollover of " + cashFlowId.id(),
+                    () -> commandGateway.send(new RolloverMonthCommand(cashFlowId, now)));
 
             log.debug("Rolled over CashFlow [{}] from [{}] to [{}]",
                     cashFlowId.id(), result.rolledOverPeriod(), result.newActivePeriod());
