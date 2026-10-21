@@ -7,6 +7,7 @@ import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.recurring_rules.domain.DomainRecurringRuleRepository;
+import com.multi.vidulum.recurring_rules.domain.ForecastWindow;
 import com.multi.vidulum.recurring_rules.domain.RecurringRule;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,8 +46,6 @@ import java.util.List;
 @AllArgsConstructor
 public class RecurringRuleExecutor {
 
-    private static final int FORECAST_MONTHS = 12; // Current + 11 months
-
     private final DomainRecurringRuleRepository ruleRepository;
     private final CashFlowModuleApi cashFlowApi;
     private final Clock clock;
@@ -68,11 +67,9 @@ public class RecurringRuleExecutor {
         // read once: the window the occurrences are generated for, the stamp on the rule and the
         // stamp on an auto-completion are one moment, where three readings could straddle midnight
         Instant now = clock.instant();
-        LocalDate fromDate = LocalDate.ofInstant(now, clock.getZone());
-        YearMonth currentMonth = YearMonth.from(fromDate);
-        LocalDate toDate = currentMonth.plusMonths(FORECAST_MONTHS - 1).atEndOfMonth();
+        ForecastWindow window = ForecastWindow.startingAt(LocalDate.ofInstant(now, clock.getZone()));
 
-        List<LocalDate> occurrences = rule.generateOccurrences(fromDate, toDate);
+        List<LocalDate> occurrences = rule.generateOccurrences(window.from(), window.to());
         if (occurrences.isEmpty()) {
             return;
         }
@@ -92,7 +89,7 @@ public class RecurringRuleExecutor {
         List<CashChangeId> generatedIds = cashFlowApi.appendExpected(
                 rule.getCashFlowId(), rule.getRuleId().id(), changes);
 
-        rule.recordGeneratedCashChanges(generatedIds, fromDate, toDate, now);
+        rule.recordGeneratedCashChanges(generatedIds, window.from(), window.to(), now);
         ruleRepository.save(rule);
         log.info("Generated {} expected cash changes for rule {}", generatedIds.size(), rule.getRuleId().id());
 

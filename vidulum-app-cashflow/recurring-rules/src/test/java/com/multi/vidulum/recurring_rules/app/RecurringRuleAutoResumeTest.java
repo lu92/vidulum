@@ -1,6 +1,5 @@
 package com.multi.vidulum.recurring_rules.app;
 
-import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
@@ -50,8 +49,9 @@ class RecurringRuleAutoResumeTest {
     private final DomainRecurringRuleRepository rules = mock(DomainRecurringRuleRepository.class);
     private final RecurringRuleExecutor executor = mock(RecurringRuleExecutor.class);
 
-    private final RecurringRuleService service = new RecurringRuleService(
-            rules, mock(CashFlowModuleApi.class), executor, FIXED_CLOCK);
+    // no CashFlowModuleApi any more: the preview was the service's last line to cashflow
+    private final RecurringRuleService service =
+            new RecurringRuleService(rules, executor, FIXED_CLOCK);
 
     @Test
     void anAutoResumedRulePredictsAgain() {
