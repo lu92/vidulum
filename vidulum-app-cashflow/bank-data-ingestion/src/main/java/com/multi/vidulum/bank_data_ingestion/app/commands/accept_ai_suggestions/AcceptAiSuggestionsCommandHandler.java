@@ -6,6 +6,9 @@ import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.Conf
 import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingCommandHandler;
 import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingResult;
+import com.multi.vidulum.bank_data_ai_categorization.api.PatternSource;
+import com.multi.vidulum.bank_data_ai_categorization.api.PatternToLearn;
+import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizationApi;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
@@ -36,7 +39,7 @@ public class AcceptAiSuggestionsCommandHandler
         implements CommandHandler<AcceptAiSuggestionsCommand, AcceptAiSuggestionsResult> {
 
     private final CashFlowModuleApi cashFlowApi;
-    private final PatternMappingRepository patternMappingRepository;
+    private final TransactionCategorizationApi categorizationApi;
     private final StagedTransactionRepository stagedTransactionRepository;
     private final ConfigureCategoryMappingCommandHandler mappingHandler;
     private final RevalidateStagingCommandHandler revalidateHandler;
@@ -62,7 +65,6 @@ public class AcceptAiSuggestionsCommandHandler
         List<String> warnings = new ArrayList<>();
         int categoriesCreated = 0;
         int mappingsApplied = 0;
-        int patternsCached = 0;
 
         // Step 1: Create categories
         if (command.acceptedCategories() != null && !command.acceptedCategories().isEmpty()) {
@@ -147,39 +149,26 @@ public class AcceptAiSuggestionsCommandHandler
             }
         }
 
-        // Step 3: Save to pattern cache (if requested)
-        // Patterns are stored per CashFlow (not per user) for better isolation
+        // Step 3: Let AI categorization remember what the person accepted
+        //
+        // It used to write pattern documents here - checking for an existing one, minting a
+        // PatternMapping, saving it - which made this handler a second writer of somebody else's
+        // memory. The contract takes what was confirmed and decides itself whether that is a new
+        // pattern or a correction of one it already knew.
+        int patternsCached = 0;
         if (command.saveToCache() && command.acceptedMappings() != null) {
-            String cashFlowIdStr = command.cashFlowId().id();
+            List<PatternToLearn> confirmed = command.acceptedMappings().stream()
+                    .map(mapping -> new PatternToLearn(
+                            mapping.pattern(),
+                            mapping.type(),
+                            mapping.targetCategory(),
+                            mapping.parentCategory(),   // the AI's intended parent, kept as a hint
+                            (double) mapping.confidence() / 100.0,
+                            PatternSource.USER))        // a person accepted it, whoever proposed it
+                    .toList();
 
-            for (AcceptAiSuggestionsCommand.MappingToApply mapping : command.acceptedMappings()) {
-                try {
-                    // Check if this CashFlow already has this pattern
-                    boolean exists = patternMappingRepository
-                            .findUserByNormalizedPatternAndTypeAndCashFlowId(
-                                    mapping.pattern().toUpperCase(),
-                                    mapping.type(),
-                                    cashFlowIdStr
-                            ).isPresent();
-
-                    if (!exists) {
-                        PatternMapping patternMapping = PatternMapping.createUser(
-                                mapping.pattern().toUpperCase(),
-                                mapping.targetCategory(),
-                                mapping.parentCategory(),  // Store AI's intended parent as hint
-                                mapping.type(),
-                                command.userId(),
-                                cashFlowIdStr,
-                                (double) mapping.confidence() / 100.0
-                        );
-                        patternMappingRepository.save(patternMapping);
-                        patternsCached++;
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to cache pattern: {}", mapping.pattern(), e);
-                }
-            }
-            log.info("Cached {} patterns for cashFlow: {}", patternsCached, cashFlowIdStr);
+            patternsCached = categorizationApi.learn(command.cashFlowId(), confirmed);
+            log.info("Remembered {} patterns for cashFlow: {}", patternsCached, command.cashFlowId().id());
         }
 
         // Step 4: Revalidate staging session

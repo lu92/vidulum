@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.multi</groupId>
+        <artifactId>vidulum</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>vidulum-bank-data-ai-categorization-api</artifactId>
+    <name>Vidulum Bank Data AI Categorization API</name>
+    <description>
+        CONTRACT: what another module may ask of AI categorization. No Spring, no AI library, no
+        implementation - a consumer compiles against this and never sees a prompt, a model or a
+        pattern document.
+
+        Two methods, both derived from real call sites rather than from the engine's surface:
+        suggestFor() from AiCategorizeCommandHandler, and matchLearned() from the two staging
+        handlers that were applying learned patterns with their own copy of the matching rule.
+
+        Depends on cashflow-api for Type (INFLOW/OUTFLOW), which is the whole family's vocabulary;
+        duplicating it would be worse than a contract-to-contract dependency, and both are leaves.
+
+        The analysis behind it: docs/features-backlog/2026-10-22-ai-categorization-module-split.md.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-shared-kernel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-cashflow-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+</project>

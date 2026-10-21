@@ -2,7 +2,8 @@ package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.domain.CategoryMappingRepository;
-import com.multi.vidulum.bank_data_ingestion.domain.PatternMappingRepository;
+import com.multi.vidulum.bank_data_ai_categorization.api.PatternMatches;
+import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizationApi;
 import com.multi.vidulum.bank_data_ingestion.domain.StagedTransaction;
 import com.multi.vidulum.bank_data_ingestion.domain.StagedTransactionRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
@@ -63,7 +64,12 @@ class StagingRefusesClosedMonthsTest {
     private final StagedTransactionRepository stagedTransactions = mock(StagedTransactionRepository.class);
     private final StagingSessionMongoRepository sessions = mock(StagingSessionMongoRepository.class);
     private final CategoryMappingRepository categoryMappings = mock(CategoryMappingRepository.class);
-    private final PatternMappingRepository patternMappings = mock(PatternMappingRepository.class);
+    private final TransactionCategorizationApi categorization = mock(TransactionCategorizationApi.class);
+
+    {
+        // this test is about which months accept an import, so nothing is recognised by pattern
+        when(categorization.matchLearned(any(), any())).thenReturn(PatternMatches.none());
+    }
     private final CashFlowModuleApi cashFlowApi = mock(CashFlowModuleApi.class);
     private final UserFinancialProfileApi profiles = mock(UserFinancialProfileApi.class);
 
@@ -131,7 +137,7 @@ class StagingRefusesClosedMonthsTest {
                 stagedTransactions,
                 sessions,
                 categoryMappings,
-                patternMappings,
+                categorization,
                 cashFlowApi,
                 forecast,
                 new BankDataIngestionConfig(),

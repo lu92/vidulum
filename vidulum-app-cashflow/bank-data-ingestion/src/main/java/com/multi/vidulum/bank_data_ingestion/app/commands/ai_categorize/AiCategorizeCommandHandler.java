@@ -1,9 +1,12 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.ai_categorize;
 
-import com.multi.vidulum.bank_data_ingestion.app.categorization.AiCategorizationService;
+import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
+import com.multi.vidulum.bank_data_ai_categorization.api.CategorizationRequest;
+import com.multi.vidulum.bank_data_ai_categorization.api.CategoryStructure;
+import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizationApi;
+import com.multi.vidulum.bank_data_ai_categorization.api.TransactionToCategorize;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
-import com.multi.vidulum.bank_data_ingestion.app.categorization.ExistingCategoryStructure;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
@@ -33,7 +36,7 @@ public class AiCategorizeCommandHandler
     private final CashFlowModuleApi cashFlowApi;
     private final StagedTransactionRepository stagedTransactionRepository;
     private final StagingSessionMongoRepository stagingSessionRepository;
-    private final AiCategorizationService aiCategorizationService;
+    private final TransactionCategorizationApi categorizationApi;
 
     @Override
     public AiCategorizationResult handle(AiCategorizeCommand command) {
@@ -66,7 +69,7 @@ public class AiCategorizeCommandHandler
         }
 
         // Step 3: Get existing categories for context (with type and hierarchy)
-        ExistingCategoryStructure categoryStructure = ExistingCategoryStructure.from(skeleton);
+        CategoryStructure categoryStructure = CategoryStructure.from(skeleton);
 
         log.debug("Existing categories: {} inflow, {} outflow",
                 categoryStructure.allInflowNames().size(),
@@ -79,13 +82,16 @@ public class AiCategorizeCommandHandler
 
         AiCategorizationResult result;
         try {
-            result = aiCategorizationService.categorize(
-                    command.sessionId(),
-                    transactions,
-                    command.cashFlowId().id(),  // cashFlowId for per-CashFlow cache
-                    categoryStructure,
-                    detectedLanguage  // language for category name generation
-            );
+            // The contract takes what categorization actually reads from a row - not the row. Its
+            // own memory of patterns is consulted inside, which is why no cache travels here and
+            // why nothing is written back by this handler (see AcceptAiSuggestionsCommandHandler,
+            // where a person's acceptance is what gets remembered).
+            result = categorizationApi.suggestFor(new CategorizationRequest(
+                    command.sessionId().id(),
+                    command.cashFlowId(),
+                    detectedLanguage,  // language for category name generation
+                    transactions.stream().map(AiCategorizeCommandHandler::toCategorize).toList(),
+                    categoryStructure));
 
             // Step 5: Mark session as AI categorization completed
             if (sessionEntity != null) {
@@ -111,5 +117,26 @@ public class AiCategorizeCommandHandler
                 result.stats().needsManual());
 
         return result;
+    }
+
+    /**
+     * Ingestion's row, narrowed to what categorization reads. Eleven values out of a staged
+     * transaction's two dozen - and the eleven were measured from the engine's own code, not chosen.
+     */
+    private static TransactionToCategorize toCategorize(StagedTransaction transaction) {
+        var original = transaction.originalData();
+        return new TransactionToCategorize(
+                transaction.stagedTransactionId().id(),
+                original.name(),
+                original.description(),
+                original.money(),
+                original.type(),
+                original.bankCategory(),
+                original.merchant(),
+                original.merchantConfidence(),
+                // the vocabulary word, not the enum: the same text contract the adapter uses
+                original.effectiveClassification().name(),
+                original.isAutoCategorizeable(),
+                original.counterpartyAccount());
     }
 }

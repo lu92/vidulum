@@ -1,27 +1,27 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
+import com.multi.vidulum.bank_data_ai_categorization.api.PatternMatches;
+import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizationApi;
+import com.multi.vidulum.bank_data_ai_categorization.api.TransactionToMatch;
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountRegistry;
-import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
-import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
-import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
-import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
-import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
-import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
-import com.multi.vidulum.cashflow.api.view.ImportWindow;
+import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.api.forecast.CashFlowForecastApi;
 import com.multi.vidulum.cashflow.api.forecast.MonthStatus;
 import com.multi.vidulum.cashflow.api.forecast.MonthStatuses;
-import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.cashflow.api.Type;
+import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
+import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
+import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.common.BankAccountId;
+import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
-import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
+import com.multi.vidulum.user_financial_profile.api.UserFinancialProfileApi;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,7 +32,6 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.Comparator;
 
 @Slf4j
 @Component
@@ -43,7 +42,7 @@ public class StageTransactionsCommandHandler
     private final StagedTransactionRepository stagedTransactionRepository;
     private final StagingSessionMongoRepository stagingSessionRepository;
     private final CategoryMappingRepository categoryMappingRepository;
-    private final PatternMappingRepository patternMappingRepository;
+    private final TransactionCategorizationApi categorizationApi;
     private final CashFlowModuleApi cashFlowApi;
     private final CashFlowForecastApi cashFlowForecastApi;
     private final BankDataIngestionConfig config;
@@ -71,13 +70,19 @@ public class StageTransactionsCommandHandler
         List<CategoryMapping> mappings = categoryMappingRepository.findByCashFlowId(command.cashFlowId());
         Map<MappingKey, CategoryMapping> mappingMap = buildMappingMap(mappings);
 
-        // Load all pattern mappings for this CashFlow (for pattern-based categorization)
-        List<PatternMapping> patternMappings = patternMappingRepository.findAllByCashFlowId(command.cashFlowId().id());
-        log.debug("Loaded {} pattern mappings for CashFlow [{}]", patternMappings.size(), command.cashFlowId().id());
+        // What this cash flow has already taught AI categorization, asked once for the whole
+        // upload. This used to fetch every pattern document and match names here, with a rule
+        // (uppercase + contains) that was not the rule the patterns were learned under - so a
+        // three-letter pattern like BP or MOL matched any name containing those letters. The owner
+        // of the patterns answers now, and answers with matches rather than with its storage.
+        PatternMatches learnedPatterns = categorizationApi.matchLearned(
+                command.cashFlowId(), toMatch(command.transactions()));
+        log.debug("Learned patterns recognised {} of {} transactions for CashFlow [{}]",
+                learnedPatterns.size(), command.transactions().size(), command.cashFlowId().id());
 
         // Find unmapped categories (considering pattern mappings)
         List<StageTransactionsResult.UnmappedCategory> unmappedCategories = findUnmappedCategories(
-                command.transactions(), mappingMap, patternMappings, skeleton);
+                command.transactions(), mappingMap, learnedPatterns, skeleton);
 
         // Process and stage ALL transactions (even those with unmapped categories)
         List<StagedTransaction> stagedTransactions = new ArrayList<>();
@@ -92,8 +97,9 @@ public class StageTransactionsCommandHandler
         MonthStatuses monthStatuses = cashFlowForecastApi.monthStatusesOf(command.cashFlowId());
 
         int patternMatchedCount = 0;
-        for (StageTransactionsCommand.BankTransaction txn : command.transactions()) {
-            PatternMatchResult patternMatch = findMatchingPattern(txn.name(), txn.type(), patternMappings);
+        for (int i = 0; i < command.transactions().size(); i++) {
+            StageTransactionsCommand.BankTransaction txn = command.transactions().get(i);
+            PatternMatchResult patternMatch = matchFor(learnedPatterns, i);
             if (patternMatch != null) {
                 patternMatchedCount++;
             }
@@ -165,31 +171,32 @@ public class StageTransactionsCommandHandler
     private record PatternMatchResult(
             String categoryName,
             Type type,
-            PatternMapping pattern
+            String pattern
     ) {}
 
     /**
-     * Finds the best matching pattern for a transaction name.
-     * Returns null if no pattern matches.
+     * Looks up what the pattern owner recognised for the row at this position.
      *
-     * Matching logic:
-     * 1. Normalize transaction name to uppercase
-     * 2. Find all patterns that are contained in the transaction name
-     * 3. Return the pattern with highest confidence score
+     * <p>What stood here was a matcher: uppercase the name, keep every pattern it contains, take
+     * the most confident. It was a second rule for a relationship that already had one - see
+     * {@code LearnedPatternMatcher} for what the two disagreed about.
      */
-    private PatternMatchResult findMatchingPattern(String transactionName, Type type, List<PatternMapping> patterns) {
-        if (patterns.isEmpty() || transactionName == null) {
-            return null;
-        }
-
-        String normalizedName = transactionName.toUpperCase();
-
-        return patterns.stream()
-                .filter(p -> p.categoryType() == type)
-                .filter(p -> normalizedName.contains(p.normalizedPattern()))
-                .max(Comparator.comparingDouble(PatternMapping::confidenceScore))
-                .map(p -> new PatternMatchResult(p.suggestedCategory(), p.categoryType(), p))
+    private static PatternMatchResult matchFor(PatternMatches learnedPatterns, int index) {
+        return learnedPatterns.forTransaction(String.valueOf(index))
+                .map(match -> new PatternMatchResult(match.category(), match.type(), match.pattern()))
                 .orElse(null);
+    }
+
+    /**
+     * The batch as the pattern owner wants to be asked: a name, a side, and our own key for the row.
+     */
+    private static List<TransactionToMatch> toMatch(List<StageTransactionsCommand.BankTransaction> transactions) {
+        List<TransactionToMatch> offered = new ArrayList<>(transactions.size());
+        for (int i = 0; i < transactions.size(); i++) {
+            offered.add(new TransactionToMatch(
+                    String.valueOf(i), transactions.get(i).name(), transactions.get(i).type()));
+        }
+        return offered;
     }
 
     /**
@@ -205,7 +212,7 @@ public class StageTransactionsCommandHandler
     private List<StageTransactionsResult.UnmappedCategory> findUnmappedCategories(
             List<StageTransactionsCommand.BankTransaction> transactions,
             Map<MappingKey, CategoryMapping> mappingMap,
-            List<PatternMapping> patternMappings,
+            PatternMatches learnedPatterns,
             CashFlowSkeletonView skeleton) {
 
         Map<MappingKey, Integer> unmappedCounts = new HashMap<>();
@@ -224,7 +231,7 @@ public class StageTransactionsCommandHandler
             }
 
             // Priority 2: Check if has pattern matching
-            PatternMatchResult patternMatch = findMatchingPattern(txn.name(), txn.type(), patternMappings);
+            PatternMatchResult patternMatch = matchFor(learnedPatterns, transactions.indexOf(txn));
             if (patternMatch != null) {
                 // Pattern matched - check if target category exists in CashFlow (case-insensitive)
                 if (skeleton.findCategoryIgnoringCase(patternMatch.categoryName(), txn.type()).isPresent()) {
@@ -375,7 +382,7 @@ public class StageTransactionsCommandHandler
             TransactionValidation validation = validateTransaction(txn, skeleton, monthStatuses, alreadyImported, now);
 
             log.trace("Transaction [{}] matched pattern [{}] -> category [{}]",
-                    txn.name(), patternMatch.pattern().normalizedPattern(), actualCategoryName.name());
+                    txn.name(), patternMatch.pattern(), actualCategoryName.name());
 
             return StagedTransaction.create(
                     cashFlowId,

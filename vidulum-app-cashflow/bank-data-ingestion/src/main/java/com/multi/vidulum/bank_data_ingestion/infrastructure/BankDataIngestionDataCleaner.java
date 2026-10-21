@@ -2,7 +2,6 @@ package com.multi.vidulum.bank_data_ingestion.infrastructure;
 
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.CategoryMappingEntity;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.ImportJobEntity;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.PatternMappingEntity;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagedTransactionEntity;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.shared.DataCleaner;
@@ -31,6 +30,5 @@ public class BankDataIngestionDataCleaner implements DataCleaner {
         mongoTemplate.remove(new Query(), StagedTransactionEntity.class);
         mongoTemplate.remove(new Query(), CategoryMappingEntity.class);
         mongoTemplate.remove(new Query(), ImportJobEntity.class);
-        mongoTemplate.remove(new Query(), PatternMappingEntity.class);
     }
 }
