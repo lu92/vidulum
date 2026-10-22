@@ -1,4 +1,4 @@
-package com.multi.vidulum.bank_data_ingestion.app.commands.ai_categorize;
+package com.multi.vidulum.bank_data_ingestion.classification.commands.ai_categorize;
 
 import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
 import com.multi.vidulum.bank_data_ai_categorization.api.CategorizationRequest;

@@ -1,4 +1,4 @@
-package com.multi.vidulum.bank_data_ingestion.app.commands.accept_ai_suggestions;
+package com.multi.vidulum.bank_data_ingestion.classification.commands.accept_ai_suggestions;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingCommandHandler;

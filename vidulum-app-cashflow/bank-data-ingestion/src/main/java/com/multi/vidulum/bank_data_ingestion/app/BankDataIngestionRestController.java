@@ -1,9 +1,9 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
-import com.multi.vidulum.bank_data_ingestion.app.commands.accept_ai_suggestions.AcceptAiSuggestionsCommand;
-import com.multi.vidulum.bank_data_ingestion.app.commands.accept_ai_suggestions.AcceptAiSuggestionsResult;
+import com.multi.vidulum.bank_data_ingestion.classification.commands.accept_ai_suggestions.AcceptAiSuggestionsCommand;
+import com.multi.vidulum.bank_data_ingestion.classification.commands.accept_ai_suggestions.AcceptAiSuggestionsResult;
 import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
-import com.multi.vidulum.bank_data_ingestion.app.commands.ai_categorize.AiCategorizeCommand;
+import com.multi.vidulum.bank_data_ingestion.classification.commands.ai_categorize.AiCategorizeCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.force_uncategorized.ForceUncategorizedCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.force_uncategorized.ForceUncategorizedResult;
 import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingCommand;
