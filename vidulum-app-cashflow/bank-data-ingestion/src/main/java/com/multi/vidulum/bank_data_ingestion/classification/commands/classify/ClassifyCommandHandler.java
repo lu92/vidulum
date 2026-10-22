@@ -1,6 +1,6 @@
-package com.multi.vidulum.bank_data_ingestion.classification.commands.ai_categorize;
+package com.multi.vidulum.bank_data_ingestion.classification.commands.classify;
 
-import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
+import com.multi.vidulum.bank_data_ai_categorization.api.CategorizationSuggestions;
 import com.multi.vidulum.bank_data_ai_categorization.api.CategorizationRequest;
 import com.multi.vidulum.bank_data_ai_categorization.api.CategoryStructure;
 import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizationApi;
@@ -30,8 +30,8 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AiCategorizeCommandHandler
-        implements CommandHandler<AiCategorizeCommand, AiCategorizationResult> {
+public class ClassifyCommandHandler
+        implements CommandHandler<ClassifyCommand, CategorizationSuggestions> {
 
     private final CashFlowModuleApi cashFlowApi;
     private final StagedTransactionRepository stagedTransactionRepository;
@@ -39,7 +39,7 @@ public class AiCategorizeCommandHandler
     private final TransactionCategorizationApi categorizationApi;
 
     @Override
-    public AiCategorizationResult handle(AiCategorizeCommand command) {
+    public CategorizationSuggestions handle(ClassifyCommand command) {
         log.info("Processing AI categorization for session: {}, cashFlow: {}",
                 command.sessionId(), command.cashFlowId());
 
@@ -64,7 +64,7 @@ public class AiCategorizeCommandHandler
                 .findBySessionId(command.sessionId().id())
                 .orElse(null);
         if (sessionEntity != null) {
-            sessionEntity.startAiCategorization();
+            sessionEntity.startClassification();
             stagingSessionRepository.save(sessionEntity);
         }
 
@@ -80,31 +80,28 @@ public class AiCategorizeCommandHandler
         // Pass detectedLanguage from session entity for language-aware categorization
         String detectedLanguage = sessionEntity != null ? sessionEntity.getDetectedLanguage() : null;
 
-        AiCategorizationResult result;
+        CategorizationSuggestions result;
         try {
             // The contract takes what categorization actually reads from a row - not the row. Its
             // own memory of patterns is consulted inside, which is why no cache travels here and
-            // why nothing is written back by this handler (see AcceptAiSuggestionsCommandHandler,
+            // why nothing is written back by this handler (see AcceptClassificationCommandHandler,
             // where a person's acceptance is what gets remembered).
             result = categorizationApi.suggestFor(new CategorizationRequest(
                     command.sessionId().id(),
                     command.cashFlowId(),
                     detectedLanguage,  // language for category name generation
-                    transactions.stream().map(AiCategorizeCommandHandler::toCategorize).toList(),
+                    transactions.stream().map(ClassifyCommandHandler::toCategorize).toList(),
                     categoryStructure));
 
             // Step 5: Mark session as AI categorization completed
             if (sessionEntity != null) {
-                sessionEntity.completeAiCategorization(
-                        result.cost().tokensUsed(),
-                        result.cost().estimatedCost()
-                );
+                sessionEntity.completeClassification();
                 stagingSessionRepository.save(sessionEntity);
             }
         } catch (Exception e) {
             // Mark session as AI categorization failed
             if (sessionEntity != null) {
-                sessionEntity.failAiCategorization();
+                sessionEntity.failClassification();
                 stagingSessionRepository.save(sessionEntity);
             }
             throw e;

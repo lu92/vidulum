@@ -19,10 +19,10 @@
  *   <li>{@code upload_csv} - it parses a file, which sounds like {@code intake}, but its result
  *       embeds {@code StageTransactionsResult} and its whole purpose is to leave a session behind.
  *       It is staging's entry point that happens to use intake's parser.</li>
- *   <li>The classification progress on the session - {@code AiCategorizationStatus} and the cost
+ *   <li>The classification progress on the session - {@code ClassificationStatus} and the cost
  *       fields. They are written through the session's own methods, and
  *       {@code ForceUncategorizedCommandHandler} - staging's own - calls
- *       {@code skipAiCategorization()}. A state machine's state belongs to whoever holds it, and
+ *       {@code skipClassification()}. A state machine's state belongs to whoever holds it, and
  *       leaving it here is what lets the classification section be a leaf.</li>
  * </ul>
  *

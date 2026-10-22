@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import com.multi.vidulum.bank_data_ai_categorization.api.TransactionToCategorize;
 import com.multi.vidulum.bank_data_ai_categorization.api.CategoryStructure;
-import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
+import com.multi.vidulum.bank_data_ai_categorization.api.CategorizationSuggestions;
 
 /**
  * Service for AI-powered transaction categorization.
@@ -70,7 +70,7 @@ public class AiCategorizationService {
      * @param detectedLanguage   language detected by AI transformation (e.g., "pl", "en") - may be null
      * @return categorization result with suggestions
      */
-    public AiCategorizationResult categorize(
+    public CategorizationSuggestions categorize(
             String sessionId,
             List<TransactionToCategorize> transactions,
             String cashFlowId,
@@ -79,7 +79,7 @@ public class AiCategorizationService {
 
         if (transactions == null || transactions.isEmpty()) {
             log.info("No transactions to categorize for session: {}", sessionId);
-            return AiCategorizationResult.noPatterns(sessionId);
+            return CategorizationSuggestions.noPatterns(sessionId);
         }
 
         log.info("Starting AI categorization for session: {}, cashFlowId: {}, transactions: {}",
@@ -88,7 +88,7 @@ public class AiCategorizationService {
         // Step 0: Pre-filter auto-categorizable transactions (BANK_FEE, SELF_TRANSFER, etc.)
         PreFilterResult preFilterResult = preFilterAutoCategorizableTransactions(transactions);
         List<TransactionToCategorize> transactionsForAi = preFilterResult.remainingTransactions();
-        List<AiCategorizationResult.AutoCategorizableSuggestion> autoCategorizableSuggestions =
+        List<CategorizationSuggestions.AutoCategorizableSuggestion> autoCategorizableSuggestions =
                 preFilterResult.suggestions();
 
         log.info("Pre-filtered {} auto-categorizable transactions ({}), {} remaining for AI/cache",
@@ -104,11 +104,11 @@ public class AiCategorizationService {
                 transactionsForAi.size(), patternGroups.size());
 
         if (patternGroups.isEmpty() && autoCategorizableSuggestions.isEmpty()) {
-            return AiCategorizationResult.noPatterns(sessionId);
+            return CategorizationSuggestions.noPatterns(sessionId);
         }
 
         // Step 2: Check cache for each pattern (per CashFlow)
-        List<AiCategorizationResult.PatternSuggestion> cachedSuggestions = new ArrayList<>();
+        List<CategorizationSuggestions.PatternSuggestion> cachedSuggestions = new ArrayList<>();
         List<PatternDeduplicator.PatternGroup> uncachedPatterns = new ArrayList<>();
 
         int globalCacheHits = 0;
@@ -156,14 +156,14 @@ public class AiCategorizationService {
                 cachedPatternIntents.size(), cashFlowId);
 
         // Step 4: Call AI for uncached patterns
-        List<AiCategorizationResult.PatternSuggestion> aiSuggestions = new ArrayList<>();
-        List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions = new ArrayList<>();
-        List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns = new ArrayList<>();
-        List<AiCategorizationResult.StructureOptimization> structureOptimizations = new ArrayList<>();
-        List<AiCategorizationResult.ContextMapping> contextMappings = new ArrayList<>();
-        List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks = new ArrayList<>();
-        AiCategorizationResult.SuggestedStructure structure =
-                AiCategorizationResult.SuggestedStructure.empty();
+        List<CategorizationSuggestions.PatternSuggestion> aiSuggestions = new ArrayList<>();
+        List<CategorizationSuggestions.BankCategorySuggestion> bankCategorySuggestions = new ArrayList<>();
+        List<CategorizationSuggestions.UnrecognizedPattern> unrecognizedPatterns = new ArrayList<>();
+        List<CategorizationSuggestions.StructureOptimization> structureOptimizations = new ArrayList<>();
+        List<CategorizationSuggestions.ContextMapping> contextMappings = new ArrayList<>();
+        List<CategorizationSuggestions.BankCategoryFallback> bankCategoryFallbacks = new ArrayList<>();
+        CategorizationSuggestions.SuggestedStructure structure =
+                CategorizationSuggestions.SuggestedStructure.empty();
         int tokensUsed = 0;
 
         if (!uncachedPatterns.isEmpty() && aiEnabled) {
@@ -197,20 +197,20 @@ public class AiCategorizationService {
         }
 
         // Step 4: Combine results
-        List<AiCategorizationResult.PatternSuggestion> allSuggestions = new ArrayList<>();
+        List<CategorizationSuggestions.PatternSuggestion> allSuggestions = new ArrayList<>();
         allSuggestions.addAll(cachedSuggestions);
         allSuggestions.addAll(aiSuggestions);
 
         // Sort by transaction count (most frequent first)
         allSuggestions.sort(Comparator.comparingInt(
-                AiCategorizationResult.PatternSuggestion::transactionCount).reversed());
+                CategorizationSuggestions.PatternSuggestion::transactionCount).reversed());
 
         // Calculate stats
         int autoAccepted = (int) allSuggestions.stream()
-                .filter(AiCategorizationResult.PatternSuggestion::isAutoAccepted)
+                .filter(CategorizationSuggestions.PatternSuggestion::isAutoAccepted)
                 .count();
         int suggested = (int) allSuggestions.stream()
-                .filter(AiCategorizationResult.PatternSuggestion::needsConfirmation)
+                .filter(CategorizationSuggestions.PatternSuggestion::needsConfirmation)
                 .count();
         int needsManual = (int) allSuggestions.stream()
                 .filter(s -> s.confidence() < 50)
@@ -218,14 +218,14 @@ public class AiCategorizationService {
 
         // Calculate new stats: matchedExisting vs createdNew
         int matchedExisting = (int) allSuggestions.stream()
-                .filter(AiCategorizationResult.PatternSuggestion::isExistingCategory)
+                .filter(CategorizationSuggestions.PatternSuggestion::isExistingCategory)
                 .count();
         int createdNew = (int) allSuggestions.stream()
                 .filter(s -> !s.isExistingCategory())
                 .count();
         int unrecognizedCount = unrecognizedPatterns.size();
 
-        AiCategorizationResult.CategorizationStats stats = new AiCategorizationResult.CategorizationStats(
+        CategorizationSuggestions.CategorizationStats stats = new CategorizationSuggestions.CategorizationStats(
                 patternGroups.size(),
                 autoAccepted,
                 suggested,
@@ -238,18 +238,18 @@ public class AiCategorizationService {
                 unrecognizedCount
         );
 
-        AiCategorizationResult.AiCost cost = tokensUsed > 0
-                ? AiCategorizationResult.AiCost.estimated(tokensUsed)
-                : AiCategorizationResult.AiCost.free();
+        CategorizationSuggestions.Cost cost = tokensUsed > 0
+                ? CategorizationSuggestions.Cost.estimated(tokensUsed)
+                : CategorizationSuggestions.Cost.free();
 
         int autoCategorizableCount = autoCategorizableSuggestions.stream()
-                .mapToInt(AiCategorizationResult.AutoCategorizableSuggestion::transactionCount)
+                .mapToInt(CategorizationSuggestions.AutoCategorizableSuggestion::transactionCount)
                 .sum();
 
         log.info("Categorization complete: {} patterns, {} auto-accept, {} suggested, {} manual, {} existing, {} new, {} unrecognized, {} auto-categorizable, {} bank category mappings, {} structure optimizations, cost: {}",
                 allSuggestions.size(), autoAccepted, suggested, needsManual, matchedExisting, createdNew, unrecognizedCount, autoCategorizableCount, bankCategorySuggestions.size(), structureOptimizations.size(), cost.estimatedCost());
 
-        return AiCategorizationResult.success(sessionId, structure, allSuggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, autoCategorizableSuggestions, contextMappings, bankCategoryFallbacks, stats, cost);
+        return CategorizationSuggestions.success(sessionId, structure, allSuggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, autoCategorizableSuggestions, contextMappings, bankCategoryFallbacks, stats, cost);
     }
 
     /**
@@ -307,13 +307,13 @@ public class AiCategorizationService {
 
     private record AiCallResult(
             boolean success,
-            AiCategorizationResult.SuggestedStructure structure,
-            List<AiCategorizationResult.PatternSuggestion> suggestions,
-            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
-            List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
-            List<AiCategorizationResult.StructureOptimization> structureOptimizations,
-            List<AiCategorizationResult.ContextMapping> contextMappings,
-            List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks,
+            CategorizationSuggestions.SuggestedStructure structure,
+            List<CategorizationSuggestions.PatternSuggestion> suggestions,
+            List<CategorizationSuggestions.BankCategorySuggestion> bankCategorySuggestions,
+            List<CategorizationSuggestions.UnrecognizedPattern> unrecognizedPatterns,
+            List<CategorizationSuggestions.StructureOptimization> structureOptimizations,
+            List<CategorizationSuggestions.ContextMapping> contextMappings,
+            List<CategorizationSuggestions.BankCategoryFallback> bankCategoryFallbacks,
             int tokensUsed,
             String errorMessage
     ) {}
@@ -323,16 +323,16 @@ public class AiCategorizationService {
      */
     private record PreFilterResult(
             List<TransactionToCategorize> remainingTransactions,
-            List<AiCategorizationResult.AutoCategorizableSuggestion> suggestions
+            List<CategorizationSuggestions.AutoCategorizableSuggestion> suggestions
     ) {}
 
     /**
      * Turns a remembered pattern into a suggestion. The contract takes the values rather than the
      * document, because what the memory is stored in is this module's business and nobody else's.
      */
-    private static AiCategorizationResult.PatternSuggestion suggestionFromRemembered(
+    private static CategorizationSuggestions.PatternSuggestion suggestionFromRemembered(
             PatternMapping remembered, PatternDeduplicator.PatternGroup group) {
-        return AiCategorizationResult.PatternSuggestion.fromCache(
+        return CategorizationSuggestions.PatternSuggestion.fromCache(
                 remembered.normalizedPattern(),
                 remembered.suggestedCategory(),
                 remembered.intendedParentCategory(),
@@ -368,11 +368,11 @@ public class AiCategorizationService {
                         Collectors.groupingBy(txn -> txn.type())
                 ));
 
-        List<AiCategorizationResult.AutoCategorizableSuggestion> suggestions = new ArrayList<>();
+        List<CategorizationSuggestions.AutoCategorizableSuggestion> suggestions = new ArrayList<>();
 
         for (var classificationEntry : grouped.entrySet()) {
             String classification = classificationEntry.getKey();
-            String suggestedCategory = AiCategorizationResult.AutoCategorizableSuggestion
+            String suggestedCategory = CategorizationSuggestions.AutoCategorizableSuggestion
                     .categoryForClassification(classification);
 
             if (suggestedCategory == null) {
@@ -397,10 +397,10 @@ public class AiCategorizationService {
                         .map(t -> t.name())
                         .toList();
 
-                suggestions.add(new AiCategorizationResult.AutoCategorizableSuggestion(
+                suggestions.add(new CategorizationSuggestions.AutoCategorizableSuggestion(
                         classification,
                         suggestedCategory,
-                        AiCategorizationResult.AutoCategorizableSuggestion.PARENT_CATEGORY,
+                        CategorizationSuggestions.AutoCategorizableSuggestion.PARENT_CATEGORY,
                         type,
                         count,
                         totalAmount,

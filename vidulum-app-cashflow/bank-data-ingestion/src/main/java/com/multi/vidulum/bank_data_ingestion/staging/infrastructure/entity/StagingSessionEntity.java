@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.staging.infrastructure.entity;
 
-import com.multi.vidulum.bank_data_ingestion.staging.domain.AiCategorizationStatus;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.ClassificationStatus;
 import com.multi.vidulum.bank_data_ingestion.staging.domain.StagingSessionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -86,7 +86,7 @@ public class StagingSessionEntity {
     @Indexed
     private StagingSessionStatus status;
 
-    private AiCategorizationStatus aiCategorizationStatus;
+    private ClassificationStatus classificationStatus;
 
     // ============ Summary (denormalized for quick access) ============
 
@@ -96,12 +96,16 @@ public class StagingSessionEntity {
     private int duplicateTransactions;
     private int unmappedTransactions;
 
-    // ============ AI Categorization Results ============
+    // ============ Classification Results ============
+    //
+    // No tokens and no estimated cost here any more, and that is the point of the rename: those two
+    // fields were the supplier's units in a stored document, so a classifier without a language
+    // model would have had to write zeros into them forever. Nothing ever read them - the cost in
+    // the HTTP response comes straight from the engine's own answer - so removing them changes no
+    // payload and lets the contract stop promising telemetry (F67).
 
-    private Instant aiCategorizationStartedAt;
-    private Instant aiCategorizationCompletedAt;
-    private Integer aiTokensUsed;
-    private String aiEstimatedCost;
+    private Instant classificationStartedAt;
+    private Instant classificationCompletedAt;
 
     // ============ Import Job Results ============
 
@@ -155,7 +159,7 @@ public class StagingSessionEntity {
                 .lastModifiedAt(now)
                 .expiresAt(expiresAt)
                 .status(StagingSessionStatus.PENDING)
-                .aiCategorizationStatus(AiCategorizationStatus.NOT_STARTED)
+                .classificationStatus(ClassificationStatus.NOT_STARTED)
                 .totalTransactions(0)
                 .validTransactions(0)
                 .invalidTransactions(0)
@@ -200,8 +204,8 @@ public class StagingSessionEntity {
             this.status = StagingSessionStatus.HAS_VALIDATION_ERRORS;
         } else if (unmappedTransactions > 0) {
             // Check if AI suggestions are ready
-            if (aiCategorizationStatus == AiCategorizationStatus.COMPLETED) {
-                this.status = StagingSessionStatus.AI_SUGGESTIONS_READY;
+            if (classificationStatus == ClassificationStatus.COMPLETED) {
+                this.status = StagingSessionStatus.SUGGESTIONS_READY;
             } else {
                 this.status = StagingSessionStatus.HAS_UNMAPPED_CATEGORIES;
             }
@@ -213,41 +217,40 @@ public class StagingSessionEntity {
     /**
      * Marks AI categorization as started.
      */
-    public void startAiCategorization() {
-        this.aiCategorizationStatus = AiCategorizationStatus.IN_PROGRESS;
-        this.aiCategorizationStartedAt = Instant.now();
+    public void startClassification() {
+        this.classificationStatus = ClassificationStatus.IN_PROGRESS;
+        this.classificationStartedAt = Instant.now();
         this.lastModifiedAt = Instant.now();
     }
 
     /**
-     * Marks AI categorization as completed.
+     * Marks classification as completed. Takes no cost: what a classification cost is the engine's
+     * business and the caller's answer, not the session's state.
      */
-    public void completeAiCategorization(int tokensUsed, String estimatedCost) {
-        this.aiCategorizationStatus = AiCategorizationStatus.COMPLETED;
-        this.aiCategorizationCompletedAt = Instant.now();
-        this.aiTokensUsed = tokensUsed;
-        this.aiEstimatedCost = estimatedCost;
+    public void completeClassification() {
+        this.classificationStatus = ClassificationStatus.COMPLETED;
+        this.classificationCompletedAt = Instant.now();
         this.lastModifiedAt = Instant.now();
 
-        // Update session status to AI_SUGGESTIONS_READY if there are still unmapped
+        // Update session status to SUGGESTIONS_READY if there are still unmapped
         if (unmappedTransactions > 0) {
-            this.status = StagingSessionStatus.AI_SUGGESTIONS_READY;
+            this.status = StagingSessionStatus.SUGGESTIONS_READY;
         }
     }
 
     /**
      * Marks AI categorization as failed.
      */
-    public void failAiCategorization() {
-        this.aiCategorizationStatus = AiCategorizationStatus.FAILED;
+    public void failClassification() {
+        this.classificationStatus = ClassificationStatus.FAILED;
         this.lastModifiedAt = Instant.now();
     }
 
     /**
      * Marks AI categorization as skipped (user chose manual mapping).
      */
-    public void skipAiCategorization() {
-        this.aiCategorizationStatus = AiCategorizationStatus.SKIPPED;
+    public void skipClassification() {
+        this.classificationStatus = ClassificationStatus.SKIPPED;
         this.lastModifiedAt = Instant.now();
     }
 

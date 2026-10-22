@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
-import com.multi.vidulum.bank_data_ingestion.staging.domain.AiCategorizationStatus;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.ClassificationStatus;
 import com.multi.vidulum.bank_data_ingestion.staging.domain.StagingSessionStatus;
 import com.multi.vidulum.bank_data_ingestion.mappings.infrastructure.CategoryMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.importing.infrastructure.ImportJobMongoRepository;
@@ -122,7 +122,7 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
         assertThat(sessionEntity.getSessionId()).isEqualTo(stagingSessionId);
         assertThat(sessionEntity.getCashFlowId()).isEqualTo(cashFlowId);
         assertThat(sessionEntity.getStatus()).isEqualTo(StagingSessionStatus.READY_FOR_IMPORT);
-        assertThat(sessionEntity.getAiCategorizationStatus()).isEqualTo(AiCategorizationStatus.NOT_STARTED);
+        assertThat(sessionEntity.getClassificationStatus()).isEqualTo(ClassificationStatus.NOT_STARTED);
         assertThat(sessionEntity.getTotalTransactions()).isEqualTo(2);
         assertThat(sessionEntity.getValidTransactions()).isEqualTo(2);
         assertThat(sessionEntity.getInvalidTransactions()).isEqualTo(0);
@@ -244,12 +244,12 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
         StagingSessionEntity session2 = stagingSessionRepository.findBySessionId(stagingSessionId).orElseThrow();
         assertThat(session2.getStatus()).isEqualTo(StagingSessionStatus.READY_FOR_IMPORT);
         assertThat(session2.getUnmappedTransactions()).isEqualTo(0);
-        assertThat(session2.getAiCategorizationStatus()).isEqualTo(AiCategorizationStatus.SKIPPED);
+        assertThat(session2.getClassificationStatus()).isEqualTo(ClassificationStatus.SKIPPED);
 
         log.info("After force-uncategorized: status={}, unmapped={}, aiStatus={}",
                 session2.getStatus(),
                 session2.getUnmappedTransactions(),
-                session2.getAiCategorizationStatus());
+                session2.getClassificationStatus());
     }
 
     @Test

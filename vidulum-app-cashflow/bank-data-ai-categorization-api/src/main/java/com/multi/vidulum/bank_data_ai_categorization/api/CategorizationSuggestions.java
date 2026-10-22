@@ -6,7 +6,13 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Result of AI categorization for a staging session.
+ * What came back from classifying one batch - whoever classified it.
+ *
+ * <p><b>It used to be called {@code AiCategorizationResult}, and the rename is the point.</b> The
+ * interface was already named after the capability, so a contract that answered with a type named
+ * after the supplier was telling a replacement which technology to pretend to be. {@code Cost} is
+ * the same correction one level down: a classifier with no model has no tokens to report, and the
+ * field it must fill should not be called {@code AiCost} (F67).
  * Contains suggested category structure, pattern mappings, and statistics.
  *
  * <p><b>{@code sessionId} is a String, not a typed id.</b> It used to be ingestion's
@@ -17,7 +23,7 @@ import java.util.List;
  * <p>Likewise {@code PatternSuggestion.fromCache} takes the values of a remembered pattern rather
  * than a pattern document: what the cache is stored in belongs to whoever owns the cache.
  */
-public record AiCategorizationResult(
+public record CategorizationSuggestions(
         String sessionId,
         String status,
         SuggestedStructure suggestedStructure,
@@ -29,10 +35,10 @@ public record AiCategorizationResult(
         List<ContextMapping> contextMappings,
         List<BankCategoryFallback> bankCategoryFallbacks,
         CategorizationStats stats,
-        AiCost cost
+        Cost cost
 ) {
 
-    public static final String STATUS_AI_SUGGESTIONS_READY = "AI_SUGGESTIONS_READY";
+    public static final String STATUS_SUGGESTIONS_READY = "SUGGESTIONS_READY";
     public static final String STATUS_NO_PATTERNS_TO_CATEGORIZE = "NO_PATTERNS_TO_CATEGORIZE";
     public static final String STATUS_ERROR = "ERROR";
 
@@ -320,25 +326,25 @@ public record AiCategorizationResult(
     /**
      * Cost information for AI categorization.
      */
-    public record AiCost(
+    public record Cost(
             int tokensUsed,
             String estimatedCost
     ) {
-        public static AiCost free() {
-            return new AiCost(0, "FREE");
+        public static Cost free() {
+            return new Cost(0, "FREE");
         }
 
-        public static AiCost estimated(int tokens) {
+        public static Cost estimated(int tokens) {
             // Rough estimate: $0.01 per 1000 tokens
             double cost = tokens * 0.00001;
-            return new AiCost(tokens, String.format("%.2f USD", cost));
+            return new Cost(tokens, String.format("%.2f USD", cost));
         }
     }
 
     /**
      * Creates a successful result with suggestions.
      */
-    public static AiCategorizationResult success(
+    public static CategorizationSuggestions success(
             String sessionId,
             SuggestedStructure structure,
             List<PatternSuggestion> suggestions,
@@ -349,11 +355,11 @@ public record AiCategorizationResult(
             List<ContextMapping> contextMappings,
             List<BankCategoryFallback> bankCategoryFallbacks,
             CategorizationStats stats,
-            AiCost cost
+            Cost cost
     ) {
-        return new AiCategorizationResult(
+        return new CategorizationSuggestions(
                 sessionId,
-                STATUS_AI_SUGGESTIONS_READY,
+                STATUS_SUGGESTIONS_READY,
                 structure,
                 suggestions,
                 bankCategorySuggestions,
@@ -370,8 +376,8 @@ public record AiCategorizationResult(
     /**
      * Creates a result when there are no patterns to categorize.
      */
-    public static AiCategorizationResult noPatterns(String sessionId) {
-        return new AiCategorizationResult(
+    public static CategorizationSuggestions noPatterns(String sessionId) {
+        return new CategorizationSuggestions(
                 sessionId,
                 STATUS_NO_PATTERNS_TO_CATEGORIZE,
                 SuggestedStructure.empty(),
@@ -383,15 +389,15 @@ public record AiCategorizationResult(
                 List.of(),
                 List.of(),
                 CategorizationStats.empty(),
-                AiCost.free()
+                Cost.free()
         );
     }
 
     /**
      * Creates an error result.
      */
-    public static AiCategorizationResult error(String sessionId, String errorMessage) {
-        return new AiCategorizationResult(
+    public static CategorizationSuggestions error(String sessionId, String errorMessage) {
+        return new CategorizationSuggestions(
                 sessionId,
                 STATUS_ERROR,
                 SuggestedStructure.empty(),
@@ -403,7 +409,7 @@ public record AiCategorizationResult(
                 List.of(),
                 List.of(),
                 CategorizationStats.empty(),
-                AiCost.free()
+                Cost.free()
         );
     }
 }

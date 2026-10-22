@@ -1,4 +1,4 @@
-package com.multi.vidulum.bank_data_ingestion.classification.commands.accept_ai_suggestions;
+package com.multi.vidulum.bank_data_ingestion.classification.commands.accept_classification;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.bank_data_ingestion.mappings.commands.configure_mapping.ConfigureCategoryMappingCommand;
 import com.multi.vidulum.bank_data_ingestion.mappings.commands.configure_mapping.ConfigureCategoryMappingCommandHandler;
@@ -36,8 +36,8 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AcceptAiSuggestionsCommandHandler
-        implements CommandHandler<AcceptAiSuggestionsCommand, AcceptAiSuggestionsResult> {
+public class AcceptClassificationCommandHandler
+        implements CommandHandler<AcceptClassificationCommand, AcceptClassificationResult> {
 
     private final CashFlowModuleApi cashFlowApi;
     private final TransactionCategorizationApi categorizationApi;
@@ -47,7 +47,7 @@ public class AcceptAiSuggestionsCommandHandler
     private final Clock clock;
 
     @Override
-    public AcceptAiSuggestionsResult handle(AcceptAiSuggestionsCommand command) {
+    public AcceptClassificationResult handle(AcceptClassificationCommand command) {
         log.info("Accepting AI suggestions for session: {}, cashFlow: {}",
                 command.sessionId(), command.cashFlowId());
 
@@ -69,7 +69,7 @@ public class AcceptAiSuggestionsCommandHandler
 
         // Step 1: Create categories
         if (command.acceptedCategories() != null && !command.acceptedCategories().isEmpty()) {
-            for (AcceptAiSuggestionsCommand.CategoryToCreate cat : command.acceptedCategories()) {
+            for (AcceptClassificationCommand.CategoryToCreate cat : command.acceptedCategories()) {
                 try {
                     cashFlowApi.createCategory(
                             command.cashFlowId(),
@@ -95,7 +95,7 @@ public class AcceptAiSuggestionsCommandHandler
         if (command.acceptedMappings() != null && !command.acceptedMappings().isEmpty()) {
             List<ConfigureCategoryMappingCommand.MappingConfig> mappingConfigs = new ArrayList<>();
 
-            for (AcceptAiSuggestionsCommand.MappingToApply mapping : command.acceptedMappings()) {
+            for (AcceptClassificationCommand.MappingToApply mapping : command.acceptedMappings()) {
                 // Use MAP_TO_EXISTING since category should already exist
                 MappingAction action = MappingAction.MAP_TO_EXISTING;
 
@@ -127,7 +127,7 @@ public class AcceptAiSuggestionsCommandHandler
         if (command.acceptedBankCategoryMappings() != null && !command.acceptedBankCategoryMappings().isEmpty()) {
             List<ConfigureCategoryMappingCommand.MappingConfig> bankMappingConfigs = new ArrayList<>();
 
-            for (AcceptAiSuggestionsCommand.BankCategoryMappingToApply mapping : command.acceptedBankCategoryMappings()) {
+            for (AcceptClassificationCommand.BankCategoryMappingToApply mapping : command.acceptedBankCategoryMappings()) {
                 bankMappingConfigs.add(new ConfigureCategoryMappingCommand.MappingConfig(
                         mapping.bankCategory(),
                         new CategoryName(mapping.targetCategory()),
@@ -181,8 +181,8 @@ public class AcceptAiSuggestionsCommandHandler
         RevalidateStagingResult revalidateResult = revalidateHandler.handle(revalidateCommand);
 
         // Build validation summary
-        AcceptAiSuggestionsResult.StagingValidationSummary validationSummary =
-                new AcceptAiSuggestionsResult.StagingValidationSummary(
+        AcceptClassificationResult.StagingValidationSummary validationSummary =
+                new AcceptClassificationResult.StagingValidationSummary(
                         revalidateResult.summary().totalTransactions(),
                         revalidateResult.summary().validCount(),
                         revalidateResult.summary().invalidCount(),
@@ -194,7 +194,7 @@ public class AcceptAiSuggestionsCommandHandler
                 categoriesCreated, mappingsApplied, bankCategoryMappingsApplied, patternsCached, validationSummary.readyForImport());
 
         if (warnings.isEmpty()) {
-            return AcceptAiSuggestionsResult.success(
+            return AcceptClassificationResult.success(
                     command.cashFlowId(),
                     command.sessionId(),
                     categoriesCreated,
@@ -203,7 +203,7 @@ public class AcceptAiSuggestionsCommandHandler
                     validationSummary
             );
         } else {
-            return AcceptAiSuggestionsResult.partial(
+            return AcceptClassificationResult.partial(
                     command.cashFlowId(),
                     command.sessionId(),
                     categoriesCreated,

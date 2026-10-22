@@ -191,7 +191,7 @@ public abstract class TransactionCategorizationApiContractTest {
      */
     @Test
     void anEmptyBatchIsAnsweredWithoutSuggestions() {
-        AiCategorizationResult result = categorizationApi().suggestFor(new CategorizationRequest(
+        CategorizationSuggestions result = categorizationApi().suggestFor(new CategorizationRequest(
                 "SS-CONTRACT-1", freshCashFlow(), "pl", List.of(), CategoryStructure.empty()));
 
         assertThat(result.sessionId())
@@ -202,7 +202,7 @@ public abstract class TransactionCategorizationApiContractTest {
 
     @Test
     void theSessionIdIsEchoedForABatchThatHasWorkInIt() {
-        AiCategorizationResult result = categorizationApi().suggestFor(new CategorizationRequest(
+        CategorizationSuggestions result = categorizationApi().suggestFor(new CategorizationRequest(
                 "SS-CONTRACT-2", freshCashFlow(), "pl",
                 List.of(new TransactionToCategorize("T1", "OPLATA ZA PROWADZENIE RACHUNKU", null,
                         Money.of(-9.00, "PLN"), Type.OUTFLOW, "Oplaty", null, null,

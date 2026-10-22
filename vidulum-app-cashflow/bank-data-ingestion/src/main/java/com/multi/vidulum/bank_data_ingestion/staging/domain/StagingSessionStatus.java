@@ -22,7 +22,7 @@ public enum StagingSessionStatus {
     /**
      * AI categorization has been run and suggestions are ready for review.
      */
-    AI_SUGGESTIONS_READY,
+    SUGGESTIONS_READY,
 
     /**
      * All transactions are validated and mapped - ready for import.

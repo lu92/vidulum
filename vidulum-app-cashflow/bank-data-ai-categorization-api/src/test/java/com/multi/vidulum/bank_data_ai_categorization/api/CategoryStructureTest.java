@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * AI prompt builder reads - a tree of plain names plus a flat set per side.
  *
  * <p>These tests used to drive {@code fromCashFlowInfo}, a factory with <b>no production caller</b>:
- * {@code AiCategorizeCommandHandler} has been using {@code from(skeleton)} for a while, and that one
+ * {@code ClassifyCommandHandler} has been using {@code from(skeleton)} for a while, and that one
  * had no test at all. So the coverage sat on the dead twin. Two cases are gone rather than ported -
  * they asserted {@code CashFlowInfo.getAllTypedCategoryKeys}, which was never about this record and
  * is covered by {@code CashFlowSkeletonViewTest} in the contract's own module.

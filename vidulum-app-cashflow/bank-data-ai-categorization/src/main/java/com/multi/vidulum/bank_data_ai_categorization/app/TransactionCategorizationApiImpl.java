@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ai_categorization.app;
 
-import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
+import com.multi.vidulum.bank_data_ai_categorization.api.CategorizationSuggestions;
 import com.multi.vidulum.bank_data_ai_categorization.api.CategorizationRequest;
 import com.multi.vidulum.bank_data_ai_categorization.api.PatternMatches;
 import com.multi.vidulum.bank_data_ai_categorization.api.PatternSource;
@@ -38,7 +38,7 @@ class TransactionCategorizationApiImpl implements TransactionCategorizationApi {
     private final PatternMappingRepository patternMappingRepository;
 
     @Override
-    public AiCategorizationResult suggestFor(CategorizationRequest request) {
+    public CategorizationSuggestions suggestFor(CategorizationRequest request) {
         return categorizationService.categorize(
                 request.sessionId(),
                 request.transactions(),

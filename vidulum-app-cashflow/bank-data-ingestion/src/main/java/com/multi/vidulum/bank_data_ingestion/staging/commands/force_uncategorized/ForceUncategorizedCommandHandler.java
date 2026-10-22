@@ -253,11 +253,11 @@ public class ForceUncategorizedCommandHandler
                 .orElse(null);
         if (sessionEntity != null) {
             // Mark AI categorization as SKIPPED since user chose to force uncategorized
-            sessionEntity.skipAiCategorization();
+            sessionEntity.skipClassification();
             sessionEntity.updateSummary(total, valid, invalid, duplicates, pending);
             stagingSessionRepository.save(sessionEntity);
             log.debug("Updated session entity status after force-uncategorized: {}, aiStatus: {}",
-                    sessionEntity.getStatus(), sessionEntity.getAiCategorizationStatus());
+                    sessionEntity.getStatus(), sessionEntity.getClassificationStatus());
         }
 
         return new ForceUncategorizedResult(
