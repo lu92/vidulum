@@ -7,12 +7,12 @@ import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.multi.vidulum.JsonFormatter;
-import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEvent;
-import com.multi.vidulum.bank_data_ingestion.domain.BankDataIngestionEventEmitter;
-import com.multi.vidulum.bank_data_ingestion.domain.ImportPhase;
-import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.importing.domain.BankDataIngestionEvent;
+import com.multi.vidulum.bank_data_ingestion.importing.domain.BankDataIngestionEventEmitter;
+import com.multi.vidulum.bank_data_ingestion.importing.domain.ImportPhase;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.MappingAction;
+import com.multi.vidulum.bank_data_ingestion.mappings.infrastructure.CategoryMappingMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.importing.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.app.CashFlowRestController;
@@ -66,6 +66,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionNotFoundException;
+import com.multi.vidulum.bank_data_ingestion.importing.domain.*;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
+import com.multi.vidulum.bank_data_ingestion.mappings.MappingsDto;
 
 /**
  * Integration tests for BankDataIngestion module.
@@ -179,34 +182,34 @@ public class BankDataIngestionControllerTest {
         String cashFlowId = createCashFlowWithHistory();
 
         // when: configure mappings
-        BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+        MappingsDto.ConfigureMappingsRequest request = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Netflix")
                                 .action(MappingAction.CREATE_SUBCATEGORY)
                                 .targetCategoryName("Netflix")
                                 .parentCategoryName("Subscriptions")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Przelew własny")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Transfers Out")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Przelew własny")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Salary")
                                 .categoryType(Type.INFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Opłata bankowa")
                                 .action(MappingAction.MAP_TO_UNCATEGORIZED)
                                 .categoryType(Type.OUTFLOW)
@@ -214,7 +217,7 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.ConfigureMappingsResponse response = mappingsRestController.configureMappings(cashFlowId, request);
+        MappingsDto.ConfigureMappingsResponse response = mappingsRestController.configureMappings(cashFlowId, request);
 
         log.info("Configure mappings response:\n{}", jsonFormatter.formatToPrettyJson(response));
 
@@ -224,10 +227,10 @@ public class BankDataIngestionControllerTest {
         assertThat(response.getMappings()).hasSize(5);
 
         // verify each mapping
-        assertThat(response.getMappings()).extracting(BankDataIngestionDto.MappingResultJson::getBankCategoryName)
+        assertThat(response.getMappings()).extracting(MappingsDto.MappingResultJson::getBankCategoryName)
                 .containsExactlyInAnyOrder("Zakupy kartą", "Netflix", "Przelew własny", "Przelew własny", "Opłata bankowa");
 
-        assertThat(response.getMappings()).extracting(BankDataIngestionDto.MappingResultJson::getStatus)
+        assertThat(response.getMappings()).extracting(MappingsDto.MappingResultJson::getStatus)
                 .containsOnly("CREATED");
     }
 
@@ -237,9 +240,9 @@ public class BankDataIngestionControllerTest {
         // given: create a CashFlow and configure initial mapping
         String cashFlowId = createCashFlowWithHistory();
 
-        BankDataIngestionDto.ConfigureMappingsRequest initialRequest = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+        MappingsDto.ConfigureMappingsRequest initialRequest = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
@@ -251,9 +254,9 @@ public class BankDataIngestionControllerTest {
         mappingsRestController.configureMappings(cashFlowId, initialRequest);
 
         // when: update the mapping with different target
-        BankDataIngestionDto.ConfigureMappingsRequest updateRequest = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+        MappingsDto.ConfigureMappingsRequest updateRequest = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Shopping")
@@ -262,7 +265,7 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.ConfigureMappingsResponse response = mappingsRestController.configureMappings(cashFlowId, updateRequest);
+        MappingsDto.ConfigureMappingsResponse response = mappingsRestController.configureMappings(cashFlowId, updateRequest);
 
         log.info("Update mapping response:\n{}", jsonFormatter.formatToPrettyJson(response));
 
@@ -278,15 +281,15 @@ public class BankDataIngestionControllerTest {
         // given: create a CashFlow and configure mappings
         String cashFlowId = createCashFlowWithHistory();
 
-        BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+        MappingsDto.ConfigureMappingsRequest request = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Salary")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Income")
@@ -298,7 +301,7 @@ public class BankDataIngestionControllerTest {
         mappingsRestController.configureMappings(cashFlowId, request);
 
         // when: get mappings
-        BankDataIngestionDto.GetMappingsResponse response = mappingsRestController.getMappings(cashFlowId);
+        MappingsDto.GetMappingsResponse response = mappingsRestController.getMappings(cashFlowId);
 
         log.info("Get mappings response:\n{}", jsonFormatter.formatToPrettyJson(response));
 
@@ -306,7 +309,7 @@ public class BankDataIngestionControllerTest {
         assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
         assertThat(response.getMappingsCount()).isEqualTo(2);
         assertThat(response.getMappings()).hasSize(2);
-        assertThat(response.getMappings()).extracting(BankDataIngestionDto.MappingJson::getBankCategoryName)
+        assertThat(response.getMappings()).extracting(MappingsDto.MappingJson::getBankCategoryName)
                 .containsExactlyInAnyOrder("Zakupy kartą", "Salary");
     }
 
@@ -316,15 +319,15 @@ public class BankDataIngestionControllerTest {
         // given: create a CashFlow and configure mappings
         String cashFlowId = createCashFlowWithHistory();
 
-        BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+        MappingsDto.ConfigureMappingsRequest request = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Salary")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Income")
@@ -333,11 +336,11 @@ public class BankDataIngestionControllerTest {
                 ))
                 .build();
 
-        BankDataIngestionDto.ConfigureMappingsResponse configureResponse = mappingsRestController.configureMappings(cashFlowId, request);
+        MappingsDto.ConfigureMappingsResponse configureResponse = mappingsRestController.configureMappings(cashFlowId, request);
         String mappingIdToDelete = configureResponse.getMappings().get(0).getMappingId();
 
         // when: delete the first mapping
-        BankDataIngestionDto.DeleteMappingResponse deleteResponse = mappingsRestController.deleteMapping(cashFlowId, mappingIdToDelete);
+        MappingsDto.DeleteMappingResponse deleteResponse = mappingsRestController.deleteMapping(cashFlowId, mappingIdToDelete);
 
         log.info("Delete mapping response:\n{}", jsonFormatter.formatToPrettyJson(deleteResponse));
 
@@ -346,7 +349,7 @@ public class BankDataIngestionControllerTest {
         assertThat(deleteResponse.getMappingId()).isEqualTo(mappingIdToDelete);
 
         // verify only one mapping remains
-        BankDataIngestionDto.GetMappingsResponse getMappingsResponse = mappingsRestController.getMappings(cashFlowId);
+        MappingsDto.GetMappingsResponse getMappingsResponse = mappingsRestController.getMappings(cashFlowId);
         assertThat(getMappingsResponse.getMappingsCount()).isEqualTo(1);
     }
 
@@ -356,15 +359,15 @@ public class BankDataIngestionControllerTest {
         // given: create a CashFlow and configure mappings
         String cashFlowId = createCashFlowWithHistory();
 
-        BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+        MappingsDto.ConfigureMappingsRequest request = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Salary")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Income")
@@ -376,7 +379,7 @@ public class BankDataIngestionControllerTest {
         mappingsRestController.configureMappings(cashFlowId, request);
 
         // when: delete all mappings
-        BankDataIngestionDto.DeleteAllMappingsResponse deleteResponse = mappingsRestController.deleteAllMappings(cashFlowId);
+        MappingsDto.DeleteAllMappingsResponse deleteResponse = mappingsRestController.deleteAllMappings(cashFlowId);
 
         log.info("Delete all mappings response:\n{}", jsonFormatter.formatToPrettyJson(deleteResponse));
 
@@ -385,7 +388,7 @@ public class BankDataIngestionControllerTest {
         assertThat(deleteResponse.getDeletedCount()).isEqualTo(2);
 
         // verify no mappings remain
-        BankDataIngestionDto.GetMappingsResponse getMappingsResponse = mappingsRestController.getMappings(cashFlowId);
+        MappingsDto.GetMappingsResponse getMappingsResponse = mappingsRestController.getMappings(cashFlowId);
         assertThat(getMappingsResponse.getMappingsCount()).isEqualTo(0);
     }
 
@@ -396,7 +399,7 @@ public class BankDataIngestionControllerTest {
         String cashFlowId = createCashFlowWithHistory();
 
         // when: get mappings
-        BankDataIngestionDto.GetMappingsResponse response = mappingsRestController.getMappings(cashFlowId);
+        MappingsDto.GetMappingsResponse response = mappingsRestController.getMappings(cashFlowId);
 
         log.info("Get mappings (empty) response:\n{}", jsonFormatter.formatToPrettyJson(response));
 
@@ -413,15 +416,15 @@ public class BankDataIngestionControllerTest {
         String cashFlowId = createCashFlowWithHistory();
 
         // "Przelew własny" can be both INFLOW (receiving) and OUTFLOW (sending)
-        BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+        MappingsDto.ConfigureMappingsRequest request = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Przelew własny")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Transfers Out")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Przelew własny")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Transfers In")
@@ -431,7 +434,7 @@ public class BankDataIngestionControllerTest {
                 .build();
 
         // when: configure mappings
-        BankDataIngestionDto.ConfigureMappingsResponse response = mappingsRestController.configureMappings(cashFlowId, request);
+        MappingsDto.ConfigureMappingsResponse response = mappingsRestController.configureMappings(cashFlowId, request);
 
         log.info("Configure same bank category with different types response:\n{}",
                 jsonFormatter.formatToPrettyJson(response));
@@ -441,12 +444,12 @@ public class BankDataIngestionControllerTest {
         assertThat(response.getMappings()).allMatch(m -> m.getStatus().equals("CREATED"));
 
         // verify both are retrievable
-        BankDataIngestionDto.GetMappingsResponse getMappingsResponse = mappingsRestController.getMappings(cashFlowId);
+        MappingsDto.GetMappingsResponse getMappingsResponse = mappingsRestController.getMappings(cashFlowId);
         assertThat(getMappingsResponse.getMappingsCount()).isEqualTo(2);
 
         // verify they have different category types
         assertThat(getMappingsResponse.getMappings())
-                .extracting(BankDataIngestionDto.MappingJson::getCategoryType)
+                .extracting(MappingsDto.MappingJson::getCategoryType)
                 .containsExactlyInAnyOrder(Type.INFLOW, Type.OUTFLOW);
     }
 
@@ -1011,7 +1014,7 @@ public class BankDataIngestionControllerTest {
         assertThat(finalizeResponse.getCleanup().getMappingsDeleted()).isGreaterThan(0);
 
         // verify mappings are gone
-        BankDataIngestionDto.GetMappingsResponse mappingsResponse = mappingsRestController.getMappings(cashFlowId);
+        MappingsDto.GetMappingsResponse mappingsResponse = mappingsRestController.getMappings(cashFlowId);
         assertThat(mappingsResponse.getMappingsCount()).isEqualTo(0);
     }
 
@@ -1132,9 +1135,9 @@ public class BankDataIngestionControllerTest {
         String cashFlowId = createCashFlowWithHistory();
 
         // Configure mapping with CREATE_NEW action
-        BankDataIngestionDto.ConfigureMappingsRequest mappingRequest = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+        MappingsDto.ConfigureMappingsRequest mappingRequest = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Streaming")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("StreamingServices")
@@ -1640,22 +1643,22 @@ public class BankDataIngestionControllerTest {
     }
 
     private void configureMappingsForStaging(String cashFlowId) {
-        BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+        MappingsDto.ConfigureMappingsRequest request = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(List.of(
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Zakupy kartą")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Groceries")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Subskrypcje")
                                 .action(MappingAction.CREATE_SUBCATEGORY)
                                 .targetCategoryName("Netflix")
                                 .parentCategoryName("Subscriptions")
                                 .categoryType(Type.OUTFLOW)
                                 .build(),
-                        BankDataIngestionDto.MappingConfigJson.builder()
+                        MappingsDto.MappingConfigJson.builder()
                                 .bankCategoryName("Przelew przychodzący")
                                 .action(MappingAction.CREATE_NEW)
                                 .targetCategoryName("Salary")

@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.common.CashChangeId;
-import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.MappingAction;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
+import com.multi.vidulum.bank_data_ingestion.mappings.MappingsDto;
 
 /**
  * Actor for HTTP-based integration tests of bank-data-ingestion module.
@@ -226,16 +228,16 @@ public class BankDataIngestionHttpActor {
     /**
      * Configures category mappings for a CashFlow.
      */
-    public void configureMappings(String cashFlowId, List<BankDataIngestionDto.MappingConfigJson> mappings) {
-        BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+    public void configureMappings(String cashFlowId, List<MappingsDto.MappingConfigJson> mappings) {
+        MappingsDto.ConfigureMappingsRequest request = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(mappings)
                 .build();
 
-        ResponseEntity<BankDataIngestionDto.ConfigureMappingsResponse> response = restTemplate.exchange(
+        ResponseEntity<MappingsDto.ConfigureMappingsResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/mappings",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
-                BankDataIngestionDto.ConfigureMappingsResponse.class
+                MappingsDto.ConfigureMappingsResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -246,8 +248,8 @@ public class BankDataIngestionHttpActor {
      * Creates a mapping that will create a new category during import.
      * Note: MAP_TO_EXISTING was removed - each CashFlow can only have one file import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingCreateNewCategory(String bankCategory, String targetCategory, Type type) {
-        return BankDataIngestionDto.MappingConfigJson.builder()
+    public MappingsDto.MappingConfigJson mappingCreateNewCategory(String bankCategory, String targetCategory, Type type) {
+        return MappingsDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
                 .action(MappingAction.CREATE_NEW)
                 .targetCategoryName(targetCategory)
@@ -258,8 +260,8 @@ public class BankDataIngestionHttpActor {
     /**
      * Creates a mapping that will create a new category during import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingCreateNew(String bankCategory, String newCategoryName, Type type) {
-        return BankDataIngestionDto.MappingConfigJson.builder()
+    public MappingsDto.MappingConfigJson mappingCreateNew(String bankCategory, String newCategoryName, Type type) {
+        return MappingsDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
                 .action(MappingAction.CREATE_NEW)
                 .targetCategoryName(newCategoryName)
@@ -270,9 +272,9 @@ public class BankDataIngestionHttpActor {
     /**
      * Creates a mapping that will create a subcategory during import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingCreateSubcategory(String bankCategory, String subcategoryName,
+    public MappingsDto.MappingConfigJson mappingCreateSubcategory(String bankCategory, String subcategoryName,
                                                                            String parentCategory, Type type) {
-        return BankDataIngestionDto.MappingConfigJson.builder()
+        return MappingsDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
                 .action(MappingAction.CREATE_SUBCATEGORY)
                 .targetCategoryName(subcategoryName)
@@ -284,8 +286,8 @@ public class BankDataIngestionHttpActor {
     /**
      * Creates a mapping that will map bank category to "Uncategorized" during import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingToUncategorized(String bankCategory, Type type) {
-        return BankDataIngestionDto.MappingConfigJson.builder()
+    public MappingsDto.MappingConfigJson mappingToUncategorized(String bankCategory, Type type) {
+        return MappingsDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
                 .action(MappingAction.MAP_TO_UNCATEGORIZED)
                 .targetCategoryName("Uncategorized")
@@ -296,12 +298,12 @@ public class BankDataIngestionHttpActor {
     /**
      * Gets category mappings for a CashFlow.
      */
-    public BankDataIngestionDto.GetMappingsResponse getMappings(String cashFlowId) {
-        ResponseEntity<BankDataIngestionDto.GetMappingsResponse> response = restTemplate.exchange(
+    public MappingsDto.GetMappingsResponse getMappings(String cashFlowId) {
+        ResponseEntity<MappingsDto.GetMappingsResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/mappings",
                 HttpMethod.GET,
                 new HttpEntity<>(jsonHeaders()),
-                BankDataIngestionDto.GetMappingsResponse.class
+                MappingsDto.GetMappingsResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

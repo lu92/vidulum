@@ -1,16 +1,15 @@
 package com.multi.vidulum.bank_data_ingestion.mappings;
 
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionDto;
-import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingCommand;
-import com.multi.vidulum.bank_data_ingestion.app.commands.configure_mapping.ConfigureCategoryMappingResult;
-import com.multi.vidulum.bank_data_ingestion.app.commands.delete_all_mappings.DeleteAllCategoryMappingsCommand;
-import com.multi.vidulum.bank_data_ingestion.app.commands.delete_all_mappings.DeleteAllCategoryMappingsResult;
-import com.multi.vidulum.bank_data_ingestion.app.commands.delete_mapping.DeleteCategoryMappingCommand;
-import com.multi.vidulum.bank_data_ingestion.app.commands.delete_mapping.DeleteCategoryMappingResult;
-import com.multi.vidulum.bank_data_ingestion.app.queries.get_mappings.GetCategoryMappingsQuery;
-import com.multi.vidulum.bank_data_ingestion.app.queries.get_mappings.GetCategoryMappingsResult;
-import com.multi.vidulum.bank_data_ingestion.canonical.*;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.mappings.commands.configure_mapping.ConfigureCategoryMappingCommand;
+import com.multi.vidulum.bank_data_ingestion.mappings.commands.configure_mapping.ConfigureCategoryMappingResult;
+import com.multi.vidulum.bank_data_ingestion.mappings.commands.delete_all_mappings.DeleteAllCategoryMappingsCommand;
+import com.multi.vidulum.bank_data_ingestion.mappings.commands.delete_all_mappings.DeleteAllCategoryMappingsResult;
+import com.multi.vidulum.bank_data_ingestion.mappings.commands.delete_mapping.DeleteCategoryMappingCommand;
+import com.multi.vidulum.bank_data_ingestion.mappings.commands.delete_mapping.DeleteCategoryMappingResult;
+import com.multi.vidulum.bank_data_ingestion.mappings.queries.get_mappings.GetCategoryMappingsQuery;
+import com.multi.vidulum.bank_data_ingestion.mappings.queries.get_mappings.GetCategoryMappingsResult;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -40,9 +39,9 @@ public class MappingsRestController {
      * This replaces existing mappings for the same (bankCategoryName, categoryType) combination.
      */
     @PostMapping("/mappings")
-    public BankDataIngestionDto.ConfigureMappingsResponse configureMappings(
+    public MappingsDto.ConfigureMappingsResponse configureMappings(
             @PathVariable("cashFlowId") String cashFlowId,
-            @RequestBody BankDataIngestionDto.ConfigureMappingsRequest request) {
+            @RequestBody MappingsDto.ConfigureMappingsRequest request) {
 
         List<ConfigureCategoryMappingCommand.MappingConfig> mappingConfigs = request.getMappings().stream()
                 .map(this::toMappingConfig)
@@ -61,7 +60,7 @@ public class MappingsRestController {
      * Get all category mappings for a CashFlow.
      */
     @GetMapping("/mappings")
-    public BankDataIngestionDto.GetMappingsResponse getMappings(
+    public MappingsDto.GetMappingsResponse getMappings(
             @PathVariable("cashFlowId") String cashFlowId) {
 
         GetCategoryMappingsResult result = queryGateway.send(
@@ -74,7 +73,7 @@ public class MappingsRestController {
      * Delete a single category mapping.
      */
     @DeleteMapping("/mappings/{mappingId}")
-    public BankDataIngestionDto.DeleteMappingResponse deleteMapping(
+    public MappingsDto.DeleteMappingResponse deleteMapping(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("mappingId") String mappingId) {
 
@@ -85,7 +84,7 @@ public class MappingsRestController {
                 )
         );
 
-        return BankDataIngestionDto.DeleteMappingResponse.builder()
+        return MappingsDto.DeleteMappingResponse.builder()
                 .deleted(result.deleted())
                 .mappingId(result.mappingId().id())
                 .bankCategoryName(result.bankCategoryName())
@@ -95,20 +94,20 @@ public class MappingsRestController {
      * Delete all category mappings for a CashFlow.
      */
     @DeleteMapping("/mappings")
-    public BankDataIngestionDto.DeleteAllMappingsResponse deleteAllMappings(
+    public MappingsDto.DeleteAllMappingsResponse deleteAllMappings(
             @PathVariable("cashFlowId") String cashFlowId) {
 
         DeleteAllCategoryMappingsResult result = commandGateway.send(
                 new DeleteAllCategoryMappingsCommand(CashFlowId.of(cashFlowId))
         );
 
-        return BankDataIngestionDto.DeleteAllMappingsResponse.builder()
+        return MappingsDto.DeleteAllMappingsResponse.builder()
                 .deleted(result.deleted())
                 .deletedCount(result.deletedCount())
                 .build();
     }
     private ConfigureCategoryMappingCommand.MappingConfig toMappingConfig(
-            BankDataIngestionDto.MappingConfigJson json) {
+            MappingsDto.MappingConfigJson json) {
 
         CategoryName targetCategoryName = json.getAction() == MappingAction.MAP_TO_UNCATEGORIZED
                 ? new CategoryName("Uncategorized")
@@ -127,11 +126,11 @@ public class MappingsRestController {
                 null  // manual mappings don't have AI confidence
         );
     }
-    private BankDataIngestionDto.ConfigureMappingsResponse toConfigureMappingsResponse(
+    private MappingsDto.ConfigureMappingsResponse toConfigureMappingsResponse(
             ConfigureCategoryMappingResult result) {
 
-        List<BankDataIngestionDto.MappingResultJson> mappingResults = result.configuredMappings().stream()
-                .map(r -> BankDataIngestionDto.MappingResultJson.builder()
+        List<MappingsDto.MappingResultJson> mappingResults = result.configuredMappings().stream()
+                .map(r -> MappingsDto.MappingResultJson.builder()
                         .mappingId(r.mapping().mappingId().id())
                         .bankCategoryName(r.mapping().bankCategoryName())
                         .targetCategoryName(r.mapping().targetCategoryName().name())
@@ -143,27 +142,27 @@ public class MappingsRestController {
                         .build())
                 .toList();
 
-        return BankDataIngestionDto.ConfigureMappingsResponse.builder()
+        return MappingsDto.ConfigureMappingsResponse.builder()
                 .cashFlowId(result.cashFlowId().id())
                 .mappingsConfigured(result.mappingsConfigured())
                 .mappings(mappingResults)
                 .build();
     }
-    private BankDataIngestionDto.GetMappingsResponse toGetMappingsResponse(
+    private MappingsDto.GetMappingsResponse toGetMappingsResponse(
             GetCategoryMappingsResult result) {
 
-        List<BankDataIngestionDto.MappingJson> mappings = result.mappings().stream()
+        List<MappingsDto.MappingJson> mappings = result.mappings().stream()
                 .map(this::toMappingJson)
                 .toList();
 
-        return BankDataIngestionDto.GetMappingsResponse.builder()
+        return MappingsDto.GetMappingsResponse.builder()
                 .cashFlowId(result.cashFlowId().id())
                 .mappingsCount(result.mappingsCount())
                 .mappings(mappings)
                 .build();
     }
-    private BankDataIngestionDto.MappingJson toMappingJson(CategoryMapping mapping) {
-        return BankDataIngestionDto.MappingJson.builder()
+    private MappingsDto.MappingJson toMappingJson(CategoryMapping mapping) {
+        return MappingsDto.MappingJson.builder()
                 .mappingId(mapping.mappingId().id())
                 .bankCategoryName(mapping.bankCategoryName())
                 .targetCategoryName(mapping.targetCategoryName().name())

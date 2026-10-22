@@ -108,6 +108,52 @@ class CanonicalRowIsSelfContainedTest {
     }
 
     /**
+     * Mappings is a leaf: bank category to target category, and nothing else in the module.
+     *
+     * <p>Measured rather than assumed - its four operations touch only their own domain types, which
+     * is why this section was the cheapest one to extract. Staging reads it, classification writes
+     * to it, and it knows about neither.
+     */
+    @Test
+    void mappingsKnowsNothingElseInTheModule() {
+        ArchRule rule = noClasses().that().resideInAPackage("..bank_data_ingestion.mappings..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "..bank_data_ingestion.app..",
+                        "..bank_data_ingestion.domain..",
+                        "..bank_data_ingestion.infrastructure..",
+                        "..bank_data_ingestion.importing..",
+                        "..bank_data_ingestion.classification..",
+                        "..bank_data_ingestion.intake..",
+                        "..bank_data_ai_categorization..")
+                .because("a mapping from a bank's category to the owner's is true regardless of "
+                        + "sessions, imports and whoever classified the row");
+
+        rule.check(moduleClasses);
+    }
+
+    /**
+     * Importing may read staging - an import job is keyed by a staging session and reads its rows -
+     * but must not know who classified them.
+     *
+     * <p>The allowed direction is deliberate and one-way: {@code ImportJobAlreadyExistsException}
+     * names a {@code StagingSessionId}, and {@code start_import} loads the staged rows it is about
+     * to write into the cash flow. What it must never need is the classifier, because that is the
+     * part meant to be replaceable.
+     */
+    @Test
+    void importingDoesNotKnowWhoClassifiedTheRows() {
+        ArchRule rule = noClasses().that().resideInAPackage("..bank_data_ingestion.importing..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "..bank_data_ingestion.classification..",
+                        "..bank_data_ai_categorization..")
+                .because("an import writes what staging decided, and by then the classifier is done");
+
+        rule.check(moduleClasses);
+    }
+
+    /**
      * No cycles between the sections, <b>with no exemption at all</b>.
      *
      * <p>It had one for exactly one step. {@code BankDataIngestionRestController} was 1,195 lines

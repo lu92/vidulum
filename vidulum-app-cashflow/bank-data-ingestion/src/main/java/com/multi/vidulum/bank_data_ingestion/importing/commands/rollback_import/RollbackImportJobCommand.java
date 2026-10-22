@@ -1,0 +1,19 @@
+package com.multi.vidulum.bank_data_ingestion.importing.commands.rollback_import;
+
+import com.multi.vidulum.bank_data_ingestion.importing.domain.ImportJobId;
+import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.shared.cqrs.commands.Command;
+import com.multi.vidulum.bank_data_ingestion.importing.domain.*;
+
+/**
+ * Command to rollback an import job.
+ * This will delete all imported transactions and optionally the created categories.
+ *
+ * @param cashFlowId the CashFlow ID
+ * @param jobId      the import job ID
+ */
+public record RollbackImportJobCommand(
+        CashFlowId cashFlowId,
+        ImportJobId jobId
+) implements Command {
+}

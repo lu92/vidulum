@@ -1,9 +1,9 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
-import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.MappingAction;
+import com.multi.vidulum.bank_data_ingestion.mappings.infrastructure.CategoryMappingMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.importing.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.domain.BankAccount;
@@ -33,6 +33,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
+import com.multi.vidulum.bank_data_ingestion.mappings.MappingsDto;
 
 /**
  * Integration test verifying REST API communication between bank-data-ingestion
@@ -581,13 +583,13 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         ));
 
         // then: validate mappings response
-        BankDataIngestionDto.GetMappingsResponse mappingsResponse = actor.getMappings(cashFlowId);
+        MappingsDto.GetMappingsResponse mappingsResponse = actor.getMappings(cashFlowId);
         assertThat(mappingsResponse.getCashFlowId()).isEqualTo(cashFlowId);
         assertThat(mappingsResponse.getMappingsCount()).isEqualTo(2);
         assertThat(mappingsResponse.getMappings()).hasSize(2);
 
         // Validate first mapping (CREATE_NEW) - only ignore generated fields
-        BankDataIngestionDto.MappingJson groceriesMapping = mappingsResponse.getMappings().stream()
+        MappingsDto.MappingJson groceriesMapping = mappingsResponse.getMappings().stream()
                 .filter(m -> "Zakupy kartą".equals(m.getBankCategoryName()))
                 .findFirst()
                 .orElseThrow();
@@ -601,7 +603,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         assertThat(groceriesMapping.getCreatedAt()).isEqualTo(FIXED_NOW);
 
         // Validate second mapping (CREATE_NEW)
-        BankDataIngestionDto.MappingJson streamingMapping = mappingsResponse.getMappings().stream()
+        MappingsDto.MappingJson streamingMapping = mappingsResponse.getMappings().stream()
                 .filter(m -> "Streaming".equals(m.getBankCategoryName()))
                 .findFirst()
                 .orElseThrow();

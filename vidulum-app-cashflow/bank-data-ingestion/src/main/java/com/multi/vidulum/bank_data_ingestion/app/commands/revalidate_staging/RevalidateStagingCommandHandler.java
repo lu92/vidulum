@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging;
 import com.multi.vidulum.common.CashFlowId;
-import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
+import com.multi.vidulum.bank_data_ingestion.BankDataIngestionConfig;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.ImportedTransaction;
@@ -8,6 +8,7 @@ import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.bank_data_ai_categorization.api.PatternMatches;
 import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizationApi;
 import com.multi.vidulum.bank_data_ai_categorization.api.TransactionToMatch;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;

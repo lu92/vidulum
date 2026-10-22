@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
-import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
-import com.multi.vidulum.bank_data_ingestion.domain.CategoryMappingRepository;
+import com.multi.vidulum.bank_data_ingestion.BankDataIngestionConfig;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.CategoryMappingRepository;
 import com.multi.vidulum.bank_data_ai_categorization.api.PatternMatches;
 import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizationApi;
 import com.multi.vidulum.bank_data_ingestion.domain.StagedTransaction;
@@ -35,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
 
 /**
  * Staging is stricter than the aggregate, and this is the rule that makes it so: a month the

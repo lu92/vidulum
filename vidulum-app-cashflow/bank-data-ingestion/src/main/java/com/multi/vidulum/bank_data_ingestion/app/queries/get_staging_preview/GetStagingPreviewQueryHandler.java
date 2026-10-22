@@ -1,5 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.queries.get_staging_preview;
 
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;

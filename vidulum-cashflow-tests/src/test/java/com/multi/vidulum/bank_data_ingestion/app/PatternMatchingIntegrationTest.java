@@ -1,11 +1,11 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
-import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.MappingAction;
 import com.multi.vidulum.bank_data_ai_categorization.domain.PatternMapping;
 import com.multi.vidulum.bank_data_ai_categorization.domain.PatternMappingRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.mappings.infrastructure.CategoryMappingMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.importing.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ai_categorization.infrastructure.PatternMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
 
 /**
  * Integration tests for Pattern Matching in Bank Data Ingestion.
