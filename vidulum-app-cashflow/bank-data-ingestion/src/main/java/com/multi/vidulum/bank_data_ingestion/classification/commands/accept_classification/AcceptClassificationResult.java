@@ -1,4 +1,4 @@
-package com.multi.vidulum.bank_data_ingestion.classification.commands.accept_ai_suggestions;
+package com.multi.vidulum.bank_data_ingestion.classification.commands.accept_classification;
 
 import com.multi.vidulum.bank_data_ingestion.staging.domain.StagingSessionId;
 import com.multi.vidulum.common.CashFlowId;
@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * Result of accepting AI categorization suggestions.
  */
-public record AcceptAiSuggestionsResult(
+public record AcceptClassificationResult(
         CashFlowId cashFlowId,
         StagingSessionId sessionId,
         String status,
@@ -37,7 +37,7 @@ public record AcceptAiSuggestionsResult(
     /**
      * Creates a successful result.
      */
-    public static AcceptAiSuggestionsResult success(
+    public static AcceptClassificationResult success(
             CashFlowId cashFlowId,
             StagingSessionId sessionId,
             int categoriesCreated,
@@ -45,7 +45,7 @@ public record AcceptAiSuggestionsResult(
             int patternsCached,
             StagingValidationSummary validationSummary) {
 
-        return new AcceptAiSuggestionsResult(
+        return new AcceptClassificationResult(
                 cashFlowId,
                 sessionId,
                 STATUS_SUCCESS,
@@ -60,7 +60,7 @@ public record AcceptAiSuggestionsResult(
     /**
      * Creates a partial success result (some operations failed).
      */
-    public static AcceptAiSuggestionsResult partial(
+    public static AcceptClassificationResult partial(
             CashFlowId cashFlowId,
             StagingSessionId sessionId,
             int categoriesCreated,
@@ -69,7 +69,7 @@ public record AcceptAiSuggestionsResult(
             List<String> warnings,
             StagingValidationSummary validationSummary) {
 
-        return new AcceptAiSuggestionsResult(
+        return new AcceptClassificationResult(
                 cashFlowId,
                 sessionId,
                 STATUS_PARTIAL,

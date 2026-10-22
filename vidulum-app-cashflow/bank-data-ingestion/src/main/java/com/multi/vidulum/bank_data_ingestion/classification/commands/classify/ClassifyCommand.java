@@ -1,4 +1,4 @@
-package com.multi.vidulum.bank_data_ingestion.classification.commands.ai_categorize;
+package com.multi.vidulum.bank_data_ingestion.classification.commands.classify;
 
 import com.multi.vidulum.bank_data_ingestion.staging.domain.StagingSessionId;
 import com.multi.vidulum.common.CashFlowId;
@@ -14,7 +14,7 @@ import com.multi.vidulum.shared.cqrs.commands.Command;
  * @param sessionId  the staging session ID to categorize
  * @param userId     the user ID (for user-specific pattern cache)
  */
-public record AiCategorizeCommand(
+public record ClassifyCommand(
         CashFlowId cashFlowId,
         StagingSessionId sessionId,
         String userId

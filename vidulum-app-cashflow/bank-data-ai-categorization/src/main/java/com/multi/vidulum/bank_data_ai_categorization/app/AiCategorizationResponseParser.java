@@ -2,7 +2,7 @@ package com.multi.vidulum.bank_data_ai_categorization.app;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
+import com.multi.vidulum.bank_data_ai_categorization.api.CategorizationSuggestions;
 import com.multi.vidulum.cashflow.api.Type;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -50,38 +50,38 @@ public class AiCategorizationResponseParser {
             }
 
             // Convert to domain objects
-            List<AiCategorizationResult.PatternSuggestion> suggestions =
+            List<CategorizationSuggestions.PatternSuggestion> suggestions =
                     convertMappings(dto.patternMappings, patternGroups);
-            List<AiCategorizationResult.BankCategorySuggestion> rawBankCategorySuggestions =
+            List<CategorizationSuggestions.BankCategorySuggestion> rawBankCategorySuggestions =
                     convertBankCategoryMappings(dto.bankCategoryMappings, patternGroups);
             // Validate bankCategoryMappings - filter out invalid ones where AI confused merchant names with bankCategories
-            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions =
+            List<CategorizationSuggestions.BankCategorySuggestion> bankCategorySuggestions =
                     validateBankCategoryMappings(rawBankCategorySuggestions, patternGroups);
-            List<AiCategorizationResult.UnrecognizedPattern> unrecognized =
+            List<CategorizationSuggestions.UnrecognizedPattern> unrecognized =
                     convertUnrecognizedPatterns(dto.unrecognizedPatterns, patternGroups);
-            List<AiCategorizationResult.StructureOptimization> structureOptimizations =
+            List<CategorizationSuggestions.StructureOptimization> structureOptimizations =
                     convertStructureOptimizations(dto.structureOptimizations);
 
             // Convert structure and apply post-processing
-            AiCategorizationResult.SuggestedStructure rawStructure = convertStructure(dto.categoryStructure);
+            CategorizationSuggestions.SuggestedStructure rawStructure = convertStructure(dto.categoryStructure);
 
             // Post-processing step 0: Fix missing categories in structure
             // AI often generates patternMappings referencing categories not in categoryStructure
-            AiCategorizationResult.SuggestedStructure fixedStructure =
+            CategorizationSuggestions.SuggestedStructure fixedStructure =
                     fixMissingCategoriesInStructure(rawStructure, suggestions, bankCategorySuggestions);
 
             // Post-processing step 1: Enrich with transaction counts and filter empty categories
-            AiCategorizationResult.SuggestedStructure enrichedStructure =
+            CategorizationSuggestions.SuggestedStructure enrichedStructure =
                     enrichAndFilterCategories(fixedStructure, suggestions, bankCategorySuggestions);
 
             // Post-processing step 2: Flatten single-child hierarchies (after filtering, so we catch cases
             // where filtering leaves only 1 child)
-            AiCategorizationResult.SuggestedStructure finalStructure = flattenSingleChildCategories(enrichedStructure);
+            CategorizationSuggestions.SuggestedStructure finalStructure = flattenSingleChildCategories(enrichedStructure);
 
             // Convert context mappings and bank category fallbacks (new three-signal format)
-            List<AiCategorizationResult.ContextMapping> contextMappings =
+            List<CategorizationSuggestions.ContextMapping> contextMappings =
                     convertContextMappings(dto.contextMappings, patternGroups);
-            List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks =
+            List<CategorizationSuggestions.BankCategoryFallback> bankCategoryFallbacks =
                     convertBankCategoryFallbacks(dto.bankCategoryFallbacks, patternGroups);
 
             return ParseResult.success(finalStructure, suggestions, bankCategorySuggestions, unrecognized, structureOptimizations, contextMappings, bankCategoryFallbacks);
@@ -112,17 +112,17 @@ public class AiCategorizationResponseParser {
         return cleaned.trim();
     }
 
-    private AiCategorizationResult.SuggestedStructure convertStructure(CategoryStructureDto dto) {
+    private CategorizationSuggestions.SuggestedStructure convertStructure(CategoryStructureDto dto) {
         if (dto == null) {
-            return AiCategorizationResult.SuggestedStructure.empty();
+            return CategorizationSuggestions.SuggestedStructure.empty();
         }
 
-        List<AiCategorizationResult.CategoryNode> outflow = new ArrayList<>();
-        List<AiCategorizationResult.CategoryNode> inflow = new ArrayList<>();
+        List<CategorizationSuggestions.CategoryNode> outflow = new ArrayList<>();
+        List<CategorizationSuggestions.CategoryNode> inflow = new ArrayList<>();
 
         if (dto.outflow != null) {
             for (CategoryNodeDto node : dto.outflow) {
-                outflow.add(new AiCategorizationResult.CategoryNode(
+                outflow.add(new CategorizationSuggestions.CategoryNode(
                         node.name,
                         node.subCategories != null ? node.subCategories : List.of()
                 ));
@@ -131,14 +131,14 @@ public class AiCategorizationResponseParser {
 
         if (dto.inflow != null) {
             for (CategoryNodeDto node : dto.inflow) {
-                inflow.add(new AiCategorizationResult.CategoryNode(
+                inflow.add(new CategorizationSuggestions.CategoryNode(
                         node.name,
                         node.subCategories != null ? node.subCategories : List.of()
                 ));
             }
         }
 
-        return new AiCategorizationResult.SuggestedStructure(outflow, inflow);
+        return new CategorizationSuggestions.SuggestedStructure(outflow, inflow);
     }
 
     /**
@@ -153,10 +153,10 @@ public class AiCategorizationResponseParser {
      * 2. Check which ones are missing from structure
      * 3. Add missing parents as new nodes, with suggestedCategory as subcategory
      */
-    AiCategorizationResult.SuggestedStructure fixMissingCategoriesInStructure(
-            AiCategorizationResult.SuggestedStructure structure,
-            List<AiCategorizationResult.PatternSuggestion> patternSuggestions,
-            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions) {
+    CategorizationSuggestions.SuggestedStructure fixMissingCategoriesInStructure(
+            CategorizationSuggestions.SuggestedStructure structure,
+            List<CategorizationSuggestions.PatternSuggestion> patternSuggestions,
+            List<CategorizationSuggestions.BankCategorySuggestion> bankCategorySuggestions) {
 
         // Build sets of existing category names by type
         Set<String> existingOutflowCategories = collectAllCategoryNames(structure.outflow());
@@ -172,7 +172,7 @@ public class AiCategorizationResponseParser {
         Set<String> orphanInflowCategories = new java.util.HashSet<>();
 
         // Process pattern suggestions
-        for (AiCategorizationResult.PatternSuggestion ps : patternSuggestions) {
+        for (CategorizationSuggestions.PatternSuggestion ps : patternSuggestions) {
             String parent = ps.parentCategory();
             String suggested = ps.suggestedCategory();
             boolean isOutflow = ps.type() == Type.OUTFLOW;
@@ -199,7 +199,7 @@ public class AiCategorizationResponseParser {
         }
 
         // Process bank category suggestions similarly
-        for (AiCategorizationResult.BankCategorySuggestion bcs : bankCategorySuggestions) {
+        for (CategorizationSuggestions.BankCategorySuggestion bcs : bankCategorySuggestions) {
             String parent = bcs.parentCategory();
             String target = bcs.targetCategory();
             boolean isOutflow = bcs.type() == Type.OUTFLOW;
@@ -216,32 +216,32 @@ public class AiCategorizationResponseParser {
         }
 
         // Build fixed structure
-        List<AiCategorizationResult.CategoryNode> fixedOutflow = new ArrayList<>(structure.outflow());
-        List<AiCategorizationResult.CategoryNode> fixedInflow = new ArrayList<>(structure.inflow());
+        List<CategorizationSuggestions.CategoryNode> fixedOutflow = new ArrayList<>(structure.outflow());
+        List<CategorizationSuggestions.CategoryNode> fixedInflow = new ArrayList<>(structure.inflow());
 
         // Add missing parent categories
         for (Map.Entry<String, Set<String>> entry : missingOutflowParents.entrySet()) {
             String parentName = entry.getKey();
             List<String> subcategories = new ArrayList<>(entry.getValue());
-            fixedOutflow.add(new AiCategorizationResult.CategoryNode(parentName, subcategories));
+            fixedOutflow.add(new CategorizationSuggestions.CategoryNode(parentName, subcategories));
             log.info("Auto-added missing OUTFLOW parent category: {} with subcategories: {}", parentName, subcategories);
         }
 
         for (Map.Entry<String, Set<String>> entry : missingInflowParents.entrySet()) {
             String parentName = entry.getKey();
             List<String> subcategories = new ArrayList<>(entry.getValue());
-            fixedInflow.add(new AiCategorizationResult.CategoryNode(parentName, subcategories));
+            fixedInflow.add(new CategorizationSuggestions.CategoryNode(parentName, subcategories));
             log.info("Auto-added missing INFLOW parent category: {} with subcategories: {}", parentName, subcategories);
         }
 
         // Add orphan categories as root-level (no subcategories)
         for (String orphan : orphanOutflowCategories) {
-            fixedOutflow.add(new AiCategorizationResult.CategoryNode(orphan, List.of()));
+            fixedOutflow.add(new CategorizationSuggestions.CategoryNode(orphan, List.of()));
             log.info("Auto-added orphan OUTFLOW category as root: {}", orphan);
         }
 
         for (String orphan : orphanInflowCategories) {
-            fixedInflow.add(new AiCategorizationResult.CategoryNode(orphan, List.of()));
+            fixedInflow.add(new CategorizationSuggestions.CategoryNode(orphan, List.of()));
             log.info("Auto-added orphan INFLOW category as root: {}", orphan);
         }
 
@@ -252,15 +252,15 @@ public class AiCategorizationResponseParser {
                     "This indicates AI didn't follow the consistency rule.", totalAdded);
         }
 
-        return new AiCategorizationResult.SuggestedStructure(fixedOutflow, fixedInflow);
+        return new CategorizationSuggestions.SuggestedStructure(fixedOutflow, fixedInflow);
     }
 
     /**
      * Collects all category names from nodes (both parent names and subcategory names).
      */
-    private Set<String> collectAllCategoryNames(List<AiCategorizationResult.CategoryNode> nodes) {
+    private Set<String> collectAllCategoryNames(List<CategorizationSuggestions.CategoryNode> nodes) {
         Set<String> names = new java.util.HashSet<>();
-        for (AiCategorizationResult.CategoryNode node : nodes) {
+        for (CategorizationSuggestions.CategoryNode node : nodes) {
             names.add(node.name());
             names.addAll(node.subCategories());
         }
@@ -272,23 +272,23 @@ public class AiCategorizationResponseParser {
      * If a parent has only 1 subcategory, the subcategory is promoted to root level.
      * Example: "Żywność" → ["Sklepy spożywcze"] becomes just "Sklepy spożywcze" (no parent)
      */
-    AiCategorizationResult.SuggestedStructure flattenSingleChildCategories(
-            AiCategorizationResult.SuggestedStructure structure) {
+    CategorizationSuggestions.SuggestedStructure flattenSingleChildCategories(
+            CategorizationSuggestions.SuggestedStructure structure) {
 
-        List<AiCategorizationResult.CategoryNode> flattenedOutflow = flattenNodes(structure.outflow());
-        List<AiCategorizationResult.CategoryNode> flattenedInflow = flattenNodes(structure.inflow());
+        List<CategorizationSuggestions.CategoryNode> flattenedOutflow = flattenNodes(structure.outflow());
+        List<CategorizationSuggestions.CategoryNode> flattenedInflow = flattenNodes(structure.inflow());
 
-        return new AiCategorizationResult.SuggestedStructure(flattenedOutflow, flattenedInflow);
+        return new CategorizationSuggestions.SuggestedStructure(flattenedOutflow, flattenedInflow);
     }
 
-    private List<AiCategorizationResult.CategoryNode> flattenNodes(List<AiCategorizationResult.CategoryNode> nodes) {
-        List<AiCategorizationResult.CategoryNode> result = new ArrayList<>();
+    private List<CategorizationSuggestions.CategoryNode> flattenNodes(List<CategorizationSuggestions.CategoryNode> nodes) {
+        List<CategorizationSuggestions.CategoryNode> result = new ArrayList<>();
 
-        for (AiCategorizationResult.CategoryNode node : nodes) {
+        for (CategorizationSuggestions.CategoryNode node : nodes) {
             if (node.subCategories() != null && node.subCategories().size() == 1) {
                 // Single child - promote to root level without parent
                 String childName = node.subCategories().get(0);
-                result.add(new AiCategorizationResult.CategoryNode(
+                result.add(new CategorizationSuggestions.CategoryNode(
                         childName,
                         List.of(),  // No subcategories - it's now a root category
                         node.transactionCount(),
@@ -309,17 +309,17 @@ public class AiCategorizationResponseParser {
      * Enriches category structure with transaction counts from pattern mappings,
      * and filters out categories that have no transactions.
      */
-    AiCategorizationResult.SuggestedStructure enrichAndFilterCategories(
-            AiCategorizationResult.SuggestedStructure structure,
-            List<AiCategorizationResult.PatternSuggestion> patternSuggestions,
-            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions) {
+    CategorizationSuggestions.SuggestedStructure enrichAndFilterCategories(
+            CategorizationSuggestions.SuggestedStructure structure,
+            List<CategorizationSuggestions.PatternSuggestion> patternSuggestions,
+            List<CategorizationSuggestions.BankCategorySuggestion> bankCategorySuggestions) {
 
         // Build maps: category name → (transactionCount, totalAmount)
         Map<String, Integer> categoryTransactionCounts = new java.util.HashMap<>();
         Map<String, BigDecimal> categoryAmounts = new java.util.HashMap<>();
 
         // Count from pattern suggestions
-        for (AiCategorizationResult.PatternSuggestion ps : patternSuggestions) {
+        for (CategorizationSuggestions.PatternSuggestion ps : patternSuggestions) {
             String category = ps.suggestedCategory();
             String parent = ps.parentCategory();
 
@@ -335,7 +335,7 @@ public class AiCategorizationResponseParser {
         }
 
         // Count from bank category suggestions
-        for (AiCategorizationResult.BankCategorySuggestion bcs : bankCategorySuggestions) {
+        for (CategorizationSuggestions.BankCategorySuggestion bcs : bankCategorySuggestions) {
             String category = bcs.targetCategory();
             String parent = bcs.parentCategory();
 
@@ -349,24 +349,24 @@ public class AiCategorizationResponseParser {
         }
 
         // Enrich and filter outflow
-        List<AiCategorizationResult.CategoryNode> enrichedOutflow =
+        List<CategorizationSuggestions.CategoryNode> enrichedOutflow =
                 enrichAndFilterNodes(structure.outflow(), categoryTransactionCounts, categoryAmounts);
 
         // Enrich and filter inflow
-        List<AiCategorizationResult.CategoryNode> enrichedInflow =
+        List<CategorizationSuggestions.CategoryNode> enrichedInflow =
                 enrichAndFilterNodes(structure.inflow(), categoryTransactionCounts, categoryAmounts);
 
-        return new AiCategorizationResult.SuggestedStructure(enrichedOutflow, enrichedInflow);
+        return new CategorizationSuggestions.SuggestedStructure(enrichedOutflow, enrichedInflow);
     }
 
-    private List<AiCategorizationResult.CategoryNode> enrichAndFilterNodes(
-            List<AiCategorizationResult.CategoryNode> nodes,
+    private List<CategorizationSuggestions.CategoryNode> enrichAndFilterNodes(
+            List<CategorizationSuggestions.CategoryNode> nodes,
             Map<String, Integer> transactionCounts,
             Map<String, BigDecimal> amounts) {
 
-        List<AiCategorizationResult.CategoryNode> result = new ArrayList<>();
+        List<CategorizationSuggestions.CategoryNode> result = new ArrayList<>();
 
-        for (AiCategorizationResult.CategoryNode node : nodes) {
+        for (CategorizationSuggestions.CategoryNode node : nodes) {
             int nodeTransactionCount = transactionCounts.getOrDefault(node.name(), 0);
             BigDecimal nodeAmount = amounts.getOrDefault(node.name(), BigDecimal.ZERO);
 
@@ -391,7 +391,7 @@ public class AiCategorizationResponseParser {
 
             // Only include if has transactions OR has valid subcategories
             if (nodeTransactionCount > 0 || !filteredSubs.isEmpty()) {
-                result.add(new AiCategorizationResult.CategoryNode(
+                result.add(new CategorizationSuggestions.CategoryNode(
                         node.name(),
                         filteredSubs,
                         nodeTransactionCount,
@@ -406,7 +406,7 @@ public class AiCategorizationResponseParser {
         return result;
     }
 
-    private List<AiCategorizationResult.PatternSuggestion> convertMappings(
+    private List<CategorizationSuggestions.PatternSuggestion> convertMappings(
             List<PatternMappingDto> mappings,
             List<PatternDeduplicator.PatternGroup> patternGroups) {
 
@@ -422,7 +422,7 @@ public class AiCategorizationResponseParser {
                         (a, b) -> a // keep first if duplicate
                 ));
 
-        List<AiCategorizationResult.PatternSuggestion> suggestions = new ArrayList<>();
+        List<CategorizationSuggestions.PatternSuggestion> suggestions = new ArrayList<>();
 
         for (PatternMappingDto mapping : mappings) {
             PatternDeduplicator.PatternGroup group = groupMap.get(mapping.pattern);
@@ -438,7 +438,7 @@ public class AiCategorizationResponseParser {
                 type = Type.OUTFLOW; // default
             }
 
-            suggestions.add(AiCategorizationResult.PatternSuggestion.fromAi(
+            suggestions.add(CategorizationSuggestions.PatternSuggestion.fromAi(
                     mapping.pattern,
                     sampleTransaction,
                     mapping.suggestedCategory,
@@ -458,7 +458,7 @@ public class AiCategorizationResponseParser {
     /**
      * Converts unrecognized patterns from AI response.
      */
-    private List<AiCategorizationResult.UnrecognizedPattern> convertUnrecognizedPatterns(
+    private List<CategorizationSuggestions.UnrecognizedPattern> convertUnrecognizedPatterns(
             List<UnrecognizedPatternDto> unrecognized,
             List<PatternDeduplicator.PatternGroup> patternGroups) {
 
@@ -474,7 +474,7 @@ public class AiCategorizationResponseParser {
                         (a, b) -> a
                 ));
 
-        List<AiCategorizationResult.UnrecognizedPattern> result = new ArrayList<>();
+        List<CategorizationSuggestions.UnrecognizedPattern> result = new ArrayList<>();
 
         for (UnrecognizedPatternDto dto : unrecognized) {
             PatternDeduplicator.PatternGroup group = groupMap.get(dto.pattern);
@@ -489,7 +489,7 @@ public class AiCategorizationResponseParser {
                 type = Type.OUTFLOW;
             }
 
-            result.add(new AiCategorizationResult.UnrecognizedPattern(
+            result.add(new CategorizationSuggestions.UnrecognizedPattern(
                     dto.pattern,
                     type,
                     dto.reason,
@@ -504,7 +504,7 @@ public class AiCategorizationResponseParser {
     /**
      * Converts bank category mappings from AI response.
      */
-    private List<AiCategorizationResult.BankCategorySuggestion> convertBankCategoryMappings(
+    private List<CategorizationSuggestions.BankCategorySuggestion> convertBankCategoryMappings(
             List<BankCategoryMappingDto> mappings,
             List<PatternDeduplicator.PatternGroup> patternGroups) {
 
@@ -524,7 +524,7 @@ public class AiCategorizationResponseParser {
             }
         }
 
-        List<AiCategorizationResult.BankCategorySuggestion> result = new ArrayList<>();
+        List<CategorizationSuggestions.BankCategorySuggestion> result = new ArrayList<>();
 
         for (BankCategoryMappingDto dto : mappings) {
             Type type;
@@ -537,7 +537,7 @@ public class AiCategorizationResponseParser {
             int transactionCount = bankCategoryTransactionCounts.getOrDefault(dto.bankCategory, 1);
             BigDecimal totalAmount = bankCategoryAmounts.getOrDefault(dto.bankCategory, BigDecimal.ZERO);
 
-            result.add(new AiCategorizationResult.BankCategorySuggestion(
+            result.add(new CategorizationSuggestions.BankCategorySuggestion(
                     dto.bankCategory,
                     dto.targetCategory,
                     dto.parentCategory,
@@ -565,8 +565,8 @@ public class AiCategorizationResponseParser {
      * @param patternGroups the original pattern groups with actual bankCategories
      * @return filtered list containing only valid mappings
      */
-    private List<AiCategorizationResult.BankCategorySuggestion> validateBankCategoryMappings(
-            List<AiCategorizationResult.BankCategorySuggestion> mappings,
+    private List<CategorizationSuggestions.BankCategorySuggestion> validateBankCategoryMappings(
+            List<CategorizationSuggestions.BankCategorySuggestion> mappings,
             List<PatternDeduplicator.PatternGroup> patternGroups) {
 
         if (mappings.isEmpty()) {
@@ -581,7 +581,7 @@ public class AiCategorizationResponseParser {
                 .collect(Collectors.toSet());
 
         // Filter out mappings that don't match actual bankCategories
-        List<AiCategorizationResult.BankCategorySuggestion> validMappings = mappings.stream()
+        List<CategorizationSuggestions.BankCategorySuggestion> validMappings = mappings.stream()
                 .filter(m -> {
                     boolean isValid = actualBankCategories.contains(m.bankCategory().toUpperCase());
                     if (!isValid) {
@@ -605,14 +605,14 @@ public class AiCategorizationResponseParser {
      * Converts structure optimizations from AI response.
      * These are suggestions for reorganizing existing categories based on cached intents.
      */
-    private List<AiCategorizationResult.StructureOptimization> convertStructureOptimizations(
+    private List<CategorizationSuggestions.StructureOptimization> convertStructureOptimizations(
             List<StructureOptimizationDto> optimizations) {
 
         if (optimizations == null || optimizations.isEmpty()) {
             return List.of();
         }
 
-        List<AiCategorizationResult.StructureOptimization> result = new ArrayList<>();
+        List<CategorizationSuggestions.StructureOptimization> result = new ArrayList<>();
 
         for (StructureOptimizationDto dto : optimizations) {
             Type type;
@@ -622,7 +622,7 @@ public class AiCategorizationResponseParser {
                 type = Type.OUTFLOW;
             }
 
-            result.add(new AiCategorizationResult.StructureOptimization(
+            result.add(new CategorizationSuggestions.StructureOptimization(
                     dto.categoryName,
                     dto.suggestedParent,
                     dto.currentParent,
@@ -637,14 +637,14 @@ public class AiCategorizationResponseParser {
 
     // ============ Context mapping conversion (three-signal) ============
 
-    private List<AiCategorizationResult.ContextMapping> convertContextMappings(
+    private List<CategorizationSuggestions.ContextMapping> convertContextMappings(
             List<ContextMappingDto> dtos,
             List<PatternDeduplicator.PatternGroup> patternGroups) {
         if (dtos == null || dtos.isEmpty()) {
             return List.of();
         }
 
-        List<AiCategorizationResult.ContextMapping> result = new ArrayList<>();
+        List<CategorizationSuggestions.ContextMapping> result = new ArrayList<>();
         for (ContextMappingDto dto : dtos) {
             if (dto.suggestedCategory == null || dto.suggestedCategory.isBlank()) continue;
 
@@ -661,7 +661,7 @@ public class AiCategorizationResponseParser {
                 }
             }
 
-            result.add(new AiCategorizationResult.ContextMapping(
+            result.add(new CategorizationSuggestions.ContextMapping(
                     dto.pattern,
                     dto.bankCategory != null ? dto.bankCategory : "",
                     dto.suggestedCategory,
@@ -684,7 +684,7 @@ public class AiCategorizationResponseParser {
         return groupBankCat.equalsIgnoreCase(dtoBankCat);
     }
 
-    private List<AiCategorizationResult.BankCategoryFallback> convertBankCategoryFallbacks(
+    private List<CategorizationSuggestions.BankCategoryFallback> convertBankCategoryFallbacks(
             List<BankCategoryFallbackDto> dtos,
             List<PatternDeduplicator.PatternGroup> patternGroups) {
         if (dtos == null || dtos.isEmpty()) {
@@ -698,7 +698,7 @@ public class AiCategorizationResponseParser {
                 .map(String::toLowerCase)
                 .collect(Collectors.toSet());
 
-        List<AiCategorizationResult.BankCategoryFallback> result = new ArrayList<>();
+        List<CategorizationSuggestions.BankCategoryFallback> result = new ArrayList<>();
         for (BankCategoryFallbackDto dto : dtos) {
             if (dto.bankCategory == null || dto.defaultTarget == null) continue;
 
@@ -710,7 +710,7 @@ public class AiCategorizationResponseParser {
 
             Type type = "INFLOW".equalsIgnoreCase(dto.type) ? Type.INFLOW : Type.OUTFLOW;
 
-            result.add(new AiCategorizationResult.BankCategoryFallback(
+            result.add(new CategorizationSuggestions.BankCategoryFallback(
                     dto.bankCategory,
                     dto.defaultTarget,
                     dto.parentCategory,
@@ -821,30 +821,30 @@ public class AiCategorizationResponseParser {
 
     public record ParseResult(
             boolean success,
-            AiCategorizationResult.SuggestedStructure structure,
-            List<AiCategorizationResult.PatternSuggestion> suggestions,
-            List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
-            List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
-            List<AiCategorizationResult.StructureOptimization> structureOptimizations,
-            List<AiCategorizationResult.ContextMapping> contextMappings,
-            List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks,
+            CategorizationSuggestions.SuggestedStructure structure,
+            List<CategorizationSuggestions.PatternSuggestion> suggestions,
+            List<CategorizationSuggestions.BankCategorySuggestion> bankCategorySuggestions,
+            List<CategorizationSuggestions.UnrecognizedPattern> unrecognizedPatterns,
+            List<CategorizationSuggestions.StructureOptimization> structureOptimizations,
+            List<CategorizationSuggestions.ContextMapping> contextMappings,
+            List<CategorizationSuggestions.BankCategoryFallback> bankCategoryFallbacks,
             String errorMessage
     ) {
         public static ParseResult success(
-                AiCategorizationResult.SuggestedStructure structure,
-                List<AiCategorizationResult.PatternSuggestion> suggestions,
-                List<AiCategorizationResult.BankCategorySuggestion> bankCategorySuggestions,
-                List<AiCategorizationResult.UnrecognizedPattern> unrecognizedPatterns,
-                List<AiCategorizationResult.StructureOptimization> structureOptimizations,
-                List<AiCategorizationResult.ContextMapping> contextMappings,
-                List<AiCategorizationResult.BankCategoryFallback> bankCategoryFallbacks) {
+                CategorizationSuggestions.SuggestedStructure structure,
+                List<CategorizationSuggestions.PatternSuggestion> suggestions,
+                List<CategorizationSuggestions.BankCategorySuggestion> bankCategorySuggestions,
+                List<CategorizationSuggestions.UnrecognizedPattern> unrecognizedPatterns,
+                List<CategorizationSuggestions.StructureOptimization> structureOptimizations,
+                List<CategorizationSuggestions.ContextMapping> contextMappings,
+                List<CategorizationSuggestions.BankCategoryFallback> bankCategoryFallbacks) {
             return new ParseResult(true, structure, suggestions, bankCategorySuggestions, unrecognizedPatterns, structureOptimizations, contextMappings, bankCategoryFallbacks, null);
         }
 
         public static ParseResult error(String message) {
             return new ParseResult(
                     false,
-                    AiCategorizationResult.SuggestedStructure.empty(),
+                    CategorizationSuggestions.SuggestedStructure.empty(),
                     List.of(),
                     List.of(),
                     List.of(),

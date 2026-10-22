@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ai_categorization.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
+import com.multi.vidulum.bank_data_ai_categorization.api.CategorizationSuggestions;
 import com.multi.vidulum.cashflow.api.Type;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -72,7 +72,7 @@ class AiCategorizationResponseParserTest {
         assertThat(result.success()).isTrue();
         assertThat(result.suggestions()).hasSize(1);
 
-        AiCategorizationResult.PatternSuggestion suggestion = result.suggestions().get(0);
+        CategorizationSuggestions.PatternSuggestion suggestion = result.suggestions().get(0);
         assertThat(suggestion.pattern()).isEqualTo("BIEDRONKA");
         assertThat(suggestion.suggestedCategory()).isEqualTo("Zakupy spożywcze");
         assertThat(suggestion.isExistingCategory()).isTrue();
@@ -146,13 +146,13 @@ class AiCategorizationResponseParserTest {
         assertThat(result.unrecognizedPatterns()).hasSize(2);
 
         // Verify unrecognized patterns
-        AiCategorizationResult.UnrecognizedPattern unrecog1 = result.unrecognizedPatterns().get(0);
+        CategorizationSuggestions.UnrecognizedPattern unrecog1 = result.unrecognizedPatterns().get(0);
         assertThat(unrecog1.pattern()).isEqualTo("XYZ123ABC");
         assertThat(unrecog1.type()).isEqualTo(Type.OUTFLOW);
         assertThat(unrecog1.reason()).isEqualTo("Cryptic identifier, cannot determine category");
         assertThat(unrecog1.transactionCount()).isEqualTo(2); // from pattern groups
 
-        AiCategorizationResult.UnrecognizedPattern unrecog2 = result.unrecognizedPatterns().get(1);
+        CategorizationSuggestions.UnrecognizedPattern unrecog2 = result.unrecognizedPatterns().get(1);
         assertThat(unrecog2.pattern()).isEqualTo("UNKNOWN_REF_999");
         assertThat(unrecog2.type()).isEqualTo(Type.INFLOW);
     }
@@ -498,7 +498,7 @@ class AiCategorizationResponseParserTest {
         assertThat(result.success()).isTrue();
         assertThat(result.structure().outflow()).hasSize(1);
 
-        AiCategorizationResult.CategoryNode zakupy = result.structure().outflow().get(0);
+        CategorizationSuggestions.CategoryNode zakupy = result.structure().outflow().get(0);
         assertThat(zakupy.name()).isEqualTo("Zakupy");
         assertThat(zakupy.transactionCount()).isEqualTo(8); // 5 + 3
         assertThat(zakupy.totalAmount()).isEqualByComparingTo(new BigDecimal("400.00")); // 250 + 150
@@ -599,7 +599,7 @@ class AiCategorizationResponseParserTest {
         assertThat(result.success()).isTrue();
         assertThat(result.structure().outflow()).hasSize(1);
 
-        AiCategorizationResult.CategoryNode oplaty = result.structure().outflow().get(0);
+        CategorizationSuggestions.CategoryNode oplaty = result.structure().outflow().get(0);
         assertThat(oplaty.name()).isEqualTo("Opłaty");
         assertThat(oplaty.transactionCount()).isEqualTo(5); // 3 + 2 from bank category
     }
@@ -812,7 +812,7 @@ class AiCategorizationResponseParserTest {
         assertThat(result.success()).isTrue();
         assertThat(result.contextMappings()).hasSize(2);
 
-        AiCategorizationResult.ContextMapping zabka = result.contextMappings().get(0);
+        CategorizationSuggestions.ContextMapping zabka = result.contextMappings().get(0);
         assertThat(zabka.pattern()).isEqualTo("ZABKA");
         assertThat(zabka.bankCategory()).isEqualTo("Artykuły spożywcze");
         assertThat(zabka.suggestedCategory()).isEqualTo("Zakupy spożywcze");
@@ -820,7 +820,7 @@ class AiCategorizationResponseParserTest {
         assertThat(zabka.confidence()).isEqualTo(98);
         assertThat(zabka.transactionCount()).isEqualTo(5);
 
-        AiCategorizationResult.ContextMapping badoo = result.contextMappings().get(1);
+        CategorizationSuggestions.ContextMapping badoo = result.contextMappings().get(1);
         assertThat(badoo.dominantSignal()).isEqualTo("MERCHANT");
         assertThat(badoo.confidence()).isEqualTo(80);
     }

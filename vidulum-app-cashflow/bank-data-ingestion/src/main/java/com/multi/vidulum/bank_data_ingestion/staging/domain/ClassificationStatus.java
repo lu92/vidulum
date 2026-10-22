@@ -3,7 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.staging.domain;
 /**
  * Status of AI categorization for a staging session.
  */
-public enum AiCategorizationStatus {
+public enum ClassificationStatus {
     /**
      * AI categorization has not been started yet.
      */

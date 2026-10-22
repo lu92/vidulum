@@ -1,4 +1,4 @@
-package com.multi.vidulum.bank_data_ingestion.classification.commands.accept_ai_suggestions;
+package com.multi.vidulum.bank_data_ingestion.classification.commands.accept_classification;
 
 import com.multi.vidulum.bank_data_ingestion.staging.domain.StagingSessionId;
 import com.multi.vidulum.common.CashFlowId;
@@ -24,7 +24,7 @@ import java.util.List;
  * @param acceptedBankCategoryMappings bank category → CashFlow category mappings
  * @param saveToCache        whether to save accepted mappings to user cache
  */
-public record AcceptAiSuggestionsCommand(
+public record AcceptClassificationCommand(
         CashFlowId cashFlowId,
         StagingSessionId sessionId,
         String userId,

@@ -34,33 +34,33 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiCategorizeResponse {
+    public static class ClassifyResponse {
         private String sessionId;
         private String status;
-        private AiSuggestedStructureJson suggestedStructure;
-        private List<AiPatternSuggestionJson> patternSuggestions;
-        private List<AiBankCategorySuggestionJson> bankCategorySuggestions;
-        private List<AiAutoCategorizableSuggestionJson> autoCategorizableSuggestions;
-        private List<AiContextMappingJson> contextMappings;
-        private List<AiBankCategoryFallbackJson> bankCategoryFallbacks;
-        private AiCategorizationStatsJson stats;
-        private AiCostJson cost;
+        private SuggestedStructureJson suggestedStructure;
+        private List<PatternSuggestionJson> patternSuggestions;
+        private List<BankCategorySuggestionJson> bankCategorySuggestions;
+        private List<AutoCategorizableSuggestionJson> autoCategorizableSuggestions;
+        private List<ContextMappingJson> contextMappings;
+        private List<BankCategoryFallbackJson> bankCategoryFallbacks;
+        private ClassificationStatsJson stats;
+        private ClassificationCostJson cost;
     }
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiSuggestedStructureJson {
-        private List<AiCategoryNodeJson> outflow;
-        private List<AiCategoryNodeJson> inflow;
+    public static class SuggestedStructureJson {
+        private List<CategoryNodeJson> outflow;
+        private List<CategoryNodeJson> inflow;
     }
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiCategoryNodeJson {
+    public static class CategoryNodeJson {
         private String name;
         private List<String> subCategories;
         private int transactionCount;
@@ -71,7 +71,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiPatternSuggestionJson {
+    public static class PatternSuggestionJson {
         private String pattern;
         private String sampleTransaction;
         private String suggestedCategory;
@@ -91,7 +91,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiBankCategorySuggestionJson {
+    public static class BankCategorySuggestionJson {
         private String bankCategory;
         private String targetCategory;
         private String parentCategory;
@@ -106,7 +106,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiCategorizationStatsJson {
+    public static class ClassificationStatsJson {
         private int totalPatterns;
         private int autoAccepted;
         private int suggested;
@@ -120,7 +120,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiCostJson {
+    public static class ClassificationCostJson {
         private int tokensUsed;
         private String estimatedCost;
     }
@@ -133,7 +133,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiAutoCategorizableSuggestionJson {
+    public static class AutoCategorizableSuggestionJson {
         private String classification;      // BANK_FEE, CASH_WITHDRAWAL, etc.
         private String suggestedCategory;   // Opłaty bankowe, Wypłaty gotówkowe, etc.
         private String parentCategory;      // Zarządzanie kontem
@@ -151,7 +151,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiContextMappingJson {
+    public static class ContextMappingJson {
         private String pattern;
         private String bankCategory;
         private String suggestedCategory;
@@ -173,7 +173,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiBankCategoryFallbackJson {
+    public static class BankCategoryFallbackJson {
         private String bankCategory;
         private String defaultTarget;
         private String parentCategory;
@@ -189,10 +189,10 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AcceptAiSuggestionsRequest {
-        private List<AiCategoryToCreateJson> acceptedCategories;
-        private List<AiMappingToApplyJson> acceptedMappings;
-        private List<AiBankCategoryMappingToApplyJson> acceptedBankCategoryMappings;
+    public static class AcceptClassificationRequest {
+        private List<CategoryToCreateJson> acceptedCategories;
+        private List<MappingToApplyJson> acceptedMappings;
+        private List<BankCategoryMappingToApplyJson> acceptedBankCategoryMappings;
         private boolean saveToCache;
     }
 
@@ -200,7 +200,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiCategoryToCreateJson {
+    public static class CategoryToCreateJson {
         private String name;
         private String parentName;
         private Type type;
@@ -210,7 +210,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiMappingToApplyJson {
+    public static class MappingToApplyJson {
         private String pattern;
         private String bankCategory;
         private String targetCategory;
@@ -232,7 +232,7 @@ public class ClassificationDto {
     @NoArgsConstructor
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class AiBankCategoryMappingToApplyJson {
+    public static class BankCategoryMappingToApplyJson {
         private String bankCategory;
         private String targetCategory;
         private String parentCategory;
@@ -248,7 +248,7 @@ public class ClassificationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AcceptAiSuggestionsResponse {
+    public static class AcceptClassificationResponse {
         private String cashFlowId;
         private String sessionId;
         private String status;
@@ -256,14 +256,14 @@ public class ClassificationDto {
         private int mappingsApplied;
         private int patternsCached;
         private List<String> warnings;
-        private AiStagingValidationSummaryJson validationSummary;
+        private StagingValidationSummaryJson validationSummary;
     }
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class AiStagingValidationSummaryJson {
+    public static class StagingValidationSummaryJson {
         private int totalTransactions;
         private int validTransactions;
         private int invalidTransactions;

@@ -12,11 +12,11 @@ import java.util.List;
  * surface:
  *
  * <ul>
- *   <li>{@link #suggestFor} - {@code AiCategorizeCommandHandler}, which had the engine injected
+ *   <li>{@link #suggestFor} - {@code ClassifyCommandHandler}, which had the engine injected
  *       directly along with its pattern repository.</li>
  *   <li>{@link #matchLearned} - the two staging handlers that applied learned patterns with their
  *       own copy of the matching rule. This is the method that makes the rule exist once.</li>
- *   <li>{@link #learn} - {@code AcceptAiSuggestionsCommandHandler}, which wrote pattern documents
+ *   <li>{@link #learn} - {@code AcceptClassificationCommandHandler}, which wrote pattern documents
  *       itself.</li>
  * </ul>
  *
@@ -38,7 +38,7 @@ public interface TransactionCategorizationApi extends ModuleApi {
      * <p>Costs money when it reaches the model, so the result carries what it cost. Nothing is
      * remembered here - see {@link #learn}.
      */
-    AiCategorizationResult suggestFor(CategorizationRequest request);
+    CategorizationSuggestions suggestFor(CategorizationRequest request);
 
     /**
      * Offers a batch to what this cash flow has already taught the module, without a model.
