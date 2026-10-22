@@ -1,7 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.canonical;
 
-import com.tngtech.archunit.base.DescribedPredicate;
-import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -110,34 +108,26 @@ class CanonicalRowIsSelfContainedTest {
     }
 
     /**
-     * No cycles between the sections - with one exemption, named rather than hidden.
+     * No cycles between the sections, <b>with no exemption at all</b>.
      *
-     * <p><b>The controller and the DTO are excused.</b> One class names every section's commands by
-     * definition: {@code BankDataIngestionRestController} builds {@code AiCategorizeCommand} and
-     * {@code AcceptAiSuggestionsCommand} while the classification handlers reach back for staging's
-     * and mappings' handlers, which is a cycle through 1,195 lines of HTTP mapping. It is a real
-     * finding and a known one - splitting that controller along the sections is a later step of F67,
-     * and when it happens this exemption goes away rather than being weakened.
+     * <p>It had one for exactly one step. {@code BankDataIngestionRestController} was 1,195 lines
+     * naming every section's commands, so {@code app} depended on {@code classification} while the
+     * classification handlers reached back for staging's and mappings' handlers - a cycle through
+     * HTTP mapping code. The rule ignored dependencies originating in that controller and said so,
+     * on the understanding that the exemption would go away rather than be weakened.
      *
-     * <p>The exemption is deliberately narrow: only dependencies <b>originating</b> in those two
-     * classes are ignored, so a cycle between any two sections themselves still fails here. Like the
-     * exemption lists in {@code ModuleBoundariesArchTest}, this one measures a gap and may only
-     * shrink.
+     * <p>It went away: the controller is now four controllers, one per section, and this rule passes
+     * on its own. That is the measurable result of the split - not fewer lines, but one fewer place
+     * where the module is allowed to contradict its own layout.
      */
     @Test
     void theSectionsHaveNoCyclesBetweenThem() {
         ArchRule rule = slices().matching("..bank_data_ingestion.(*)..")
                 .should().beFreeOfCycles()
-                .ignoreDependency(
-                        resideIn("..bank_data_ingestion.app"),
-                        DescribedPredicate.alwaysTrue())
                 .because("a cycle between two sections is the failure this layout exists to prevent; "
                         + "the one through the shared controller is known and named");
 
         rule.check(moduleClasses);
     }
 
-    private static DescribedPredicate<JavaClass> resideIn(String packageIdentifier) {
-        return JavaClass.Predicates.resideInAPackage(packageIdentifier);
-    }
 }
