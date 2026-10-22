@@ -58,7 +58,7 @@ changed plus everything downstream**, and nothing else:
 | `vidulum-pnl` / `vidulum-risk` | that module, then `-pl :vidulum-wealth-tests,:vidulum-app` | leaves: only the bootstrap and cross-module tests use them |
 | `vidulum-wealth-tests` | `-pl :vidulum-wealth-tests` | **nothing depends on it** — tests only |
 | `cashflow` | `-pl :vidulum-cashflow` | nothing depends on it except the bootstrap |
-| `vidulum-bank-data-ingestion` | `-pl :vidulum-bank-data-ingestion` then `-pl :vidulum-cashflow,:vidulum-app` | its own 104 tests run in under a second; the seven that need a running cash flow live in the parent |
+| `vidulum-bank-data-ingestion` | `-pl :vidulum-bank-data-ingestion` then `-pl :vidulum-cashflow,:vidulum-app` | 36 tests in seconds; the ones needing a running cash flow live in the parent |
 | `vidulum-bank-data-adapter` | `-pl :vidulum-bank-data-adapter` then `-pl :vidulum-cashflow,:vidulum-app` | 111 tests, no Spring; the two needing a running cash flow live in the parent |
 | `vidulum-exchange` | `-pl :vidulum-exchange,:vidulum-portfolio,:vidulum-wealth-tests,:vidulum-okx,:vidulum-app` | portfolio_spec uses connections |
 | any `vidulum-*-api` | `install` it, then everything downstream of its implementations | the contract is the compile-time surface |
@@ -108,9 +108,13 @@ vidulum/
 │   │                            #   of CashFlowEvent, one lifecycle; the last assertSealed
 │   │                            #   exemption. Unit/component tests only: 96 in 5s, no Docker
 │   ├── user-financial-profile/  #   Owned accounts, self-transfer detection
+│   ├── bank-data-ai-categorization-api/ # CONTRACT: TransactionCategorizationApi - suggestFor,
+│   │                            #   matchLearned, learn, forget (F66)
+│   ├── bank-data-ai-categorization/ # Engine + its memory of patterns. ONLY module with spring-ai
 │   ├── bank-data-adapter/       #   AI CSV transformation; calls ingestion's endpoint by URL
-│   ├── bank-data-ingestion/     #   Import staging, category mapping. Three contracts, no
-│   │                            #   client of its own, never vidulum-cashflow
+│   ├── bank-data-ingestion/     #   Six sections, no app/domain/infrastructure (F67): canonical ·
+│   │                            #   intake · staging · mappings · importing · classification.
+│   │                            #   9 ArchUnit rules keep the directions, zero exemptions
 │   └── recurring-rules/         #   Recurring rules, entirely through the contract - no HTTP client
 │                                #   of its own left. No consumer here has an -api, nor a
 │                                #   test-scope dep on another
@@ -231,16 +235,13 @@ asserts exactly one bean exists **and that it is not the HTTP one**.
 ### A rule two modules need is a value in the contract, not a method on it
 
 `ImportWindow` in `cashflow-api` decides which dates a cash flow accepts an import for;
-`CashFlowSkeletonView.importWindow()` hands it to a consumer and `CashFlowSnapshot.importWindow()`
+`CashFlowSkeletonView.importWindow()` hands it to a consumer, `CashFlowSnapshot.importWindow()`
 builds it from the aggregate. One implementation, two callers.
 
 **Why a value, not `canImport(date)`: a predicate asked per row is a request per row** — a 402-row
 statement would pay 402. The skeleton carries all three inputs, so the consumer fetches once and
-evaluates locally against the producer's logic, not a copy.
-
-It replaced two copies of five conditions — typed exceptions in the command handler, the same five
-as `String.format` in `StageTransactionsCommandHandler` — which had already diverged. When merging
-duplicated validation:
+evaluates locally against the producer's logic, not a copy. It replaced two copies of five
+conditions that had already diverged. When merging duplicated validation:
 
 - **Preserve the check order.** A date can break two conditions at once and the first wins, which
   decides the `ErrorCode` an endpoint answers with. `CashFlowErrorHandlingTest` depends on it to the
@@ -257,48 +258,41 @@ duplicated validation:
 
 ### Don't let a port invent a poorer type than both ends already use
 
-The ingestion port declared `double` + `String` and `LocalDate` where the caller and the endpoint
-both held `Money` and `ZonedDateTime`; the HTTP client rebuilt the rest with
-`atStartOfDay(ZoneId.systemDefault())`. Measured, because the halves differ:
+The ingestion port declared `double` + `String` + `LocalDate` where both ends held `Money` and
+`ZonedDateTime`; the client rebuilt the rest with `atStartOfDay(ZoneId.systemDefault())`. Measured,
+because the halves differ:
 
 - **Time of day and zone: lost outright.** The stored instant depended on the *server's* timezone,
-  so one CSV gave different data in different deployments — and near a month boundary that moves a
-  transaction into another month, which decides validation and the forecast.
-- **Amount: scale, not value.** `BigDecimal.valueOf(double)` uses `Double.toString`, the shortest
-  round-tripping decimal, so realistic amounts returned identical. `1234.50` came back `1234.5` —
-  equal under `compareTo`, not `equals`. Value loss needs >15 significant digits.
-
-That second point corrects my own first analysis, which claimed precision loss on money: a sabotage
-test using `1234.57` **passed**, because that value survives the round trip. **Pick the value that
-actually breaks before calling something a defect.**
+  so one CSV gave different data per deployment — and near a month boundary that moves a transaction
+  into another month, deciding validation and the forecast.
+- **Amount: scale, not value.** `BigDecimal.valueOf(double)` uses the shortest round-tripping
+  decimal, so `1234.50` came back `1234.5` — equal under `compareTo`, not `equals`. Value loss needs
+  >15 significant digits, which corrected my own first analysis: a sabotage test with `1234.57`
+  **passed**. **Pick the value that actually breaks before calling something a defect.**
 
 ### A consumer of an event declares the shape it reads
 
 `UserFinancialProfileCashFlowListener.CashFlowCreated` is that module's own view of the `cash_flow`
 payload: nested records with `@JsonIgnoreProperties`, naming **three** values out of a dozen. It
-used to deserialise `CashFlowEvent.CashFlowCreatedEvent` — a class from cashflow's **domain** —
-so a consumer of a text payload could not be built without the producer's internals on its
-classpath. **A payload on a topic is text; read it with your own shape.**
+used to deserialise cashflow's **domain** class, so a consumer of a text payload needed the
+producer's internals on its classpath. **A payload on a topic is text; read it with your own shape.**
 
 **Validation belongs at each module's own door.** That module borrowed cashflow's
-`BankAccountNumber`, which validates IBANs via iban4j — so its entity re-validated on every read
-from Mongo, and one stored IBAN iban4j would reject today made the whole profile unreadable.
-Storage re-validating what it stored is a failure mode with no upside. It now has
-`OwnedAccountNumber` (a carrier) plus a validating `fromIban` factory, because its own endpoint
-accepts IBANs typed by a person. Two locks on two doors is not a duplicated concept.
+`BankAccountNumber`, which validates IBANs via iban4j — so its entity re-validated on every read,
+and one stored IBAN iban4j would reject today made the whole profile unreadable. Storage
+re-validating what it stored is a failure mode with no upside. It now has `OwnedAccountNumber` (a
+carrier) plus a validating `fromIban` factory, because its own endpoint takes IBANs typed by a
+person. Two locks on two doors is not a duplicated concept.
 
 ### Measure how a value crosses a boundary before giving it a module
 
-`TransactionClassification` is declared twice - once in `bank_data_adapter.domain`, once in
-`bank_data_ingestion.domain` - and that is deliberate. It briefly had a Maven module of its own,
-which was wrong, because the two modules **never exchange the type**: the adapter appends a CSV
-column (`",classification,classificationReason,location"`) and ingestion parses the text with
-`fromString`. The contract is a column name and a vocabulary of words, so a shared Java type was a
-convenience pretending to be a dependency.
-
-The giveaway was already in the code: `fromString` answers `UNKNOWN` for anything unrecognised,
-which only makes sense if a producer is allowed to know words a consumer does not — the signature
-of a text contract, not a typed one.
+`TransactionClassification` is declared twice - in `bank_data_adapter.domain` and in
+`bank_data_ingestion.canonical` - deliberately. It briefly had a Maven module, which was wrong:
+the two **never exchange the type**. The adapter appends a CSV column
+(`",classification,classificationReason,location"`), ingestion parses it with `fromString`. The
+contract is a column name and a vocabulary of words, so a shared Java type was a convenience
+pretending to be a dependency - and `fromString` answering `UNKNOWN` for anything unrecognised was
+the giveaway: only a text contract lets a producer know words a consumer does not.
 
 **Duplication across a text boundary needs a test, not a module.**
 `TransactionClassificationVocabularyTest` fails if either side gains a constant the other lacks,
@@ -466,7 +460,10 @@ annotation exists proves nothing; assert the index is in the database
 |--------|-------|-------------|
 | cashflow | `CashFlowDataCleaner` | CashFlowEntity |
 | cashflow_forecast_processor | `CashFlowForecastDataCleaner` | CashFlowForecastEntity, CashFlowForecastStatementEntity |
-| bank_data_ingestion | `BankDataIngestionDataCleaner` | StagingSessionEntity, StagedTransactionEntity, CategoryMappingEntity, ImportJobEntity, PatternMappingEntity |
+| ingestion `staging` | `StagingDataCleaner` | StagingSessionEntity, StagedTransactionEntity |
+| ingestion `mappings` | `CategoryMappingDataCleaner` | CategoryMappingEntity |
+| ingestion `importing` | `ImportJobDataCleaner` | ImportJobEntity |
+| bank_data_ai_categorization | `AiCategorizationDataCleaner` | PatternMappingEntity |
 | bank_data_adapter | `BankDataAdapterDataCleaner` | AiCsvTransformationDocument, MappingRules |
 | user_financial_profile | `UserFinancialProfileDataCleaner` | UserFinancialProfileEntity |
 | vidulum-recurring-rules | `RecurringRuleDataCleaner` | RecurringRuleEntity |

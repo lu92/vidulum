@@ -87,6 +87,17 @@
         </dependency>
 
         <!-- CSV parsing -->
+        <!--
+            This module enforces boundaries inside itself, not just at its edges: the canonical
+            transaction row may not depend on the sections that use it. See
+            CanonicalRowIsSelfContainedTest and
+            docs/features-backlog/2026-10-22-bank-data-ingestion-sections.md.
+        -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>

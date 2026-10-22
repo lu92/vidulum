@@ -1,13 +1,13 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
-import com.multi.vidulum.bank_data_ingestion.domain.AiCategorizationStatus;
-import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionStatus;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.AiCategorizationStatus;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.StagingSessionStatus;
+import com.multi.vidulum.bank_data_ingestion.mappings.infrastructure.CategoryMappingMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.importing.infrastructure.ImportJobMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.StagedTransactionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
 import com.multi.vidulum.cashflow_forecast_processor.infrastructure.CashFlowForecastMongoRepository;
@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.multi.vidulum.bank_data_ingestion.importing.ImportDto;
+import com.multi.vidulum.bank_data_ingestion.staging.StagingDto;
 
 /**
  * Integration test verifying StagingSessionEntity lifecycle.
@@ -99,7 +101,7 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
         ));
 
         // when - stage transactions
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("txn-001", "Biedronka", "Zakupy", 150.50, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC)),
                 actor.bankTransaction("txn-002", "Lidl", "Zakupy", 89.99, "PLN", Type.OUTFLOW,
@@ -149,7 +151,7 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
         );
 
         // Stage transactions WITHOUT mappings - should result in HAS_UNMAPPED_CATEGORIES
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("txn-001", "Biedronka", "Zakupy", 150.50, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
         ));
@@ -179,7 +181,7 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
                 session2.getStatus(), session2.getUnmappedTransactions());
 
         // Step 3: Start import
-        BankDataIngestionDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
+        ImportDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
         String jobId = importResponse.getJobId();
 
         // Note: Import may complete synchronously, so we check for IMPORTING or COMPLETED
@@ -218,7 +220,7 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
         );
 
         // Stage transactions WITHOUT mappings
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("txn-001", "Random Store", "Unknown Category", 100.0, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC)),
                 actor.bankTransaction("txn-002", "Another Store", "Another Unknown", 200.0, "PLN", Type.OUTFLOW,
@@ -273,7 +275,7 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
         ));
 
         // when - upload CSV file
-        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+        StagingDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
                 cashFlowId,
                 "bank-data-ingestion/historical-transactions.csv"
         );
@@ -324,18 +326,18 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
         ));
 
         // Create multiple staging sessions
-        BankDataIngestionDto.StageTransactionsResponse session1Response = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse session1Response = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("txn-001", "Biedronka", "Zakupy", 150.50, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
         ));
 
-        BankDataIngestionDto.StageTransactionsResponse session2Response = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse session2Response = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("txn-002", "Lidl", "Zakupy", 89.99, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 20, 10, 0, 0, 0, ZoneOffset.UTC))
         ));
 
         // when - list sessions
-        BankDataIngestionDto.ListStagingSessionsResponse listResponse = actor.listStagingSessions(cashFlowId);
+        StagingDto.ListStagingSessionsResponse listResponse = actor.listStagingSessions(cashFlowId);
 
         // then - verify both sessions are listed
         assertThat(listResponse.getStagingSessions()).hasSize(2);
@@ -343,7 +345,7 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
 
         // Verify both sessions are in the list (order is non-deterministic when createdAt is same)
         List<String> sessionIds = listResponse.getStagingSessions().stream()
-                .map(BankDataIngestionDto.StagingSessionSummaryJson::getStagingSessionId)
+                .map(StagingDto.StagingSessionSummaryJson::getStagingSessionId)
                 .toList();
         assertThat(sessionIds).containsExactlyInAnyOrder(
                 session1Response.getStagingSessionId(),
@@ -351,7 +353,7 @@ public class StagingSessionLifecycleIntegrationTest extends CashFlowIntegrationT
         );
 
         // Verify session counts are populated from entity (not computed)
-        BankDataIngestionDto.StagingSessionSummaryJson sessionSummary = listResponse.getStagingSessions().get(0);
+        StagingDto.StagingSessionSummaryJson sessionSummary = listResponse.getStagingSessions().get(0);
         assertThat(sessionSummary.getCounts().getTotalTransactions()).isEqualTo(1);
         assertThat(sessionSummary.getCounts().getValidTransactions()).isEqualTo(1);
         assertThat(sessionSummary.getStatus()).isEqualTo("READY_FOR_IMPORT");

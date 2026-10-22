@@ -41,7 +41,7 @@ class TransactionClassificationVocabularyTest {
         Set<String> written = namesOf(
                 com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.class);
         Set<String> read = namesOf(
-                com.multi.vidulum.bank_data_ingestion.domain.TransactionClassification.class);
+                com.multi.vidulum.bank_data_ingestion.canonical.TransactionClassification.class);
 
         assertThat(read)
                 .as("a word the adapter writes and ingestion does not know becomes UNKNOWN for "
@@ -57,7 +57,7 @@ class TransactionClassificationVocabularyTest {
     @DisplayName("ingestion parses every word the adapter can write, rather than defaulting")
     void everyWrittenWordParsesToItself() {
         for (var written : com.multi.vidulum.bank_data_adapter.domain.TransactionClassification.values()) {
-            var parsed = com.multi.vidulum.bank_data_ingestion.domain.TransactionClassification
+            var parsed = com.multi.vidulum.bank_data_ingestion.canonical.TransactionClassification
                     .fromString(written.name());
 
             assertThat(parsed.name())
@@ -69,7 +69,7 @@ class TransactionClassificationVocabularyTest {
     @Test
     @DisplayName("an unrecognised word is UNKNOWN, not an exception")
     void anUnknownWordDoesNotBreakAnImport() {
-        var parsed = com.multi.vidulum.bank_data_ingestion.domain.TransactionClassification
+        var parsed = com.multi.vidulum.bank_data_ingestion.canonical.TransactionClassification
                 .fromString("SOMETHING_A_FUTURE_ADAPTER_INVENTS");
 
         assertThat(parsed.name())

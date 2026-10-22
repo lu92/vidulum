@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.common.CashChangeId;
-import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.MappingAction;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.cashflow.domain.BankAccountNumber;
@@ -25,6 +25,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
+import com.multi.vidulum.bank_data_ingestion.mappings.MappingsDto;
+import com.multi.vidulum.bank_data_ingestion.importing.ImportDto;
+import com.multi.vidulum.bank_data_ingestion.staging.StagingDto;
 
 /**
  * Actor for HTTP-based integration tests of bank-data-ingestion module.
@@ -226,16 +230,16 @@ public class BankDataIngestionHttpActor {
     /**
      * Configures category mappings for a CashFlow.
      */
-    public void configureMappings(String cashFlowId, List<BankDataIngestionDto.MappingConfigJson> mappings) {
-        BankDataIngestionDto.ConfigureMappingsRequest request = BankDataIngestionDto.ConfigureMappingsRequest.builder()
+    public void configureMappings(String cashFlowId, List<MappingsDto.MappingConfigJson> mappings) {
+        MappingsDto.ConfigureMappingsRequest request = MappingsDto.ConfigureMappingsRequest.builder()
                 .mappings(mappings)
                 .build();
 
-        ResponseEntity<BankDataIngestionDto.ConfigureMappingsResponse> response = restTemplate.exchange(
+        ResponseEntity<MappingsDto.ConfigureMappingsResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/mappings",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
-                BankDataIngestionDto.ConfigureMappingsResponse.class
+                MappingsDto.ConfigureMappingsResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -246,8 +250,8 @@ public class BankDataIngestionHttpActor {
      * Creates a mapping that will create a new category during import.
      * Note: MAP_TO_EXISTING was removed - each CashFlow can only have one file import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingCreateNewCategory(String bankCategory, String targetCategory, Type type) {
-        return BankDataIngestionDto.MappingConfigJson.builder()
+    public MappingsDto.MappingConfigJson mappingCreateNewCategory(String bankCategory, String targetCategory, Type type) {
+        return MappingsDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
                 .action(MappingAction.CREATE_NEW)
                 .targetCategoryName(targetCategory)
@@ -258,8 +262,8 @@ public class BankDataIngestionHttpActor {
     /**
      * Creates a mapping that will create a new category during import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingCreateNew(String bankCategory, String newCategoryName, Type type) {
-        return BankDataIngestionDto.MappingConfigJson.builder()
+    public MappingsDto.MappingConfigJson mappingCreateNew(String bankCategory, String newCategoryName, Type type) {
+        return MappingsDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
                 .action(MappingAction.CREATE_NEW)
                 .targetCategoryName(newCategoryName)
@@ -270,9 +274,9 @@ public class BankDataIngestionHttpActor {
     /**
      * Creates a mapping that will create a subcategory during import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingCreateSubcategory(String bankCategory, String subcategoryName,
+    public MappingsDto.MappingConfigJson mappingCreateSubcategory(String bankCategory, String subcategoryName,
                                                                            String parentCategory, Type type) {
-        return BankDataIngestionDto.MappingConfigJson.builder()
+        return MappingsDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
                 .action(MappingAction.CREATE_SUBCATEGORY)
                 .targetCategoryName(subcategoryName)
@@ -284,8 +288,8 @@ public class BankDataIngestionHttpActor {
     /**
      * Creates a mapping that will map bank category to "Uncategorized" during import.
      */
-    public BankDataIngestionDto.MappingConfigJson mappingToUncategorized(String bankCategory, Type type) {
-        return BankDataIngestionDto.MappingConfigJson.builder()
+    public MappingsDto.MappingConfigJson mappingToUncategorized(String bankCategory, Type type) {
+        return MappingsDto.MappingConfigJson.builder()
                 .bankCategoryName(bankCategory)
                 .action(MappingAction.MAP_TO_UNCATEGORIZED)
                 .targetCategoryName("Uncategorized")
@@ -296,12 +300,12 @@ public class BankDataIngestionHttpActor {
     /**
      * Gets category mappings for a CashFlow.
      */
-    public BankDataIngestionDto.GetMappingsResponse getMappings(String cashFlowId) {
-        ResponseEntity<BankDataIngestionDto.GetMappingsResponse> response = restTemplate.exchange(
+    public MappingsDto.GetMappingsResponse getMappings(String cashFlowId) {
+        ResponseEntity<MappingsDto.GetMappingsResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/mappings",
                 HttpMethod.GET,
                 new HttpEntity<>(jsonHeaders()),
-                BankDataIngestionDto.GetMappingsResponse.class
+                MappingsDto.GetMappingsResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -312,16 +316,16 @@ public class BankDataIngestionHttpActor {
      * Lists active staging sessions for a CashFlow.
      * Allows users to return to unfinished imports.
      */
-    public BankDataIngestionDto.ListStagingSessionsResponse listStagingSessions(String cashFlowId) {
-        ResponseEntity<BankDataIngestionDto.ListStagingSessionsResponse> response = restTemplate.exchange(
+    public StagingDto.ListStagingSessionsResponse listStagingSessions(String cashFlowId) {
+        ResponseEntity<StagingDto.ListStagingSessionsResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging",
                 HttpMethod.GET,
                 new HttpEntity<>(jsonHeaders()),
-                BankDataIngestionDto.ListStagingSessionsResponse.class
+                StagingDto.ListStagingSessionsResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        BankDataIngestionDto.ListStagingSessionsResponse body = response.getBody();
+        StagingDto.ListStagingSessionsResponse body = response.getBody();
         log.info("Listed staging sessions for CashFlow {}: {} sessions, hasPendingImport={}",
                 cashFlowId, body.getStagingSessions().size(), body.isHasPendingImport());
         return body;
@@ -330,23 +334,23 @@ public class BankDataIngestionHttpActor {
     /**
      * Stages transactions for import.
      */
-    public BankDataIngestionDto.StageTransactionsResponse stageTransactions(
+    public StagingDto.StageTransactionsResponse stageTransactions(
             String cashFlowId,
-            List<BankDataIngestionDto.BankTransactionJson> transactions) {
+            List<StagingDto.BankTransactionJson> transactions) {
 
-        BankDataIngestionDto.StageTransactionsRequest request = BankDataIngestionDto.StageTransactionsRequest.builder()
+        StagingDto.StageTransactionsRequest request = StagingDto.StageTransactionsRequest.builder()
                 .transactions(transactions)
                 .build();
 
-        ResponseEntity<BankDataIngestionDto.StageTransactionsResponse> response = restTemplate.exchange(
+        ResponseEntity<StagingDto.StageTransactionsResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
-                BankDataIngestionDto.StageTransactionsResponse.class
+                StagingDto.StageTransactionsResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        BankDataIngestionDto.StageTransactionsResponse body = response.getBody();
+        StagingDto.StageTransactionsResponse body = response.getBody();
         log.info("Staged {} transactions for CashFlow {}, status: {}",
                 transactions.size(), cashFlowId, body.getStatus());
         return body;
@@ -355,11 +359,11 @@ public class BankDataIngestionHttpActor {
     /**
      * Creates a bank transaction for staging.
      */
-    public BankDataIngestionDto.BankTransactionJson bankTransaction(String bankTransactionId, String name,
+    public StagingDto.BankTransactionJson bankTransaction(String bankTransactionId, String name,
                                                                      String bankCategory, double amount,
                                                                      String currency, Type type,
                                                                      ZonedDateTime paidDate) {
-        return BankDataIngestionDto.BankTransactionJson.builder()
+        return StagingDto.BankTransactionJson.builder()
                 .bankTransactionId(bankTransactionId)
                 .name(name)
                 .description("Auto-generated transaction")
@@ -374,21 +378,21 @@ public class BankDataIngestionHttpActor {
     /**
      * Starts an import job for staged transactions.
      */
-    public BankDataIngestionDto.StartImportResponse startImport(String cashFlowId, String stagingSessionId) {
-        BankDataIngestionDto.StartImportRequest request = BankDataIngestionDto.StartImportRequest.builder()
+    public ImportDto.StartImportResponse startImport(String cashFlowId, String stagingSessionId) {
+        ImportDto.StartImportRequest request = ImportDto.StartImportRequest.builder()
                 .stagingSessionId(stagingSessionId)
                 .build();
 
-        ResponseEntity<BankDataIngestionDto.StartImportResponse> response = restTemplate.exchange(
+        ResponseEntity<ImportDto.StartImportResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
-                BankDataIngestionDto.StartImportResponse.class
+                ImportDto.StartImportResponse.class
         );
 
         // Accepts both 200 OK and 202 ACCEPTED (async processing)
         assertThat(response.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
-        BankDataIngestionDto.StartImportResponse body = response.getBody();
+        ImportDto.StartImportResponse body = response.getBody();
         log.info("Started import for CashFlow {}, status: {}", cashFlowId, body.getStatus());
         return body;
     }
@@ -396,12 +400,12 @@ public class BankDataIngestionHttpActor {
     /**
      * Gets import job progress.
      */
-    public BankDataIngestionDto.GetImportProgressResponse getImportProgress(String cashFlowId, String jobId) {
-        ResponseEntity<BankDataIngestionDto.GetImportProgressResponse> response = restTemplate.exchange(
+    public ImportDto.GetImportProgressResponse getImportProgress(String cashFlowId, String jobId) {
+        ResponseEntity<ImportDto.GetImportProgressResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import/" + jobId,
                 HttpMethod.GET,
                 new HttpEntity<>(jsonHeaders()),
-                BankDataIngestionDto.GetImportProgressResponse.class
+                ImportDto.GetImportProgressResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -411,17 +415,17 @@ public class BankDataIngestionHttpActor {
     /**
      * Finalizes an import job.
      */
-    public BankDataIngestionDto.FinalizeImportResponse finalizeImport(String cashFlowId, String jobId,
+    public ImportDto.FinalizeImportResponse finalizeImport(String cashFlowId, String jobId,
                                                                        boolean deleteMappings) {
-        BankDataIngestionDto.FinalizeImportRequest request = BankDataIngestionDto.FinalizeImportRequest.builder()
+        ImportDto.FinalizeImportRequest request = ImportDto.FinalizeImportRequest.builder()
                 .deleteMappings(deleteMappings)
                 .build();
 
-        ResponseEntity<BankDataIngestionDto.FinalizeImportResponse> response = restTemplate.exchange(
+        ResponseEntity<ImportDto.FinalizeImportResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/import/" + jobId + "/finalize",
                 HttpMethod.POST,
                 new HttpEntity<>(request, jsonHeaders()),
-                BankDataIngestionDto.FinalizeImportResponse.class
+                ImportDto.FinalizeImportResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -432,12 +436,12 @@ public class BankDataIngestionHttpActor {
     /**
      * Gets staging preview.
      */
-    public BankDataIngestionDto.GetStagingPreviewResponse getStagingPreview(String cashFlowId, String stagingSessionId) {
-        ResponseEntity<BankDataIngestionDto.GetStagingPreviewResponse> response = restTemplate.exchange(
+    public StagingDto.GetStagingPreviewResponse getStagingPreview(String cashFlowId, String stagingSessionId) {
+        ResponseEntity<StagingDto.GetStagingPreviewResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId,
                 HttpMethod.GET,
                 new HttpEntity<>(jsonHeaders()),
-                BankDataIngestionDto.GetStagingPreviewResponse.class
+                StagingDto.GetStagingPreviewResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -463,16 +467,16 @@ public class BankDataIngestionHttpActor {
      * Revalidates a staging session after mappings have been configured.
      * Updates transactions that were PENDING_MAPPING to have proper mapped data.
      */
-    public BankDataIngestionDto.RevalidateStagingResponse revalidateStaging(String cashFlowId, String stagingSessionId) {
-        ResponseEntity<BankDataIngestionDto.RevalidateStagingResponse> response = restTemplate.exchange(
+    public StagingDto.RevalidateStagingResponse revalidateStaging(String cashFlowId, String stagingSessionId) {
+        ResponseEntity<StagingDto.RevalidateStagingResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId + "/revalidate",
                 HttpMethod.POST,
                 new HttpEntity<>(jsonHeaders()),
-                BankDataIngestionDto.RevalidateStagingResponse.class
+                StagingDto.RevalidateStagingResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        BankDataIngestionDto.RevalidateStagingResponse body = response.getBody();
+        StagingDto.RevalidateStagingResponse body = response.getBody();
         log.info("Revalidated staging session {} for CashFlow {}: status={}, revalidated={}, stillPending={}",
                 stagingSessionId, cashFlowId, body.getStatus(),
                 body.getSummary().getRevalidatedCount(),
@@ -484,16 +488,16 @@ public class BankDataIngestionHttpActor {
      * Forces all unmapped transactions to be mapped to "Uncategorized" category.
      * This skips AI categorization and makes the session ready for import.
      */
-    public BankDataIngestionDto.ForceUncategorizedResponse forceUncategorized(String cashFlowId, String stagingSessionId) {
-        ResponseEntity<BankDataIngestionDto.ForceUncategorizedResponse> response = restTemplate.exchange(
+    public StagingDto.ForceUncategorizedResponse forceUncategorized(String cashFlowId, String stagingSessionId) {
+        ResponseEntity<StagingDto.ForceUncategorizedResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/staging/" + stagingSessionId + "/force-uncategorized",
                 HttpMethod.POST,
                 new HttpEntity<>(jsonHeaders()),
-                BankDataIngestionDto.ForceUncategorizedResponse.class
+                StagingDto.ForceUncategorizedResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        BankDataIngestionDto.ForceUncategorizedResponse body = response.getBody();
+        StagingDto.ForceUncategorizedResponse body = response.getBody();
         log.info("Forced uncategorized for session {} in CashFlow {}: transactionsUpdated={}",
                 stagingSessionId, cashFlowId, body.getTransactionsUpdated());
         return body;
@@ -507,7 +511,7 @@ public class BankDataIngestionHttpActor {
      * @param resourcePath path to CSV file in classpath (e.g., "bank-data-ingestion/historical-transactions.csv")
      * @return upload result containing parse summary and staging result
      */
-    public BankDataIngestionDto.UploadCsvResponse uploadCsv(String cashFlowId, String resourcePath) {
+    public StagingDto.UploadCsvResponse uploadCsv(String cashFlowId, String resourcePath) {
         Resource csvResource = new ClassPathResource(resourcePath);
 
         // Read file content
@@ -540,15 +544,15 @@ public class BankDataIngestionHttpActor {
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<BankDataIngestionDto.UploadCsvResponse> response = restTemplate.exchange(
+        ResponseEntity<StagingDto.UploadCsvResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/upload",
                 HttpMethod.POST,
                 requestEntity,
-                BankDataIngestionDto.UploadCsvResponse.class
+                StagingDto.UploadCsvResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        BankDataIngestionDto.UploadCsvResponse result = response.getBody();
+        StagingDto.UploadCsvResponse result = response.getBody();
         log.info("Uploaded CSV file '{}' for CashFlow {}: parsed {}/{} rows, staging status: {}",
                 resourcePath, cashFlowId,
                 result.getParseSummary().getSuccessfulRows(),
@@ -565,7 +569,7 @@ public class BankDataIngestionHttpActor {
      * @param csvContent CSV content as bytes
      * @return upload result containing parse summary and staging result
      */
-    public BankDataIngestionDto.UploadCsvResponse uploadCsvContent(String cashFlowId, String fileName, byte[] csvContent) {
+    public StagingDto.UploadCsvResponse uploadCsvContent(String cashFlowId, String fileName, byte[] csvContent) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         if (jwtToken != null) {
@@ -580,15 +584,15 @@ public class BankDataIngestionHttpActor {
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<BankDataIngestionDto.UploadCsvResponse> response = restTemplate.exchange(
+        ResponseEntity<StagingDto.UploadCsvResponse> response = restTemplate.exchange(
                 baseUrl + "/api/v1/bank-data-ingestion/cf=" + cashFlowId + "/upload",
                 HttpMethod.POST,
                 requestEntity,
-                BankDataIngestionDto.UploadCsvResponse.class
+                StagingDto.UploadCsvResponse.class
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        BankDataIngestionDto.UploadCsvResponse result = response.getBody();
+        StagingDto.UploadCsvResponse result = response.getBody();
         log.info("Uploaded CSV content '{}' for CashFlow {}: parsed {}/{} rows",
                 fileName, cashFlowId,
                 result.getParseSummary().getSuccessfulRows(),
@@ -644,7 +648,7 @@ public class BankDataIngestionHttpActor {
      * Starts import expecting an error response.
      */
     public ResponseEntity<ApiError> startImportExpectingError(String cashFlowId, String stagingSessionId) {
-        BankDataIngestionDto.StartImportRequest request = BankDataIngestionDto.StartImportRequest.builder()
+        ImportDto.StartImportRequest request = ImportDto.StartImportRequest.builder()
                 .stagingSessionId(stagingSessionId)
                 .build();
 
@@ -659,7 +663,7 @@ public class BankDataIngestionHttpActor {
      * Finalizes import expecting an error response.
      */
     public ResponseEntity<ApiError> finalizeImportExpectingError(String cashFlowId, String jobId, boolean deleteMappings) {
-        BankDataIngestionDto.FinalizeImportRequest request = BankDataIngestionDto.FinalizeImportRequest.builder()
+        ImportDto.FinalizeImportRequest request = ImportDto.FinalizeImportRequest.builder()
                 .deleteMappings(deleteMappings)
                 .build();
 

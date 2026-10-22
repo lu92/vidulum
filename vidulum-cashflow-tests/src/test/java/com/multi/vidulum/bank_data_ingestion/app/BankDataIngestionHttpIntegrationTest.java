@@ -1,10 +1,10 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
-import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.MappingAction;
+import com.multi.vidulum.bank_data_ingestion.mappings.infrastructure.CategoryMappingMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.importing.infrastructure.ImportJobMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.domain.BankAccount;
 import com.multi.vidulum.cashflow.domain.CashChangeStatus;
@@ -33,6 +33,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
+import com.multi.vidulum.bank_data_ingestion.mappings.MappingsDto;
+import com.multi.vidulum.bank_data_ingestion.importing.ImportDto;
+import com.multi.vidulum.bank_data_ingestion.staging.StagingDto;
 
 /**
  * Integration test verifying REST API communication between bank-data-ingestion
@@ -581,13 +585,13 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         ));
 
         // then: validate mappings response
-        BankDataIngestionDto.GetMappingsResponse mappingsResponse = actor.getMappings(cashFlowId);
+        MappingsDto.GetMappingsResponse mappingsResponse = actor.getMappings(cashFlowId);
         assertThat(mappingsResponse.getCashFlowId()).isEqualTo(cashFlowId);
         assertThat(mappingsResponse.getMappingsCount()).isEqualTo(2);
         assertThat(mappingsResponse.getMappings()).hasSize(2);
 
         // Validate first mapping (CREATE_NEW) - only ignore generated fields
-        BankDataIngestionDto.MappingJson groceriesMapping = mappingsResponse.getMappings().stream()
+        MappingsDto.MappingJson groceriesMapping = mappingsResponse.getMappings().stream()
                 .filter(m -> "Zakupy kartą".equals(m.getBankCategoryName()))
                 .findFirst()
                 .orElseThrow();
@@ -601,7 +605,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         assertThat(groceriesMapping.getCreatedAt()).isEqualTo(FIXED_NOW);
 
         // Validate second mapping (CREATE_NEW)
-        BankDataIngestionDto.MappingJson streamingMapping = mappingsResponse.getMappings().stream()
+        MappingsDto.MappingJson streamingMapping = mappingsResponse.getMappings().stream()
                 .filter(m -> "Streaming".equals(m.getBankCategoryName()))
                 .findFirst()
                 .orElseThrow();
@@ -638,7 +642,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         ));
 
         // Stage transactions
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("txn-001", "Biedronka", "Zakupy", 150.50, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC)),
                 actor.bankTransaction("txn-002", "Lidl", "Zakupy", 89.99, "PLN", Type.OUTFLOW,
@@ -648,14 +652,14 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         String stagingSessionId = stageResponse.getStagingSessionId();
 
         // when - list staging sessions
-        BankDataIngestionDto.ListStagingSessionsResponse response = actor.listStagingSessions(cashFlowId);
+        StagingDto.ListStagingSessionsResponse response = actor.listStagingSessions(cashFlowId);
 
         // then - validate response
         assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
         assertThat(response.isHasPendingImport()).isTrue();
         assertThat(response.getStagingSessions()).hasSize(1);
 
-        BankDataIngestionDto.StagingSessionSummaryJson session = response.getStagingSessions().get(0);
+        StagingDto.StagingSessionSummaryJson session = response.getStagingSessions().get(0);
         assertThat(session.getStagingSessionId()).isEqualTo(stagingSessionId);
         assertThat(session.getStatus()).isEqualTo("READY_FOR_IMPORT");
         assertThat(session.getCounts().getTotalTransactions()).isEqualTo(2);
@@ -683,7 +687,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         );
 
         // when - list staging sessions
-        BankDataIngestionDto.ListStagingSessionsResponse response = actor.listStagingSessions(cashFlowId);
+        StagingDto.ListStagingSessionsResponse response = actor.listStagingSessions(cashFlowId);
 
         // then - verify empty response
         assertThat(response.getCashFlowId()).isEqualTo(cashFlowId);
@@ -719,7 +723,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         ));
 
         // when - upload CSV file from resources
-        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+        StagingDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
                 cashFlowId,
                 "bank-data-ingestion/historical-transactions.csv"
         );
@@ -743,7 +747,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         assertThat(stagingSessionId).isNotNull();
 
         // Verify staging preview
-        BankDataIngestionDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
+        StagingDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
         assertThat(preview.getSummary().getTotalTransactions()).isEqualTo(23);
 
         // Calculate expected totals from CSV
@@ -788,7 +792,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         ));
 
         // when - upload CSV file from resources
-        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+        StagingDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
                 cashFlowId,
                 "bank-data-ingestion/historical-transactions.csv"
         );
@@ -802,7 +806,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
 
         // Verify unmapped categories are reported
         List<String> unmappedCategories = uploadResponse.getStagingResult().getUnmappedCategories().stream()
-                .map(BankDataIngestionDto.UnmappedCategoryJson::getBankCategory)
+                .map(StagingDto.UnmappedCategoryJson::getBankCategory)
                 .toList();
         assertThat(unmappedCategories).containsExactlyInAnyOrder("Rozrywka", "Transport");
 
@@ -834,7 +838,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         ));
 
         // Step 1: Upload CSV
-        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+        StagingDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
                 cashFlowId,
                 "bank-data-ingestion/historical-transactions.csv"
         );
@@ -843,19 +847,19 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         String stagingSessionId = uploadResponse.getStagingResult().getStagingSessionId();
 
         // Step 2: Start import (may complete immediately for small datasets)
-        BankDataIngestionDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
+        ImportDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
         assertThat(importResponse.getStatus()).isIn("IN_PROGRESS", "COMPLETED");
         String jobId = importResponse.getJobId();
 
         // Step 3: Check progress (should complete quickly in test)
-        BankDataIngestionDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
+        ImportDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
         // Import should be completed with all transactions processed
         assertThat(progress.getResult()).isNotNull();
         assertThat(progress.getResult().getTransactionsImported()).isEqualTo(23);
         assertThat(progress.getResult().getTransactionsFailed()).isEqualTo(0);
 
         // Step 4: Finalize import
-        BankDataIngestionDto.FinalizeImportResponse finalizeResponse = actor.finalizeImport(cashFlowId, jobId, false);
+        ImportDto.FinalizeImportResponse finalizeResponse = actor.finalizeImport(cashFlowId, jobId, false);
         assertThat(finalizeResponse.getStatus()).isIn("COMPLETED", "FINALIZED");
 
         // Step 5: Verify CashFlow has all transactions
@@ -888,7 +892,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         );
 
         // Step 1: Upload CSV WITHOUT any mappings configured - should return HAS_UNMAPPED_CATEGORIES
-        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+        StagingDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
                 cashFlowId,
                 "bank-data-ingestion/historical-transactions.csv"
         );
@@ -903,7 +907,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
 
         // Verify all bank categories are reported as unmapped
         List<String> unmappedCategories = uploadResponse.getStagingResult().getUnmappedCategories().stream()
-                .map(BankDataIngestionDto.UnmappedCategoryJson::getBankCategory)
+                .map(StagingDto.UnmappedCategoryJson::getBankCategory)
                 .toList();
         assertThat(unmappedCategories).containsExactlyInAnyOrder(
                 "Wpływy regularne", "Mieszkanie", "Zakupy kartą", "Rachunki", "Rozrywka", "Transport"
@@ -923,23 +927,23 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         ));
 
         // Step 3: Revalidate staging session
-        BankDataIngestionDto.RevalidateStagingResponse revalidateResponse = actor.revalidateStaging(cashFlowId, stagingSessionId);
+        StagingDto.RevalidateStagingResponse revalidateResponse = actor.revalidateStaging(cashFlowId, stagingSessionId);
         assertThat(revalidateResponse.getStatus()).isIn("READY_FOR_IMPORT", "SUCCESS");
         assertThat(revalidateResponse.getSummary().getValidCount()).isEqualTo(23);
 
         // Step 4: Start import
-        BankDataIngestionDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
+        ImportDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
         assertThat(importResponse.getStatus()).isIn("IN_PROGRESS", "COMPLETED");
         String jobId = importResponse.getJobId();
 
         // Step 5: Check progress - should complete
-        BankDataIngestionDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
+        ImportDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
         assertThat(progress.getResult()).isNotNull();
         assertThat(progress.getResult().getTransactionsImported()).isEqualTo(23);
         assertThat(progress.getResult().getTransactionsFailed()).isEqualTo(0);
 
         // Step 6: Finalize import
-        BankDataIngestionDto.FinalizeImportResponse finalizeResponse = actor.finalizeImport(cashFlowId, jobId, false);
+        ImportDto.FinalizeImportResponse finalizeResponse = actor.finalizeImport(cashFlowId, jobId, false);
         assertThat(finalizeResponse.getStatus()).isIn("COMPLETED", "FINALIZED");
 
         // Step 7: Verify CashFlow has all transactions in Uncategorized
@@ -987,7 +991,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         ));
 
         // Step 1: Upload CSV in SETUP mode (import initial historical data)
-        BankDataIngestionDto.UploadCsvResponse uploadSetup = actor.uploadCsv(
+        StagingDto.UploadCsvResponse uploadSetup = actor.uploadCsv(
                 cashFlowId,
                 "bank-data-ingestion/historical-transactions.csv"
         );
@@ -996,10 +1000,10 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         String stagingSessionId = uploadSetup.getStagingResult().getStagingSessionId();
 
         // Step 2: Start and complete import
-        BankDataIngestionDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
+        ImportDto.StartImportResponse importResponse = actor.startImport(cashFlowId, stagingSessionId);
         String jobId = importResponse.getJobId();
 
-        BankDataIngestionDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
+        ImportDto.GetImportProgressResponse progress = actor.getImportProgress(cashFlowId, jobId);
         assertThat(progress.getResult().getTransactionsImported()).isEqualTo(23);
 
         actor.finalizeImport(cashFlowId, jobId, false);
@@ -1060,7 +1064,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
                 .at(YearMonth.of(2022, 1))
                 .isPresent());
 
-        BankDataIngestionDto.UploadCsvResponse uploadOpen = actor.uploadCsvContent(
+        StagingDto.UploadCsvResponse uploadOpen = actor.uploadCsvContent(
                 cashFlowId,
                 "open-mode-transactions.csv",
                 activeMonthCsv.getBytes()
@@ -1091,10 +1095,10 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
 
         // Step 5: Import the OPEN mode transactions
         String openStagingSessionId = uploadOpen.getStagingResult().getStagingSessionId();
-        BankDataIngestionDto.StartImportResponse openImportResponse = actor.startImport(cashFlowId, openStagingSessionId);
+        ImportDto.StartImportResponse openImportResponse = actor.startImport(cashFlowId, openStagingSessionId);
         String openJobId = openImportResponse.getJobId();
 
-        BankDataIngestionDto.GetImportProgressResponse openProgress = actor.getImportProgress(cashFlowId, openJobId);
+        ImportDto.GetImportProgressResponse openProgress = actor.getImportProgress(cashFlowId, openJobId);
         assertThat(openProgress.getResult().getTransactionsImported()).isEqualTo(3);
         assertThat(openProgress.getResult().getTransactionsFailed()).isEqualTo(0);
 
@@ -1149,7 +1153,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
         // - TXN-2021-08-001: Valid transaction (August 2021)
         // - TXN-2021-08-002: Valid transaction (August 2021)
         // - TXN-2020-01-001: Too old transaction (before start period 2021-07)
-        BankDataIngestionDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
+        StagingDto.UploadCsvResponse uploadResponse = actor.uploadCsv(
                 cashFlowId,
                 "bank-data-ingestion/transactions-with-invalid.csv"
         );
@@ -1170,10 +1174,10 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
 
         // Get staging preview - THIS IS THE KEY ASSERTION
         // After the fix, all transactions (including invalid ones) should be returned
-        BankDataIngestionDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
+        StagingDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
 
         // Log all transactions for debugging
-        for (BankDataIngestionDto.StagedTransactionPreviewJson txn : preview.getTransactions()) {
+        for (StagingDto.StagedTransactionPreviewJson txn : preview.getTransactions()) {
             log.info("Transaction: bankId={}, name={}, status={}, errors={}, targetCategory={}",
                     txn.getBankTransactionId(),
                     txn.getName(),
@@ -1188,7 +1192,7 @@ public class BankDataIngestionHttpIntegrationTest extends CashFlowIntegrationTes
                 .hasSize(3);
 
         // Find the invalid transaction (too old - before start period)
-        BankDataIngestionDto.StagedTransactionPreviewJson oldTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson oldTxn = preview.getTransactions().stream()
                 .filter(t -> "TXN-2020-01-001".equals(t.getBankTransactionId()))
                 .findFirst()
                 .orElse(null);

@@ -1,13 +1,13 @@
 package com.multi.vidulum.bank_data_ingestion.app;
 
 import com.multi.vidulum.cashflow.CashFlowIntegrationTest;
-import com.multi.vidulum.bank_data_ingestion.domain.MappingAction;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.MappingAction;
 import com.multi.vidulum.bank_data_ai_categorization.domain.PatternMapping;
 import com.multi.vidulum.bank_data_ai_categorization.domain.PatternMappingRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.CategoryMappingMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.ImportJobMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.mappings.infrastructure.CategoryMappingMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.importing.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ai_categorization.infrastructure.PatternMappingMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
+import com.multi.vidulum.bank_data_ingestion.importing.ImportDto;
+import com.multi.vidulum.bank_data_ingestion.staging.StagingDto;
 
 /**
  * Integration tests for Pattern Matching in Bank Data Ingestion.
@@ -133,7 +136,7 @@ public class PatternMatchingIntegrationTest extends CashFlowIntegrationTest {
         ));
 
         // when - stage transactions with names matching patterns
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 // Should match "ZUS" pattern -> ZUS category
                 actor.bankTransaction("TXN-001", "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH ZUS",
                         "Przelewy wychodzące", 1500.0, "PLN", Type.OUTFLOW,
@@ -156,20 +159,20 @@ public class PatternMatchingIntegrationTest extends CashFlowIntegrationTest {
         String stagingSessionId = stageResponse.getStagingSessionId();
 
         // Get staging preview to verify category assignments
-        BankDataIngestionDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
+        StagingDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
 
         // Find each transaction and verify category assignment
-        BankDataIngestionDto.StagedTransactionPreviewJson zusTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson zusTxn = preview.getTransactions().stream()
                 .filter(t -> t.getBankTransactionId().equals("TXN-001"))
                 .findFirst()
                 .orElseThrow();
 
-        BankDataIngestionDto.StagedTransactionPreviewJson urzadTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson urzadTxn = preview.getTransactions().stream()
                 .filter(t -> t.getBankTransactionId().equals("TXN-002"))
                 .findFirst()
                 .orElseThrow();
 
-        BankDataIngestionDto.StagedTransactionPreviewJson regularTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson regularTxn = preview.getTransactions().stream()
                 .filter(t -> t.getBankTransactionId().equals("TXN-003"))
                 .findFirst()
                 .orElseThrow();
@@ -241,7 +244,7 @@ public class PatternMatchingIntegrationTest extends CashFlowIntegrationTest {
         log.info("Created pattern mapping: URZAD SKARBOWY -> Podatki");
 
         // Step 2: Stage transactions - pattern matching should apply during staging
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("TXN-001", "URZAD SKARBOWY W MIELCU",
                         "Przelewy wychodzące", 500.0, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
@@ -252,10 +255,10 @@ public class PatternMatchingIntegrationTest extends CashFlowIntegrationTest {
         String stagingSessionId = stageResponse.getStagingSessionId();
 
         // Verify the transaction has correct category from pattern matching
-        BankDataIngestionDto.GetStagingPreviewResponse preview =
+        StagingDto.GetStagingPreviewResponse preview =
                 actor.getStagingPreview(cashFlowId, stagingSessionId);
 
-        BankDataIngestionDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
+        StagingDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
         assertThat(txn.getTargetCategory())
                 .as("Transaction should be categorized via pattern matching during staging")
                 .isEqualTo("Podatki");
@@ -302,7 +305,7 @@ public class PatternMatchingIntegrationTest extends CashFlowIntegrationTest {
         ));
 
         // when - stage transaction with ZUS in name (should use pattern, not category mapping)
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("TXN-001", "ZUS SKŁADKA ZDROWOTNA",
                         "Przelewy wychodzące", 1500.0, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
@@ -311,10 +314,10 @@ public class PatternMatchingIntegrationTest extends CashFlowIntegrationTest {
         // then - should be READY and use pattern mapping
         assertThat(stageResponse.getStatus()).isEqualTo("READY_FOR_IMPORT");
 
-        BankDataIngestionDto.GetStagingPreviewResponse preview =
+        StagingDto.GetStagingPreviewResponse preview =
                 actor.getStagingPreview(cashFlowId, stageResponse.getStagingSessionId());
 
-        BankDataIngestionDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
+        StagingDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
 
         // KEY ASSERTION: Pattern matching wins over category mapping
         assertThat(txn.getTargetCategory())
@@ -355,7 +358,7 @@ public class PatternMatchingIntegrationTest extends CashFlowIntegrationTest {
         patternMappingRepository.save(pattern);
 
         // when - stage, import, and finalize
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("TXN-001", "ZAKŁAD UBEZPIECZEŃ SPOŁECZNYCH ZUS",
                         "Przelewy wychodzące", 1500.0, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
@@ -368,11 +371,11 @@ public class PatternMatchingIntegrationTest extends CashFlowIntegrationTest {
         String stagingSessionId = stageResponse.getStagingSessionId();
 
         // Start import
-        BankDataIngestionDto.StartImportResponse importResponse =
+        ImportDto.StartImportResponse importResponse =
                 actor.startImport(cashFlowId, stagingSessionId);
 
         // Check progress
-        BankDataIngestionDto.GetImportProgressResponse progress =
+        ImportDto.GetImportProgressResponse progress =
                 actor.getImportProgress(cashFlowId, importResponse.getJobId());
 
         assertThat(progress.getResult().getTransactionsImported()).isEqualTo(1);
