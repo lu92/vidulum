@@ -64,6 +64,28 @@ class CanonicalRowIsSelfContainedTest {
         rule.check(moduleClasses);
     }
 
+    /**
+     * The second rule of F67, now that {@code intake} exists as a package: bytes become rows and the
+     * section that does it knows nothing else.
+     *
+     * <p>It covers the parser only. {@code upload_csv} is <b>not</b> here on purpose - its result
+     * type embeds staging's result and its outcome is a staging session, so it belongs to staging
+     * and would make this rule false. That correction came from reading the code, not from the plan.
+     */
+    @Test
+    void intakeKnowsNothingButTheCanonicalRow() {
+        ArchRule rule = noClasses().that().resideInAPackage("..bank_data_ingestion.intake..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "..bank_data_ingestion.app..",
+                        "..bank_data_ingestion.domain..",
+                        "..bank_data_ingestion.infrastructure..",
+                        "..bank_data_ai_categorization..")
+                .because("a parser that knows about staging sessions is no longer a parser");
+
+        rule.check(moduleClasses);
+    }
+
     @Test
     void theCanonicalPackageHasNoCyclesWithinIt() {
         ArchRule rule = slices().matching("..bank_data_ingestion.(*)..")

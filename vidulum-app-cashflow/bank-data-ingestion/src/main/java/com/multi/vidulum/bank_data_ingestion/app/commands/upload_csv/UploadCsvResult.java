@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.upload_csv;
 
-import com.multi.vidulum.bank_data_ingestion.app.CsvParserService;
+import com.multi.vidulum.bank_data_ingestion.intake.CsvParserService;
 import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsResult;
 
 import java.util.List;

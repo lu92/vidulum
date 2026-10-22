@@ -1,6 +1,11 @@
 # `bank-data-ingestion` na sekcje — i co naprawdę blokuje podmianę klasyfikatora
 
-**Status:** analiza, nic nie zmienione · **Data:** 2026-10-22 · **Po:** F66
+**Status:** w realizacji (zadanie **F67**) · **Data:** 2026-10-22 · **Po:** F66
+
+**Co już zrobione z wariantu 2:** `canonical/` istnieje — cztery typy wiersza kanonicznego
+przeniesione, reguła „nie zależy od reszty modułu" wymuszona testem ArchUnit
+(`CanonicalRowIsSelfContainedTest`, 3 przypadki, dowód negatywny zrobiony). Reszta sekcji:
+niezrobiona. Rozstrzygnięte: **przemianowanie nie obejmuje URL-i**.
 ([wydzielenie kategoryzacji AI](2026-10-22-ai-categorization-module-split.md))
 
 **Pytanie, na które odpowiada:** czy podzielić ingestion na sekcję wykrywania danych i sekcję
@@ -108,13 +113,20 @@ gateway) i deleguje. Po podziale to jedyna krawędź `intake → staging` i powi
 
 ##### `canonical/` — jedyny wspólny słownik (sekcja, której nie było na pierwszym rysunku)
 
-Wiersza kanonicznego **nie da się** przypisać do jednej sekcji: `intake` go produkuje, `staging`
-przechowuje, `classification` czyta. To kontrakt **między** sekcjami:
+Wiersza kanonicznego **nie da się** przypisać do jednej sekcji: `intake` go produkuje, a `staging`
+przechowuje. To kontrakt **między** sekcjami:
 
 `BankCsvRow` · `OriginalTransactionData` · `PaymentMethod` · `TransactionClassification`
 
 Ten sam argument, który dał `ImportWindow` miejsce w `cashflow-api`: wartość potrzebna dwóm stronom
 nie należy do żadnej z nich.
+
+> **Poprawka z 2026-10-22, po wykonaniu tego kroku.** Pierwsza wersja tej analizy pisała, że
+> `classification` też czyta wiersz kanoniczny. **Pomiar po przenosinach pokazał, że nie czyta go
+> wcale** — i to jest poprawne, nie brak: po F66 `AiCategorizeCommandHandler` czyta `StagedTransaction`
+> ze stagingu i mapuje go na `TransactionToCategorize` z kontraktu, a klasyfikację przekazuje jako
+> **słowo**. Czyli `classification` zależy od `staging`, nie od słownika. Strzałka
+> `canonical ← classification` z pierwszego rysunku była błędna i została usunięta poniżej.
 
 ##### `staging/` — sesja i wiersze: maszyna stanów
 
@@ -171,11 +183,16 @@ Sekcja, dla której cała reorganizacja ma sens: ~560 linii, i ma być **liście
 #### Kierunki zależności — treść testu architektonicznego
 
 ```
-canonical      ←── intake, staging, classification
+canonical      ←── intake, staging
 mappings       ←── staging, classification
 staging        ←── importing, classification
 classification ←── NIKT          ← własność, dla której to się robi
 ```
+
+Dwóch użytkowników słownika, nie trzech — patrz poprawka wyżej. Mierzone, nie zakładane:
+`grep -rl bank_data_ingestion.canonical` po wykonaniu przenosin wskazuje `upload_csv` i
+`CsvParserService` (intake), `stage_transactions`, `StagedTransaction` i `StagedTransactionEntity`
+(staging) oraz kontroler i DTO — i **żadnego** pliku z `ai_categorize` ani `accept_ai_suggestions`.
 
 Trzy reguły, każda z jednozdaniowym „dlaczego":
 

@@ -1,4 +1,4 @@
-package com.multi.vidulum.bank_data_ingestion.app;
+package com.multi.vidulum.bank_data_ingestion.intake;
 
 import com.multi.vidulum.bank_data_ingestion.canonical.BankCsvRow;
 import com.multi.vidulum.cashflow.api.Type;
