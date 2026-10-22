@@ -41,4 +41,27 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <!--
+                The contract test ships as a test-jar. TransactionCategorizationApiContractTest is
+                abstract and asserts what the contract promises - whole-word matching, type
+                isolation, learn-updates-rather-than-duplicates, forget scoped to one cash flow - so
+                every implementation can run it on itself instead of each one being trusted. Without
+                this, "swappable" would mean "compiles", which is what the F66 review found.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

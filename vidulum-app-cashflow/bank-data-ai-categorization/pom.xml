@@ -37,6 +37,14 @@
             <artifactId>vidulum-bank-data-ai-categorization-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- The contract's own test suite: this module runs it on itself (F67). -->
+        <dependency>
+            <groupId>com.multi</groupId>
+            <artifactId>vidulum-bank-data-ai-categorization-api</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.multi</groupId>
             <artifactId>vidulum-cashflow-api</artifactId>
