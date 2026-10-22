@@ -137,6 +137,38 @@ ktoś już kiedyś napisał asercje.
 **Dowód negatywny:** przywrócenie `contains` w `LearnedPatternMatcher` wywala 3 z 9 przypadków, z
 komunikatem *„MOL is inside DEMOLKA the way ART is inside PARTNER"*.
 
+## Wynik przebiegu
+
+**Pełny reaktor zielony: 28 modułów, 7:57 min** (cashflow-tests 4:06, wealth-tests 1:10, bootstrap
+1:15). Jedyna porażka w całym przebiegu była pouczająca: **`ModuleBoundariesArchTest` złapał
+`TransactionCategorizationApiImpl` napisany jako `public`** — reguła mówi, że implementacji kontraktu
+nikt z zewnątrz nie nazywa, bo wstrzykuje interfejs, i wszystkie pozostałe `*ModuleApiImpl` są
+pakietowo-prywatne. Poprawione, powód zapisany w javadocu klasy.
+
+## Ocena wymienialności — cztery zarzuty do tej zmiany
+
+Izolacja techniczna jest zrobiona i mierzalna: **16 linii styku w 5 plikach** ingestion na 4 100
+przeniesionych, `spring-ai` poza pomem konsumenta, kierunek zależności jednostronny. Ale jeśli
+pytanie brzmi „czy podstawię tu inną implementację z innym zachowaniem", odpowiedź jest: **połowicznie**.
+
+1. **Typ odpowiedzi zdradza technologię.** Interfejs nazwałem `TransactionCategorizationApi` i
+   napisałem, że nic w nim nie mówi „AI" — a zwraca `AiCategorizationResult` z `AiCost(tokensUsed,
+   estimatedCost)` i licznikami `fromGlobalCache` / `fromUserCache` / `fromAi`. Silnik regułowy
+   musi oddać liczbę tokenów, której nie ma. To cena decyzji „przenieś 387 linii pod tą samą nazwą,
+   najmniejsza churn" — wtedy rozsądna, ale to jest jej koszt.
+2. **Nie ma testu kontraktu.** `LearnedPatternMatcherTest` sprawdza moją klasę. Zachowania, na
+   których ingestion **polega** — granica słowa, rozdział INFLOW/OUTFLOW, najpewniejszy wygrywa,
+   `learn` aktualizuje zamiast duplikować — są dziś obietnicami w javadocu. Powinny być abstrakcyjną
+   klasą testową w module api, dziedziczoną przez każdą implementację.
+3. **Podmiana to zmiana builda, nie konfiguracji.** Zero `@ConditionalOnProperty`; cashflow ma wzorzec
+   dwóch transportów przełączanych właściwością, tutaj dwie implementacje na classpathie dadzą
+   konflikt beanów.
+4. **`matchLearned` zakłada pamięć.** Implementacja bezstanowa musiałaby zawsze odpowiadać „nic nie
+   rozpoznałem", a staging **po cichu** straciłby wstępne mapowanie. Kontrakt tego nie opisuje.
+
+Kolejność naprawy według wartości na jednostkę pracy: test kontraktu → rozdzielenie odpowiedzi od
+telemetrii → przełącznik implementacji → doprecyzowanie semantyki braku pamięci.
+
 ## Czego ta zmiana nie zrobiła
 
 - **`GlobalPatternSeeder` (173 wzorce) pojechał z pamięcią** — i to było w wariancie A zgrzytem,
