@@ -254,7 +254,13 @@ ostatni punkt brzmi: „zero zmian w 104 plikach, w które trzeba zajrzeć, żeb
 przechodzący test kontraktu, wskazany właściwością. **Bez punktu 1** zostaje statyczny klasyfikator
 raportujący `aiTokensUsed = 0` pod adresem `/ai-categorize`.
 
-## Pytanie otwarte
+## Rozstrzygnięte: URL-e zostają
 
-Czy przemianowanie ma objąć **URL-e**. To jedyna część widoczna z zewnątrz; wszystko inne jest
-wewnętrzne i kosztuje tylko rekompilację.
+Przemianowanie **nie obejmuje adresów**. `POST /staging/{id}/ai-categorize` i `/accept-ai` zostają
+takie, jakie są — decyzja właściciela kodu z 2026-10-22.
+
+Konsekwencja, którą trzeba znać: po przemianowaniu wnętrza adres przez chwilę nie będzie zgadzał się
+z nazwą komendy, którą wywołuje (`/ai-categorize` → `ClassifyCommand`). To jest **świadomy** koszt
+trzymania zewnętrznej powierzchni w miejscu, a nie przeoczenie - i dlatego zapisany tutaj oraz w
+javadocu kontrolera, kiedy ta zmiana nastąpi. Wszystko inne (pakiety, nazwy klas, pola dokumentu,
+stany sesji) jest wewnętrzne i kosztuje tylko rekompilację.

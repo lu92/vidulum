@@ -1,4 +1,4 @@
-package com.multi.vidulum.bank_data_ingestion.domain;
+package com.multi.vidulum.bank_data_ingestion.canonical;
 
 import com.multi.vidulum.cashflow.api.Type;
 

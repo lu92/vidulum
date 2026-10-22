@@ -3,6 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.domain;
 import com.multi.vidulum.common.CashFlowId;
 
 import java.time.ZonedDateTime;
+import com.multi.vidulum.bank_data_ingestion.canonical.OriginalTransactionData;
 
 /**
  * Domain object representing a transaction staged for import.

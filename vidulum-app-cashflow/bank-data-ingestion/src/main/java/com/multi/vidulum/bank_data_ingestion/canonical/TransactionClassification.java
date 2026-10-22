@@ -1,4 +1,4 @@
-package com.multi.vidulum.bank_data_ingestion.domain;
+package com.multi.vidulum.bank_data_ingestion.canonical;
 
 /**
  * Classification of transaction type determined by AI enrichment.

@@ -36,6 +36,7 @@ import com.multi.vidulum.bank_data_ingestion.app.queries.list_import_jobs.ListIm
 import com.multi.vidulum.bank_data_ingestion.app.queries.list_import_jobs.ListImportJobsResult;
 import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.ListStagingSessionsQuery;
 import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.ListStagingSessionsResult;
+import com.multi.vidulum.bank_data_ingestion.canonical.*;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
 import com.multi.vidulum.common.CashFlowId;

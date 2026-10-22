@@ -3,6 +3,7 @@ package com.multi.vidulum.bank_data_ingestion.app.commands.upload_csv;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.shared.cqrs.commands.Command;
 import org.springframework.web.multipart.MultipartFile;
+import com.multi.vidulum.bank_data_ingestion.canonical.BankCsvRow;
 
 /**
  * Command to upload and stage a CSV file containing bank transactions.

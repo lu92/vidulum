@@ -5,6 +5,7 @@ import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizati
 import com.multi.vidulum.bank_data_ai_categorization.api.TransactionToMatch;
 import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.app.OwnedAccountRegistry;
+import com.multi.vidulum.bank_data_ingestion.canonical.*;
 import com.multi.vidulum.bank_data_ingestion.domain.*;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;

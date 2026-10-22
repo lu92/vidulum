@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions;
 
-import com.multi.vidulum.bank_data_ingestion.domain.PaymentMethod;
-import com.multi.vidulum.bank_data_ingestion.domain.TransactionClassification;
+import com.multi.vidulum.bank_data_ingestion.canonical.PaymentMethod;
+import com.multi.vidulum.bank_data_ingestion.canonical.TransactionClassification;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Money;

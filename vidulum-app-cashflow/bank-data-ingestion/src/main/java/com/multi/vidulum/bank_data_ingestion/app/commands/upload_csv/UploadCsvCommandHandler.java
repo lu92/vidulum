@@ -4,7 +4,7 @@ import com.multi.vidulum.bank_data_ingestion.app.CsvParserService;
 import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsCommand;
 import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsCommandHandler;
 import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsResult;
-import com.multi.vidulum.bank_data_ingestion.domain.BankCsvRow;
+import com.multi.vidulum.bank_data_ingestion.canonical.BankCsvRow;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;
