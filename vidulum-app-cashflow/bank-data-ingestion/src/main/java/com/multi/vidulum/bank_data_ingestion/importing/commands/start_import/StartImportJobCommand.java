@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.importing.commands.start_import;
 
-import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionId;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.StagingSessionId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.shared.cqrs.commands.Command;
 

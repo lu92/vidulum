@@ -2,10 +2,10 @@ package com.multi.vidulum.bank_data_ingestion.importing.commands.start_import;
 
 import com.multi.vidulum.bank_data_ingestion.BankDataIngestionConfig;
 import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 import com.multi.vidulum.bank_data_ingestion.importing.domain.BankDataIngestionEvent.*;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.HistoricalCashChange;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;

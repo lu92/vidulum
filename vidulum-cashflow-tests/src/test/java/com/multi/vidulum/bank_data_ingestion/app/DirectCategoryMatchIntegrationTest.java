@@ -6,7 +6,7 @@ import com.multi.vidulum.bank_data_ai_categorization.domain.PatternMappingReposi
 import com.multi.vidulum.bank_data_ingestion.mappings.infrastructure.CategoryMappingMongoRepository;
 import com.multi.vidulum.bank_data_ingestion.importing.infrastructure.ImportJobMongoRepository;
 import com.multi.vidulum.bank_data_ai_categorization.infrastructure.PatternMappingMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.StagedTransactionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.StagedTransactionMongoRepository;
 import com.multi.vidulum.cashflow.app.CashFlowDto;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.cashflow.infrastructure.CashFlowMongoRepository;
@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.multi.vidulum.bank_data_ingestion.importing.ImportDto;
+import com.multi.vidulum.bank_data_ingestion.staging.StagingDto;
 
 /**
  * Integration tests for Direct Category Matching (Priority 0) in Bank Data Ingestion.
@@ -105,7 +107,7 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
 
         // when - stage transactions where bankCategory matches existing category names
         // NO mapping configuration needed!
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 // bankCategory = "Artykuły spożywcze" should match existing category
                 actor.bankTransaction("TXN-001", "BIEDRONKA WARSZAWA",
                         "Artykuły spożywcze", 150.0, "PLN", Type.OUTFLOW,
@@ -132,19 +134,19 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
 
         // Verify category assignments via staging preview
         String stagingSessionId = stageResponse.getStagingSessionId();
-        BankDataIngestionDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
+        StagingDto.GetStagingPreviewResponse preview = actor.getStagingPreview(cashFlowId, stagingSessionId);
 
-        BankDataIngestionDto.StagedTransactionPreviewJson foodTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson foodTxn = preview.getTransactions().stream()
                 .filter(t -> t.getBankTransactionId().equals("TXN-001"))
                 .findFirst()
                 .orElseThrow();
 
-        BankDataIngestionDto.StagedTransactionPreviewJson transportTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson transportTxn = preview.getTransactions().stream()
                 .filter(t -> t.getBankTransactionId().equals("TXN-002"))
                 .findFirst()
                 .orElseThrow();
 
-        BankDataIngestionDto.StagedTransactionPreviewJson salaryTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson salaryTxn = preview.getTransactions().stream()
                 .filter(t -> t.getBankTransactionId().equals("TXN-003"))
                 .findFirst()
                 .orElseThrow();
@@ -224,7 +226,7 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         // - bankCategory = "Transport" (matches existing category)
         // - name contains "UBER" (matches pattern -> Taxi)
         // Direct match should win!
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("TXN-001", "UBER TECHNOLOGIES",
                         "Transport", 50.0, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
@@ -233,10 +235,10 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         // then - should use direct match (Transport), not pattern match (Taxi)
         assertThat(stageResponse.getStatus()).isEqualTo("READY_FOR_IMPORT");
 
-        BankDataIngestionDto.GetStagingPreviewResponse preview =
+        StagingDto.GetStagingPreviewResponse preview =
                 actor.getStagingPreview(cashFlowId, stageResponse.getStagingSessionId());
 
-        BankDataIngestionDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
+        StagingDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
 
         // KEY ASSERTION: Direct match wins over pattern matching
         assertThat(txn.getTargetCategory())
@@ -267,7 +269,7 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         log.info("Created nested structure: Zakupy -> Artykuły spożywcze");
 
         // when - stage transaction with bankCategory matching subcategory
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("TXN-001", "LIDL WARSZAWA",
                         "Artykuły spożywcze", 200.0, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
@@ -276,10 +278,10 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         // then - should match subcategory with correct parent
         assertThat(stageResponse.getStatus()).isEqualTo("READY_FOR_IMPORT");
 
-        BankDataIngestionDto.GetStagingPreviewResponse preview =
+        StagingDto.GetStagingPreviewResponse preview =
                 actor.getStagingPreview(cashFlowId, stageResponse.getStagingSessionId());
 
-        BankDataIngestionDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
+        StagingDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
 
         assertThat(txn.getTargetCategory())
                 .as("Should match subcategory 'Artykuły spożywcze'")
@@ -311,7 +313,7 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         log.info("Created category: Inne wydatki (doesn't match 'Artykuły spożywcze')");
 
         // when - stage transaction with bankCategory that doesn't match
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("TXN-001", "BIEDRONKA WARSZAWA",
                         "Artykuły spożywcze", 150.0, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
@@ -322,7 +324,7 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
                 .as("Should be HAS_UNMAPPED_CATEGORIES when no direct match")
                 .isEqualTo("HAS_UNMAPPED_CATEGORIES");
         assertThat(stageResponse.getUnmappedCategories())
-                .extracting(BankDataIngestionDto.UnmappedCategoryJson::getBankCategory)
+                .extracting(StagingDto.UnmappedCategoryJson::getBankCategory)
                 .containsExactly("Artykuły spożywcze");
 
         log.info("Fallback test passed: bankCategory 'Artykuły spożywcze' is unmapped (no direct match)");
@@ -345,7 +347,7 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         log.info("Created CashFlow without matching category");
 
         // Stage transaction - should be PENDING_MAPPING
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("TXN-001", "BIEDRONKA WARSZAWA",
                         "Artykuły spożywcze", 150.0, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
@@ -358,7 +360,7 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         actor.createCategory(cashFlowId, "Artykuły spożywcze", Type.OUTFLOW);
         log.info("Added category 'Artykuły spożywcze' to CashFlow");
 
-        BankDataIngestionDto.RevalidateStagingResponse revalidateResponse =
+        StagingDto.RevalidateStagingResponse revalidateResponse =
                 actor.revalidateStaging(cashFlowId, stagingSessionId);
 
         // then - transaction should now be valid via direct match
@@ -369,10 +371,10 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         assertThat(revalidateResponse.getSummary().getStillPendingCount()).isEqualTo(0);
 
         // Verify category assignment
-        BankDataIngestionDto.GetStagingPreviewResponse preview =
+        StagingDto.GetStagingPreviewResponse preview =
                 actor.getStagingPreview(cashFlowId, stagingSessionId);
 
-        BankDataIngestionDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
+        StagingDto.StagedTransactionPreviewJson txn = preview.getTransactions().get(0);
 
         assertThat(txn.getTargetCategory())
                 .as("Revalidation should use direct match")
@@ -401,7 +403,7 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         actor.createCategory(cashFlowId, "Artykuły spożywcze", Type.OUTFLOW);
 
         // when - stage and import
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 actor.bankTransaction("TXN-001", "BIEDRONKA",
                         "Artykuły spożywcze", 100.0, "PLN", Type.OUTFLOW,
                         ZonedDateTime.of(2021, 8, 15, 10, 0, 0, 0, ZoneOffset.UTC))
@@ -412,11 +414,11 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         String stagingSessionId = stageResponse.getStagingSessionId();
 
         // Start import
-        BankDataIngestionDto.StartImportResponse importResponse =
+        ImportDto.StartImportResponse importResponse =
                 actor.startImport(cashFlowId, stagingSessionId);
 
         // Check progress
-        BankDataIngestionDto.GetImportProgressResponse progress =
+        ImportDto.GetImportProgressResponse progress =
                 actor.getImportProgress(cashFlowId, importResponse.getJobId());
 
         assertThat(progress.getResult().getTransactionsImported()).isEqualTo(1);
@@ -461,7 +463,7 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         log.info("Created categories with specific casing: 'Artykuły spożywcze', 'Transport', 'Wynagrodzenie'");
 
         // when - stage transactions with DIFFERENT casing in bankCategory
-        BankDataIngestionDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
+        StagingDto.StageTransactionsResponse stageResponse = actor.stageTransactions(cashFlowId, List.of(
                 // UPPERCASE bankCategory
                 actor.bankTransaction("TXN-001", "BIEDRONKA",
                         "ARTYKUŁY SPOŻYWCZE", 100.0, "PLN", Type.OUTFLOW,
@@ -487,17 +489,17 @@ public class DirectCategoryMatchIntegrationTest extends CashFlowIntegrationTest 
         assertThat(stageResponse.getUnmappedCategories().get(0).getBankCategory())
                 .isEqualTo("NIEZNANA KATEGORIA");
 
-        BankDataIngestionDto.GetStagingPreviewResponse preview =
+        StagingDto.GetStagingPreviewResponse preview =
                 actor.getStagingPreview(cashFlowId, stageResponse.getStagingSessionId());
 
         // Find transactions by name
-        BankDataIngestionDto.StagedTransactionPreviewJson foodTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson foodTxn = preview.getTransactions().stream()
                 .filter(t -> t.getName().equals("BIEDRONKA")).findFirst().orElseThrow();
-        BankDataIngestionDto.StagedTransactionPreviewJson transportTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson transportTxn = preview.getTransactions().stream()
                 .filter(t -> t.getName().equals("UBER")).findFirst().orElseThrow();
-        BankDataIngestionDto.StagedTransactionPreviewJson salaryTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson salaryTxn = preview.getTransactions().stream()
                 .filter(t -> t.getName().equals("PRZELEW PRZYCHODZĄCY")).findFirst().orElseThrow();
-        BankDataIngestionDto.StagedTransactionPreviewJson unknownTxn = preview.getTransactions().stream()
+        StagingDto.StagedTransactionPreviewJson unknownTxn = preview.getTransactions().stream()
                 .filter(t -> t.getName().equals("NIEZNANY SKLEP")).findFirst().orElseThrow();
 
         // KEY ASSERTIONS: Case-insensitive matching preserves original category name

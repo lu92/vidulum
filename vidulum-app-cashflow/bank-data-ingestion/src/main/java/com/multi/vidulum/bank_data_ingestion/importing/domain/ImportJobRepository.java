@@ -4,7 +4,7 @@ import com.multi.vidulum.common.CashFlowId;
 
 import java.util.List;
 import java.util.Optional;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 
 /**
  * Repository for ImportJob aggregates.

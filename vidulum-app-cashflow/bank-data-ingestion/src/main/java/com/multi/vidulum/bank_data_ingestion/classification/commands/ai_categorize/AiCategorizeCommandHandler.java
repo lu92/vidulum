@@ -7,9 +7,9 @@ import com.multi.vidulum.bank_data_ai_categorization.api.TransactionCategorizati
 import com.multi.vidulum.bank_data_ai_categorization.api.TransactionToCategorize;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.StagingSessionMongoRepository;
-import com.multi.vidulum.bank_data_ingestion.infrastructure.entity.StagingSessionEntity;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.StagingSessionMongoRepository;
+import com.multi.vidulum.bank_data_ingestion.staging.infrastructure.entity.StagingSessionEntity;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.importing.commands.finalize_import;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.bank_data_ingestion.mappings.domain.*;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 import com.multi.vidulum.bank_data_ingestion.importing.domain.BankDataIngestionEvent.ImportJobFinalizedEvent;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.AllArgsConstructor;

@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.importing.infrastructure.entity;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.bank_data_ingestion.importing.domain.*;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.api.Type;
 import com.multi.vidulum.common.Money;

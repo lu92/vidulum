@@ -14,6 +14,8 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import com.multi.vidulum.bank_data_ingestion.importing.ImportDto;
+import com.multi.vidulum.bank_data_ingestion.staging.StagingDto;
 
 /**
  * HTTP error handling tests for Bank Data Ingestion API.
@@ -222,7 +224,7 @@ class BankDataIngestionErrorHandlingTest extends CashFlowIntegrationTest {
 
             // Stage transaction
             ZonedDateTime july15 = ZonedDateTime.parse("2021-07-15T10:00:00Z");
-            BankDataIngestionDto.StageTransactionsResponse stagingResult = actor.stageTransactions(
+            StagingDto.StageTransactionsResponse stagingResult = actor.stageTransactions(
                     cashFlowId,
                     List.of(actor.bankTransaction("TXN-001", "Salary", "Salary",
                             5000.0, "PLN", Type.INFLOW, july15))
@@ -231,7 +233,7 @@ class BankDataIngestionErrorHandlingTest extends CashFlowIntegrationTest {
             String stagingSessionId = stagingResult.getStagingSessionId();
 
             // Start import
-            BankDataIngestionDto.StartImportResponse importResult = actor.startImport(cashFlowId, stagingSessionId);
+            ImportDto.StartImportResponse importResult = actor.startImport(cashFlowId, stagingSessionId);
             String jobId = importResult.getJobId();
 
             // Finalize import (this makes rollback no longer allowed)
@@ -294,7 +296,7 @@ class BankDataIngestionErrorHandlingTest extends CashFlowIntegrationTest {
 
             // Stage transaction
             ZonedDateTime july15 = ZonedDateTime.parse("2021-07-15T10:00:00Z");
-            BankDataIngestionDto.StageTransactionsResponse stagingResult = actor.stageTransactions(
+            StagingDto.StageTransactionsResponse stagingResult = actor.stageTransactions(
                     cashFlowId,
                     List.of(actor.bankTransaction("TXN-001", "Salary", "Salary",
                             5000.0, "PLN", Type.INFLOW, july15))

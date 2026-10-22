@@ -1,6 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.mappings;
 
-import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionDto;
 import com.multi.vidulum.bank_data_ingestion.mappings.commands.configure_mapping.ConfigureCategoryMappingCommand;
 import com.multi.vidulum.bank_data_ingestion.mappings.commands.configure_mapping.ConfigureCategoryMappingResult;
 import com.multi.vidulum.bank_data_ingestion.mappings.commands.delete_all_mappings.DeleteAllCategoryMappingsCommand;

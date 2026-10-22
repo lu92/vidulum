@@ -7,6 +7,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.Test;
 
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -40,9 +41,11 @@ class CanonicalRowIsSelfContainedTest {
         ArchRule rule = noClasses().that().resideInAPackage("..bank_data_ingestion.canonical..")
                 .should().dependOnClassesThat()
                 .resideInAnyPackage(
-                        "..bank_data_ingestion.app..",
-                        "..bank_data_ingestion.domain..",
-                        "..bank_data_ingestion.infrastructure..")
+                        "..bank_data_ingestion.intake..",
+                        "..bank_data_ingestion.staging..",
+                        "..bank_data_ingestion.mappings..",
+                        "..bank_data_ingestion.importing..",
+                        "..bank_data_ingestion.classification..")
                 .because("intake produces the canonical row, staging stores it and classification "
                         + "reads it - a vocabulary that knows its users is not a vocabulary");
 
@@ -77,9 +80,10 @@ class CanonicalRowIsSelfContainedTest {
         ArchRule rule = noClasses().that().resideInAPackage("..bank_data_ingestion.intake..")
                 .should().dependOnClassesThat()
                 .resideInAnyPackage(
-                        "..bank_data_ingestion.app..",
-                        "..bank_data_ingestion.domain..",
-                        "..bank_data_ingestion.infrastructure..",
+                        "..bank_data_ingestion.staging..",
+                        "..bank_data_ingestion.mappings..",
+                        "..bank_data_ingestion.importing..",
+                        "..bank_data_ingestion.classification..",
                         "..bank_data_ai_categorization..")
                 .because("a parser that knows about staging sessions is no longer a parser");
 
@@ -92,13 +96,13 @@ class CanonicalRowIsSelfContainedTest {
      * parse, stage, map or import.
      *
      * <p>It holds only because the session's classification progress stayed in staging - see this
-     * section's {@code package-info}. The controller is allowed: it names every section's commands
-     * by definition, and splitting it is a later step of F67.
+     * section's {@code package-info}. Nothing is excused any more: the shared controller that used
+     * to be was split along the sections, so the rule covers the whole module.
      */
     @Test
     void nothingDependsOnClassification() {
         ArchRule rule = noClasses().that()
-                .resideOutsideOfPackages("..bank_data_ingestion.classification..", "..bank_data_ingestion.app")
+                .resideOutsideOfPackages("..bank_data_ingestion.classification..")
                 .should().dependOnClassesThat()
                 .resideInAPackage("..bank_data_ingestion.classification..")
                 .because("a leaf is what makes the classifier replaceable: swap it and intake, "
@@ -119,9 +123,7 @@ class CanonicalRowIsSelfContainedTest {
         ArchRule rule = noClasses().that().resideInAPackage("..bank_data_ingestion.mappings..")
                 .should().dependOnClassesThat()
                 .resideInAnyPackage(
-                        "..bank_data_ingestion.app..",
-                        "..bank_data_ingestion.domain..",
-                        "..bank_data_ingestion.infrastructure..",
+                        "..bank_data_ingestion.staging..",
                         "..bank_data_ingestion.importing..",
                         "..bank_data_ingestion.classification..",
                         "..bank_data_ingestion.intake..",
@@ -149,6 +151,52 @@ class CanonicalRowIsSelfContainedTest {
                         "..bank_data_ingestion.classification..",
                         "..bank_data_ai_categorization..")
                 .because("an import writes what staging decided, and by then the classifier is done");
+
+        rule.check(moduleClasses);
+    }
+
+    /**
+     * Every class in this module belongs to a named section - there is no {@code app},
+     * {@code domain} or {@code infrastructure} left at module level.
+     *
+     * <p><b>This is the rule that says the job is finished rather than started.</b> Those three
+     * packages were where everything lived before F67, and while they existed a section could reach
+     * into them for a repository, a DTO or a config and no rule would notice, because "the rest of
+     * the module" had no name. The only class directly under the module root is
+     * {@code BankDataIngestionConfig}, whose four settings belong to different sections.
+     */
+    @Test
+    void everyClassBelongsToASection() {
+        ArchRule rule = classes().that().resideInAPackage("..bank_data_ingestion..")
+                .should().resideInAnyPackage(
+                        "..bank_data_ingestion",
+                        "..bank_data_ingestion.canonical..",
+                        "..bank_data_ingestion.intake..",
+                        "..bank_data_ingestion.staging..",
+                        "..bank_data_ingestion.mappings..",
+                        "..bank_data_ingestion.importing..",
+                        "..bank_data_ingestion.classification..")
+                .because("a package called app is a place to hide things the layout does not account for");
+
+        rule.check(moduleClasses);
+    }
+
+    /**
+     * Staging may read the canonical row and the mappings, and must not know the importer or the
+     * classifier.
+     *
+     * <p>The direction is what the import flow actually needs: staging decides what a row is and
+     * whether it may be imported, {@code importing} then writes what staging decided, and
+     * classification is asked by staging's own session - never the other way round.
+     */
+    @Test
+    void stagingDoesNotKnowTheImporterOrTheClassifier() {
+        ArchRule rule = noClasses().that().resideInAPackage("..bank_data_ingestion.staging..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        "..bank_data_ingestion.importing..",
+                        "..bank_data_ingestion.classification..")
+                .because("staging hands its rows on; what happens to them afterwards is not its business");
 
         rule.check(moduleClasses);
     }

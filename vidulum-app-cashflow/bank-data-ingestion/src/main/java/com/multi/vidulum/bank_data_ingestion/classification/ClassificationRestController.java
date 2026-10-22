@@ -1,13 +1,12 @@
 package com.multi.vidulum.bank_data_ingestion.classification;
 
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
-import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionDto;
 import com.multi.vidulum.bank_data_ai_categorization.api.AiCategorizationResult;
 import com.multi.vidulum.bank_data_ingestion.canonical.*;
 import com.multi.vidulum.bank_data_ingestion.classification.commands.accept_ai_suggestions.AcceptAiSuggestionsCommand;
 import com.multi.vidulum.bank_data_ingestion.classification.commands.accept_ai_suggestions.AcceptAiSuggestionsResult;
 import com.multi.vidulum.bank_data_ingestion.classification.commands.ai_categorize.AiCategorizeCommand;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import java.util.List;
@@ -38,7 +37,7 @@ public class ClassificationRestController {
      * Analyzes staged transactions and returns category structure and pattern mapping suggestions.
      */
     @PostMapping("/staging/{stagingSessionId}/ai-categorize")
-    public BankDataIngestionDto.AiCategorizeResponse aiCategorize(
+    public ClassificationDto.AiCategorizeResponse aiCategorize(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("stagingSessionId") String stagingSessionId) {
 
@@ -57,10 +56,10 @@ public class ClassificationRestController {
      * Creates categories, applies mappings, and optionally caches patterns for future imports.
      */
     @PostMapping("/staging/{stagingSessionId}/accept-ai")
-    public BankDataIngestionDto.AcceptAiSuggestionsResponse acceptAiSuggestions(
+    public ClassificationDto.AcceptAiSuggestionsResponse acceptAiSuggestions(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("stagingSessionId") String stagingSessionId,
-            @RequestBody BankDataIngestionDto.AcceptAiSuggestionsRequest request) {
+            @RequestBody ClassificationDto.AcceptAiSuggestionsRequest request) {
 
         AcceptAiSuggestionsResult result = commandGateway.send(
                 new AcceptAiSuggestionsCommand(
@@ -76,8 +75,8 @@ public class ClassificationRestController {
 
         return toAcceptAiSuggestionsResponse(result);
     }
-    private BankDataIngestionDto.AiCategorizeResponse toAiCategorizeResponse(AiCategorizationResult result) {
-        return BankDataIngestionDto.AiCategorizeResponse.builder()
+    private ClassificationDto.AiCategorizeResponse toAiCategorizeResponse(AiCategorizationResult result) {
+        return ClassificationDto.AiCategorizeResponse.builder()
                 .sessionId(result.sessionId())
                 .status(result.status())
                 .suggestedStructure(toSuggestedStructureJson(result.suggestedStructure()))
@@ -97,15 +96,15 @@ public class ClassificationRestController {
                         .map(this::toBankCategoryFallbackJson)
                         .toList())
                 .stats(toCategorizationStatsJson(result.stats()))
-                .cost(BankDataIngestionDto.AiCostJson.builder()
+                .cost(ClassificationDto.AiCostJson.builder()
                         .tokensUsed(result.cost().tokensUsed())
                         .estimatedCost(result.cost().estimatedCost())
                         .build())
                 .build();
     }
-    private BankDataIngestionDto.AiAutoCategorizableSuggestionJson toAutoCategorizableSuggestionJson(
+    private ClassificationDto.AiAutoCategorizableSuggestionJson toAutoCategorizableSuggestionJson(
             AiCategorizationResult.AutoCategorizableSuggestion suggestion) {
-        return BankDataIngestionDto.AiAutoCategorizableSuggestionJson.builder()
+        return ClassificationDto.AiAutoCategorizableSuggestionJson.builder()
                 .classification(suggestion.classification())
                 .suggestedCategory(suggestion.suggestedCategory())
                 .parentCategory(suggestion.parentCategory())
@@ -115,9 +114,9 @@ public class ClassificationRestController {
                 .sampleTransactions(suggestion.sampleTransactions())
                 .build();
     }
-    private BankDataIngestionDto.AiBankCategorySuggestionJson toBankCategorySuggestionJson(
+    private ClassificationDto.AiBankCategorySuggestionJson toBankCategorySuggestionJson(
             AiCategorizationResult.BankCategorySuggestion suggestion) {
-        return BankDataIngestionDto.AiBankCategorySuggestionJson.builder()
+        return ClassificationDto.AiBankCategorySuggestionJson.builder()
                 .bankCategory(suggestion.bankCategory())
                 .targetCategory(suggestion.targetCategory())
                 .parentCategory(suggestion.parentCategory())
@@ -128,9 +127,9 @@ public class ClassificationRestController {
                 .reason(suggestion.reason())
                 .build();
     }
-    private BankDataIngestionDto.AiContextMappingJson toContextMappingJson(
+    private ClassificationDto.AiContextMappingJson toContextMappingJson(
             AiCategorizationResult.ContextMapping mapping) {
-        return BankDataIngestionDto.AiContextMappingJson.builder()
+        return ClassificationDto.AiContextMappingJson.builder()
                 .pattern(mapping.pattern())
                 .bankCategory(mapping.bankCategory())
                 .suggestedCategory(mapping.suggestedCategory())
@@ -144,9 +143,9 @@ public class ClassificationRestController {
                 .totalAmount(mapping.totalAmount().doubleValue())
                 .build();
     }
-    private BankDataIngestionDto.AiBankCategoryFallbackJson toBankCategoryFallbackJson(
+    private ClassificationDto.AiBankCategoryFallbackJson toBankCategoryFallbackJson(
             AiCategorizationResult.BankCategoryFallback fallback) {
-        return BankDataIngestionDto.AiBankCategoryFallbackJson.builder()
+        return ClassificationDto.AiBankCategoryFallbackJson.builder()
                 .bankCategory(fallback.bankCategory())
                 .defaultTarget(fallback.defaultTarget())
                 .parentCategory(fallback.parentCategory())
@@ -155,9 +154,9 @@ public class ClassificationRestController {
                 .reason(fallback.reason())
                 .build();
     }
-    private BankDataIngestionDto.AiSuggestedStructureJson toSuggestedStructureJson(
+    private ClassificationDto.AiSuggestedStructureJson toSuggestedStructureJson(
             AiCategorizationResult.SuggestedStructure structure) {
-        return BankDataIngestionDto.AiSuggestedStructureJson.builder()
+        return ClassificationDto.AiSuggestedStructureJson.builder()
                 .outflow(structure.outflow().stream()
                         .map(this::toCategoryNodeJson)
                         .toList())
@@ -166,18 +165,18 @@ public class ClassificationRestController {
                         .toList())
                 .build();
     }
-    private BankDataIngestionDto.AiCategoryNodeJson toCategoryNodeJson(
+    private ClassificationDto.AiCategoryNodeJson toCategoryNodeJson(
             AiCategorizationResult.CategoryNode node) {
-        return BankDataIngestionDto.AiCategoryNodeJson.builder()
+        return ClassificationDto.AiCategoryNodeJson.builder()
                 .name(node.name())
                 .subCategories(node.subCategories())
                 .transactionCount(node.transactionCount())
                 .totalAmount(node.totalAmount().doubleValue())
                 .build();
     }
-    private BankDataIngestionDto.AiPatternSuggestionJson toPatternSuggestionJson(
+    private ClassificationDto.AiPatternSuggestionJson toPatternSuggestionJson(
             AiCategorizationResult.PatternSuggestion suggestion) {
-        return BankDataIngestionDto.AiPatternSuggestionJson.builder()
+        return ClassificationDto.AiPatternSuggestionJson.builder()
                 .pattern(suggestion.pattern())
                 .sampleTransaction(suggestion.sampleTransaction())
                 .suggestedCategory(suggestion.suggestedCategory())
@@ -190,9 +189,9 @@ public class ClassificationRestController {
                 .needsUserInput(suggestion.needsUserInput())
                 .build();
     }
-    private BankDataIngestionDto.AiCategorizationStatsJson toCategorizationStatsJson(
+    private ClassificationDto.AiCategorizationStatsJson toCategorizationStatsJson(
             AiCategorizationResult.CategorizationStats stats) {
-        return BankDataIngestionDto.AiCategorizationStatsJson.builder()
+        return ClassificationDto.AiCategorizationStatsJson.builder()
                 .totalPatterns(stats.totalPatterns())
                 .autoAccepted(stats.autoAccepted())
                 .suggested(stats.suggested())
@@ -203,7 +202,7 @@ public class ClassificationRestController {
                 .build();
     }
     private List<AcceptAiSuggestionsCommand.CategoryToCreate> toCategoriesToCreate(
-            List<BankDataIngestionDto.AiCategoryToCreateJson> categories) {
+            List<ClassificationDto.AiCategoryToCreateJson> categories) {
         if (categories == null) return List.of();
         return categories.stream()
                 .map(c -> new AcceptAiSuggestionsCommand.CategoryToCreate(
@@ -214,7 +213,7 @@ public class ClassificationRestController {
                 .toList();
     }
     private List<AcceptAiSuggestionsCommand.MappingToApply> toMappingsToApply(
-            List<BankDataIngestionDto.AiMappingToApplyJson> mappings) {
+            List<ClassificationDto.AiMappingToApplyJson> mappings) {
         if (mappings == null) return List.of();
         return mappings.stream()
                 .map(m -> new AcceptAiSuggestionsCommand.MappingToApply(
@@ -228,7 +227,7 @@ public class ClassificationRestController {
                 .toList();
     }
     private List<AcceptAiSuggestionsCommand.BankCategoryMappingToApply> toBankCategoryMappingsToApply(
-            List<BankDataIngestionDto.AiBankCategoryMappingToApplyJson> mappings) {
+            List<ClassificationDto.AiBankCategoryMappingToApplyJson> mappings) {
         if (mappings == null) return List.of();
         return mappings.stream()
                 .map(m -> new AcceptAiSuggestionsCommand.BankCategoryMappingToApply(
@@ -240,9 +239,9 @@ public class ClassificationRestController {
                 ))
                 .toList();
     }
-    private BankDataIngestionDto.AcceptAiSuggestionsResponse toAcceptAiSuggestionsResponse(
+    private ClassificationDto.AcceptAiSuggestionsResponse toAcceptAiSuggestionsResponse(
             AcceptAiSuggestionsResult result) {
-        return BankDataIngestionDto.AcceptAiSuggestionsResponse.builder()
+        return ClassificationDto.AcceptAiSuggestionsResponse.builder()
                 .cashFlowId(result.cashFlowId().id())
                 .sessionId(result.sessionId().id())
                 .status(result.status())
@@ -250,7 +249,7 @@ public class ClassificationRestController {
                 .mappingsApplied(result.mappingsApplied())
                 .patternsCached(result.patternsCached())
                 .warnings(result.warnings())
-                .validationSummary(BankDataIngestionDto.AiStagingValidationSummaryJson.builder()
+                .validationSummary(ClassificationDto.AiStagingValidationSummaryJson.builder()
                         .totalTransactions(result.validationSummary().totalTransactions())
                         .validTransactions(result.validationSummary().validTransactions())
                         .invalidTransactions(result.validationSummary().invalidTransactions())

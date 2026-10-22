@@ -1,23 +1,22 @@
 package com.multi.vidulum.bank_data_ingestion.staging;
 
 import com.multi.vidulum.common.auth.AuthenticatedUserProvider;
-import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionDto;
-import com.multi.vidulum.bank_data_ingestion.app.commands.delete_staging_session.DeleteStagingSessionCommand;
-import com.multi.vidulum.bank_data_ingestion.app.commands.delete_staging_session.DeleteStagingSessionResult;
-import com.multi.vidulum.bank_data_ingestion.app.commands.force_uncategorized.ForceUncategorizedCommand;
-import com.multi.vidulum.bank_data_ingestion.app.commands.force_uncategorized.ForceUncategorizedResult;
-import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingCommand;
-import com.multi.vidulum.bank_data_ingestion.app.commands.revalidate_staging.RevalidateStagingResult;
-import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsCommand;
-import com.multi.vidulum.bank_data_ingestion.app.commands.stage_transactions.StageTransactionsResult;
-import com.multi.vidulum.bank_data_ingestion.app.commands.upload_csv.UploadCsvCommand;
-import com.multi.vidulum.bank_data_ingestion.app.commands.upload_csv.UploadCsvResult;
-import com.multi.vidulum.bank_data_ingestion.app.queries.get_staging_preview.GetStagingPreviewQuery;
-import com.multi.vidulum.bank_data_ingestion.app.queries.get_staging_preview.GetStagingPreviewResult;
-import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.ListStagingSessionsQuery;
-import com.multi.vidulum.bank_data_ingestion.app.queries.list_staging_sessions.ListStagingSessionsResult;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.delete_staging_session.DeleteStagingSessionCommand;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.delete_staging_session.DeleteStagingSessionResult;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.force_uncategorized.ForceUncategorizedCommand;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.force_uncategorized.ForceUncategorizedResult;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.revalidate_staging.RevalidateStagingCommand;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.revalidate_staging.RevalidateStagingResult;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.stage_transactions.StageTransactionsCommand;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.stage_transactions.StageTransactionsResult;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.upload_csv.UploadCsvCommand;
+import com.multi.vidulum.bank_data_ingestion.staging.commands.upload_csv.UploadCsvResult;
+import com.multi.vidulum.bank_data_ingestion.staging.queries.get_staging_preview.GetStagingPreviewQuery;
+import com.multi.vidulum.bank_data_ingestion.staging.queries.get_staging_preview.GetStagingPreviewResult;
+import com.multi.vidulum.bank_data_ingestion.staging.queries.list_staging_sessions.ListStagingSessionsQuery;
+import com.multi.vidulum.bank_data_ingestion.staging.queries.list_staging_sessions.ListStagingSessionsResult;
 import com.multi.vidulum.bank_data_ingestion.canonical.*;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -49,7 +48,7 @@ public class StagingRestController {
      * Allows users to return to unfinished imports.
      */
     @GetMapping("/staging")
-    public BankDataIngestionDto.ListStagingSessionsResponse listStagingSessions(
+    public StagingDto.ListStagingSessionsResponse listStagingSessions(
             @PathVariable("cashFlowId") String cashFlowId) {
 
         ListStagingSessionsResult result = queryGateway.send(
@@ -63,9 +62,9 @@ public class StagingRestController {
      * Validates transactions, applies category mappings, and returns a staging preview.
      */
     @PostMapping("/staging")
-    public BankDataIngestionDto.StageTransactionsResponse stageTransactions(
+    public StagingDto.StageTransactionsResponse stageTransactions(
             @PathVariable("cashFlowId") String cashFlowId,
-            @RequestBody BankDataIngestionDto.StageTransactionsRequest request) {
+            @RequestBody StagingDto.StageTransactionsRequest request) {
 
         List<StageTransactionsCommand.BankTransaction> transactions = request.getTransactions().stream()
                 .map(this::toBankTransaction)
@@ -84,7 +83,7 @@ public class StagingRestController {
      * Get a preview of staged transactions for a staging session.
      */
     @GetMapping("/staging/{stagingSessionId}")
-    public BankDataIngestionDto.GetStagingPreviewResponse getStagingPreview(
+    public StagingDto.GetStagingPreviewResponse getStagingPreview(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("stagingSessionId") String stagingSessionId) {
 
@@ -101,7 +100,7 @@ public class StagingRestController {
      * Delete a staging session and all its staged transactions.
      */
     @DeleteMapping("/staging/{stagingSessionId}")
-    public BankDataIngestionDto.DeleteStagingSessionResponse deleteStagingSession(
+    public StagingDto.DeleteStagingSessionResponse deleteStagingSession(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("stagingSessionId") String stagingSessionId) {
 
@@ -112,7 +111,7 @@ public class StagingRestController {
                 )
         );
 
-        return BankDataIngestionDto.DeleteStagingSessionResponse.builder()
+        return StagingDto.DeleteStagingSessionResponse.builder()
                 .cashFlowId(result.cashFlowId().id())
                 .stagingSessionId(result.stagingSessionId().id())
                 .deleted(result.deleted())
@@ -124,7 +123,7 @@ public class StagingRestController {
      * Updates transactions that were PENDING_MAPPING to have proper mapped data.
      */
     @PostMapping("/staging/{stagingSessionId}/revalidate")
-    public BankDataIngestionDto.RevalidateStagingResponse revalidateStaging(
+    public StagingDto.RevalidateStagingResponse revalidateStaging(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("stagingSessionId") String stagingSessionId) {
 
@@ -150,7 +149,7 @@ public class StagingRestController {
      * - userId: User ID who created this session
      */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public BankDataIngestionDto.UploadCsvResponse uploadCsv(
+    public StagingDto.UploadCsvResponse uploadCsv(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "transformationId", required = false) String transformationId,
@@ -194,7 +193,7 @@ public class StagingRestController {
      * After this call, the staging session should be READY_FOR_IMPORT (unless there are other errors).
      */
     @PostMapping("/staging/{stagingSessionId}/force-uncategorized")
-    public BankDataIngestionDto.ForceUncategorizedResponse forceUncategorized(
+    public StagingDto.ForceUncategorizedResponse forceUncategorized(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("stagingSessionId") String stagingSessionId) {
 
@@ -207,15 +206,15 @@ public class StagingRestController {
 
         return toForceUncategorizedResponse(result);
     }
-    private BankDataIngestionDto.ForceUncategorizedResponse toForceUncategorizedResponse(
+    private StagingDto.ForceUncategorizedResponse toForceUncategorizedResponse(
             ForceUncategorizedResult result) {
-        return BankDataIngestionDto.ForceUncategorizedResponse.builder()
+        return StagingDto.ForceUncategorizedResponse.builder()
                 .cashFlowId(result.cashFlowId().id())
                 .stagingSessionId(result.stagingSessionId().id())
                 .status(result.status().name())
                 .transactionsUpdated(result.transactionsUpdated())
                 .categoryCreated(result.categoryCreated())
-                .validationSummary(BankDataIngestionDto.ForceUncategorizedValidationSummaryJson.builder()
+                .validationSummary(StagingDto.ForceUncategorizedValidationSummaryJson.builder()
                         .totalTransactions(result.validationSummary().totalTransactions())
                         .validTransactions(result.validationSummary().validTransactions())
                         .invalidTransactions(result.validationSummary().invalidTransactions())
@@ -224,31 +223,31 @@ public class StagingRestController {
                         .build())
                 .build();
     }
-    private BankDataIngestionDto.UploadCsvResponse toUploadCsvResponse(UploadCsvResult result) {
-        BankDataIngestionDto.ParseSummaryJson parseSummary = BankDataIngestionDto.ParseSummaryJson.builder()
+    private StagingDto.UploadCsvResponse toUploadCsvResponse(UploadCsvResult result) {
+        StagingDto.ParseSummaryJson parseSummary = StagingDto.ParseSummaryJson.builder()
                 .totalRows(result.parseResult().totalRows())
                 .successfulRows(result.parseResult().successfulRows())
                 .failedRows(result.parseResult().failedRows())
                 .errors(result.parseResult().errors().stream()
-                        .map(e -> BankDataIngestionDto.ParseErrorJson.builder()
+                        .map(e -> StagingDto.ParseErrorJson.builder()
                                 .rowNumber(e.rowNumber())
                                 .message(e.message())
                                 .build())
                         .toList())
                 .build();
 
-        BankDataIngestionDto.StageTransactionsResponse stagingResponse = null;
+        StagingDto.StageTransactionsResponse stagingResponse = null;
         if (result.stagingResult() != null) {
             stagingResponse = toStageTransactionsResponse(result.stagingResult());
         }
 
-        return BankDataIngestionDto.UploadCsvResponse.builder()
+        return StagingDto.UploadCsvResponse.builder()
                 .parseSummary(parseSummary)
                 .stagingResult(stagingResponse)
                 .build();
     }
     private StageTransactionsCommand.BankTransaction toBankTransaction(
-            BankDataIngestionDto.BankTransactionJson json) {
+            StagingDto.BankTransactionJson json) {
         return new StageTransactionsCommand.BankTransaction(
                 json.getBankTransactionId(),
                 json.getName(),
@@ -264,10 +263,10 @@ public class StagingRestController {
                 json.getClassification()
         );
     }
-    private BankDataIngestionDto.StageTransactionsResponse toStageTransactionsResponse(
+    private StagingDto.StageTransactionsResponse toStageTransactionsResponse(
             StageTransactionsResult result) {
 
-        return BankDataIngestionDto.StageTransactionsResponse.builder()
+        return StagingDto.StageTransactionsResponse.builder()
                 .stagingSessionId(result.stagingSessionId().id())
                 .cashFlowId(result.cashFlowId().id())
                 .status(result.status().name())
@@ -290,10 +289,10 @@ public class StagingRestController {
                         .toList())
                 .build();
     }
-    private BankDataIngestionDto.GetStagingPreviewResponse toGetStagingPreviewResponse(
+    private StagingDto.GetStagingPreviewResponse toGetStagingPreviewResponse(
             GetStagingPreviewResult result) {
 
-        return BankDataIngestionDto.GetStagingPreviewResponse.builder()
+        return StagingDto.GetStagingPreviewResponse.builder()
                 .stagingSessionId(result.stagingSessionId().id())
                 .cashFlowId(result.cashFlowId().id())
                 .status(result.status().name())
@@ -313,27 +312,27 @@ public class StagingRestController {
                         .toList())
                 .build();
     }
-    private BankDataIngestionDto.StagingSummaryJson toStagingSummaryJson(
+    private StagingDto.StagingSummaryJson toStagingSummaryJson(
             StageTransactionsResult.StagingSummary summary) {
-        return BankDataIngestionDto.StagingSummaryJson.builder()
+        return StagingDto.StagingSummaryJson.builder()
                 .totalTransactions(summary.totalTransactions())
                 .validTransactions(summary.validTransactions())
                 .invalidTransactions(summary.invalidTransactions())
                 .duplicateTransactions(summary.duplicateTransactions())
                 .build();
     }
-    private BankDataIngestionDto.StagingSummaryJson toStagingSummaryJson(
+    private StagingDto.StagingSummaryJson toStagingSummaryJson(
             GetStagingPreviewResult.StagingSummary summary) {
-        return BankDataIngestionDto.StagingSummaryJson.builder()
+        return StagingDto.StagingSummaryJson.builder()
                 .totalTransactions(summary.totalTransactions())
                 .validTransactions(summary.validTransactions())
                 .invalidTransactions(summary.invalidTransactions())
                 .duplicateTransactions(summary.duplicateTransactions())
                 .build();
     }
-    private BankDataIngestionDto.CategoryBreakdownJson toCategoryBreakdownJson(
+    private StagingDto.CategoryBreakdownJson toCategoryBreakdownJson(
             StageTransactionsResult.CategoryBreakdown breakdown) {
-        return BankDataIngestionDto.CategoryBreakdownJson.builder()
+        return StagingDto.CategoryBreakdownJson.builder()
                 .targetCategory(breakdown.targetCategory())
                 .parentCategory(breakdown.parentCategory())
                 .transactionCount(breakdown.transactionCount())
@@ -343,9 +342,9 @@ public class StagingRestController {
                 .isNewCategory(breakdown.isNewCategory())
                 .build();
     }
-    private BankDataIngestionDto.CategoryBreakdownJson toCategoryBreakdownJsonFromPreview(
+    private StagingDto.CategoryBreakdownJson toCategoryBreakdownJsonFromPreview(
             GetStagingPreviewResult.CategoryBreakdown breakdown) {
-        return BankDataIngestionDto.CategoryBreakdownJson.builder()
+        return StagingDto.CategoryBreakdownJson.builder()
                 .targetCategory(breakdown.targetCategory())
                 .parentCategory(breakdown.parentCategory())
                 .transactionCount(breakdown.transactionCount())
@@ -355,25 +354,25 @@ public class StagingRestController {
                 .isNewCategory(breakdown.isNewCategory())
                 .build();
     }
-    private BankDataIngestionDto.CategoryToCreateJson toCategoryToCreateJson(
+    private StagingDto.CategoryToCreateJson toCategoryToCreateJson(
             StageTransactionsResult.CategoryToCreate category) {
-        return BankDataIngestionDto.CategoryToCreateJson.builder()
+        return StagingDto.CategoryToCreateJson.builder()
                 .name(category.name())
                 .parent(category.parent())
                 .type(category.type())
                 .build();
     }
-    private BankDataIngestionDto.CategoryToCreateJson toCategoryToCreateJsonFromPreview(
+    private StagingDto.CategoryToCreateJson toCategoryToCreateJsonFromPreview(
             GetStagingPreviewResult.CategoryToCreate category) {
-        return BankDataIngestionDto.CategoryToCreateJson.builder()
+        return StagingDto.CategoryToCreateJson.builder()
                 .name(category.name())
                 .parent(category.parent())
                 .type(category.type())
                 .build();
     }
-    private BankDataIngestionDto.MonthlyBreakdownJson toMonthlyBreakdownJson(
+    private StagingDto.MonthlyBreakdownJson toMonthlyBreakdownJson(
             StageTransactionsResult.MonthlyBreakdown breakdown) {
-        return BankDataIngestionDto.MonthlyBreakdownJson.builder()
+        return StagingDto.MonthlyBreakdownJson.builder()
                 .month(breakdown.month())
                 .inflowTotal(breakdown.inflowTotal().getAmount().doubleValue())
                 .outflowTotal(breakdown.outflowTotal().getAmount().doubleValue())
@@ -381,9 +380,9 @@ public class StagingRestController {
                 .transactionCount(breakdown.transactionCount())
                 .build();
     }
-    private BankDataIngestionDto.MonthlyBreakdownJson toMonthlyBreakdownJsonFromPreview(
+    private StagingDto.MonthlyBreakdownJson toMonthlyBreakdownJsonFromPreview(
             GetStagingPreviewResult.MonthlyBreakdown breakdown) {
-        return BankDataIngestionDto.MonthlyBreakdownJson.builder()
+        return StagingDto.MonthlyBreakdownJson.builder()
                 .month(breakdown.month())
                 .inflowTotal(breakdown.inflowTotal().getAmount().doubleValue())
                 .outflowTotal(breakdown.outflowTotal().getAmount().doubleValue())
@@ -391,25 +390,25 @@ public class StagingRestController {
                 .transactionCount(breakdown.transactionCount())
                 .build();
     }
-    private BankDataIngestionDto.DuplicateInfoJson toDuplicateInfoJson(
+    private StagingDto.DuplicateInfoJson toDuplicateInfoJson(
             StageTransactionsResult.DuplicateInfo duplicate) {
-        return BankDataIngestionDto.DuplicateInfoJson.builder()
+        return StagingDto.DuplicateInfoJson.builder()
                 .bankTransactionId(duplicate.bankTransactionId())
                 .name(duplicate.name())
                 .duplicateOf(duplicate.duplicateOf())
                 .build();
     }
-    private BankDataIngestionDto.UnmappedCategoryJson toUnmappedCategoryJson(
+    private StagingDto.UnmappedCategoryJson toUnmappedCategoryJson(
             StageTransactionsResult.UnmappedCategory unmapped) {
-        return BankDataIngestionDto.UnmappedCategoryJson.builder()
+        return StagingDto.UnmappedCategoryJson.builder()
                 .bankCategory(unmapped.bankCategory())
                 .count(unmapped.count())
                 .type(unmapped.type())
                 .build();
     }
-    private BankDataIngestionDto.StagedTransactionPreviewJson toStagedTransactionPreviewJson(
+    private StagingDto.StagedTransactionPreviewJson toStagedTransactionPreviewJson(
             GetStagingPreviewResult.StagedTransactionPreview preview) {
-        return BankDataIngestionDto.StagedTransactionPreviewJson.builder()
+        return StagingDto.StagedTransactionPreviewJson.builder()
                 .stagedTransactionId(preview.stagedTransactionId())
                 .bankTransactionId(preview.bankTransactionId())
                 .name(preview.name())
@@ -421,16 +420,16 @@ public class StagingRestController {
                 .currency(preview.amount().getCurrency())
                 .type(preview.type())
                 .paidDate(preview.paidDate())
-                .validation(BankDataIngestionDto.ValidationResultJson.builder()
+                .validation(StagingDto.ValidationResultJson.builder()
                         .status(preview.validation().status())
                         .errors(preview.validation().errors())
                         .duplicateOf(preview.validation().duplicateOf())
                         .build())
                 .build();
     }
-    private BankDataIngestionDto.ListStagingSessionsResponse toListStagingSessionsResponse(
+    private StagingDto.ListStagingSessionsResponse toListStagingSessionsResponse(
             ListStagingSessionsResult result) {
-        return BankDataIngestionDto.ListStagingSessionsResponse.builder()
+        return StagingDto.ListStagingSessionsResponse.builder()
                 .cashFlowId(result.cashFlowId().id())
                 .stagingSessions(result.stagingSessions().stream()
                         .map(this::toStagingSessionSummaryJson)
@@ -438,13 +437,13 @@ public class StagingRestController {
                 .hasPendingImport(result.hasPendingImport())
                 .build();
     }
-    private BankDataIngestionDto.RevalidateStagingResponse toRevalidateStagingResponse(
+    private StagingDto.RevalidateStagingResponse toRevalidateStagingResponse(
             RevalidateStagingResult result) {
-        return BankDataIngestionDto.RevalidateStagingResponse.builder()
+        return StagingDto.RevalidateStagingResponse.builder()
                 .stagingSessionId(result.stagingSessionId().id())
                 .cashFlowId(result.cashFlowId().id())
                 .status(result.status().name())
-                .summary(BankDataIngestionDto.RevalidationSummaryJson.builder()
+                .summary(StagingDto.RevalidationSummaryJson.builder()
                         .totalTransactions(result.summary().totalTransactions())
                         .revalidatedCount(result.summary().revalidatedCount())
                         .stillPendingCount(result.summary().stillPendingCount())
@@ -455,14 +454,14 @@ public class StagingRestController {
                 .stillUnmappedCategories(result.stillUnmappedCategories())
                 .build();
     }
-    private BankDataIngestionDto.StagingSessionSummaryJson toStagingSessionSummaryJson(
+    private StagingDto.StagingSessionSummaryJson toStagingSessionSummaryJson(
             ListStagingSessionsResult.StagingSessionSummary summary) {
-        return BankDataIngestionDto.StagingSessionSummaryJson.builder()
+        return StagingDto.StagingSessionSummaryJson.builder()
                 .stagingSessionId(summary.stagingSessionId().id())
                 .status(summary.status())
                 .createdAt(summary.createdAt())
                 .expiresAt(summary.expiresAt())
-                .counts(BankDataIngestionDto.StagingSessionCountsJson.builder()
+                .counts(StagingDto.StagingSessionCountsJson.builder()
                         .totalTransactions(summary.counts().totalTransactions())
                         .validTransactions(summary.counts().validTransactions())
                         .invalidTransactions(summary.counts().invalidTransactions())

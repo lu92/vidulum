@@ -2,7 +2,7 @@ package com.multi.vidulum.bank_data_ingestion.importing.domain;
 
 import com.multi.vidulum.common.error.BusinessException;
 import com.multi.vidulum.common.error.ErrorCode;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 
 /**
  * Exception thrown when trying to create an import job that already exists.

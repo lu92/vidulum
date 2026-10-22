@@ -1,6 +1,5 @@
 package com.multi.vidulum.bank_data_ingestion.importing;
 
-import com.multi.vidulum.bank_data_ingestion.app.BankDataIngestionDto;
 import com.multi.vidulum.bank_data_ingestion.importing.commands.finalize_import.FinalizeImportJobCommand;
 import com.multi.vidulum.bank_data_ingestion.importing.commands.finalize_import.FinalizeImportJobResult;
 import com.multi.vidulum.bank_data_ingestion.importing.commands.rollback_import.RollbackImportJobCommand;
@@ -13,7 +12,7 @@ import com.multi.vidulum.bank_data_ingestion.importing.queries.list_import_jobs.
 import com.multi.vidulum.bank_data_ingestion.importing.queries.list_import_jobs.ListImportJobsResult;
 import com.multi.vidulum.bank_data_ingestion.canonical.*;
 import com.multi.vidulum.bank_data_ingestion.importing.domain.*;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.QueryGateway;
@@ -41,9 +40,9 @@ public class ImportRestController {
      */
     @PostMapping("/import")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public BankDataIngestionDto.StartImportResponse startImport(
+    public ImportDto.StartImportResponse startImport(
             @PathVariable("cashFlowId") String cashFlowId,
-            @RequestBody BankDataIngestionDto.StartImportRequest request) {
+            @RequestBody ImportDto.StartImportRequest request) {
 
         StartImportJobResult result = commandGateway.send(
                 new StartImportJobCommand(
@@ -58,7 +57,7 @@ public class ImportRestController {
      * Get the progress of an import job.
      */
     @GetMapping("/import/{jobId}")
-    public BankDataIngestionDto.GetImportProgressResponse getImportProgress(
+    public ImportDto.GetImportProgressResponse getImportProgress(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("jobId") String jobId) {
 
@@ -75,7 +74,7 @@ public class ImportRestController {
      * Rollback an import job - deletes imported transactions and optionally categories.
      */
     @PostMapping("/import/{jobId}/rollback")
-    public BankDataIngestionDto.RollbackImportResponse rollbackImport(
+    public ImportDto.RollbackImportResponse rollbackImport(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("jobId") String jobId) {
 
@@ -92,10 +91,10 @@ public class ImportRestController {
      * Finalize an import job - deletes staging data and optionally category mappings.
      */
     @PostMapping("/import/{jobId}/finalize")
-    public BankDataIngestionDto.FinalizeImportResponse finalizeImport(
+    public ImportDto.FinalizeImportResponse finalizeImport(
             @PathVariable("cashFlowId") String cashFlowId,
             @PathVariable("jobId") String jobId,
-            @RequestBody BankDataIngestionDto.FinalizeImportRequest request) {
+            @RequestBody ImportDto.FinalizeImportRequest request) {
 
         FinalizeImportJobResult result = commandGateway.send(
                 new FinalizeImportJobCommand(
@@ -111,7 +110,7 @@ public class ImportRestController {
      * List all import jobs for a CashFlow.
      */
     @GetMapping("/import")
-    public BankDataIngestionDto.ListImportJobsResponse listImportJobs(
+    public ImportDto.ListImportJobsResponse listImportJobs(
             @PathVariable("cashFlowId") String cashFlowId,
             @RequestParam(value = "status", required = false) List<String> statuses) {
 
@@ -128,8 +127,8 @@ public class ImportRestController {
 
         return toListImportJobsResponse(result);
     }
-    private BankDataIngestionDto.StartImportResponse toStartImportResponse(StartImportJobResult result) {
-        return BankDataIngestionDto.StartImportResponse.builder()
+    private ImportDto.StartImportResponse toStartImportResponse(StartImportJobResult result) {
+        return ImportDto.StartImportResponse.builder()
                 .jobId(result.jobId().id())
                 .cashFlowId(result.cashFlowId().id())
                 .stagingSessionId(result.stagingSessionId().id())
@@ -141,8 +140,8 @@ public class ImportRestController {
                 .pollUrl(result.pollUrl())
                 .build();
     }
-    private BankDataIngestionDto.GetImportProgressResponse toGetImportProgressResponse(GetImportProgressResult result) {
-        return BankDataIngestionDto.GetImportProgressResponse.builder()
+    private ImportDto.GetImportProgressResponse toGetImportProgressResponse(GetImportProgressResult result) {
+        return ImportDto.GetImportProgressResponse.builder()
                 .jobId(result.jobId().id())
                 .cashFlowId(result.cashFlowId().id())
                 .status(result.status().name())
@@ -154,26 +153,26 @@ public class ImportRestController {
                 .elapsedTimeMs(result.elapsedTimeMs())
                 .build();
     }
-    private BankDataIngestionDto.RollbackImportResponse toRollbackImportResponse(RollbackImportJobResult result) {
-        return BankDataIngestionDto.RollbackImportResponse.builder()
+    private ImportDto.RollbackImportResponse toRollbackImportResponse(RollbackImportJobResult result) {
+        return ImportDto.RollbackImportResponse.builder()
                 .jobId(result.jobId().id())
                 .status(result.status().name())
-                .rollbackSummary(BankDataIngestionDto.RollbackSummaryJson.builder()
+                .rollbackSummary(ImportDto.RollbackSummaryJson.builder()
                         .transactionsDeleted(result.rollbackSummary().transactionsDeleted())
                         .categoriesDeleted(result.rollbackSummary().categoriesDeleted())
                         .rollbackDurationMs(result.rollbackSummary().rollbackDurationMs())
                         .build())
                 .build();
     }
-    private BankDataIngestionDto.FinalizeImportResponse toFinalizeImportResponse(FinalizeImportJobResult result) {
-        return BankDataIngestionDto.FinalizeImportResponse.builder()
+    private ImportDto.FinalizeImportResponse toFinalizeImportResponse(FinalizeImportJobResult result) {
+        return ImportDto.FinalizeImportResponse.builder()
                 .jobId(result.jobId().id())
                 .status(result.status().name())
-                .cleanup(BankDataIngestionDto.CleanupSummaryJson.builder()
+                .cleanup(ImportDto.CleanupSummaryJson.builder()
                         .stagedTransactionsDeleted(result.cleanup().stagedTransactionsDeleted())
                         .mappingsDeleted(result.cleanup().mappingsDeleted())
                         .build())
-                .finalSummary(BankDataIngestionDto.FinalSummaryJson.builder()
+                .finalSummary(ImportDto.FinalSummaryJson.builder()
                         .importedAt(result.finalSummary().importedAt())
                         .totalDurationMs(result.finalSummary().totalDurationMs())
                         .categoriesCreated(result.finalSummary().categoriesCreated())
@@ -184,26 +183,26 @@ public class ImportRestController {
                         .build())
                 .build();
     }
-    private BankDataIngestionDto.ListImportJobsResponse toListImportJobsResponse(ListImportJobsResult result) {
-        return BankDataIngestionDto.ListImportJobsResponse.builder()
+    private ImportDto.ListImportJobsResponse toListImportJobsResponse(ListImportJobsResult result) {
+        return ImportDto.ListImportJobsResponse.builder()
                 .cashFlowId(result.cashFlowId().id())
                 .jobs(result.jobs().stream()
                         .map(this::toImportJobSummaryJson)
                         .toList())
                 .build();
     }
-    private BankDataIngestionDto.ImportInputJson toImportInputJson(StartImportJobResult.InputSummary input) {
-        return BankDataIngestionDto.ImportInputJson.builder()
+    private ImportDto.ImportInputJson toImportInputJson(StartImportJobResult.InputSummary input) {
+        return ImportDto.ImportInputJson.builder()
                 .totalTransactions(input.totalTransactions())
                 .validTransactions(input.validTransactions())
                 .duplicateTransactions(input.duplicateTransactions())
                 .categoriesToCreate(input.categoriesToCreate())
                 .build();
     }
-    private BankDataIngestionDto.ImportProgressJson toImportProgressJson(ImportJob.ImportProgress progress) {
+    private ImportDto.ImportProgressJson toImportProgressJson(ImportJob.ImportProgress progress) {
         if (progress == null) return null;
 
-        return BankDataIngestionDto.ImportProgressJson.builder()
+        return ImportDto.ImportProgressJson.builder()
                 .percentage(progress.percentage())
                 .currentPhase(progress.currentPhase() != null ? progress.currentPhase().name() : null)
                 .phases(progress.phases().stream()
@@ -211,8 +210,8 @@ public class ImportRestController {
                         .toList())
                 .build();
     }
-    private BankDataIngestionDto.PhaseProgressJson toPhaseProgressJson(ImportJob.PhaseProgress phase) {
-        return BankDataIngestionDto.PhaseProgressJson.builder()
+    private ImportDto.PhaseProgressJson toPhaseProgressJson(ImportJob.PhaseProgress phase) {
+        return ImportDto.PhaseProgressJson.builder()
                 .name(phase.name().name())
                 .status(phase.status().name())
                 .processed(phase.processed())
@@ -222,25 +221,25 @@ public class ImportRestController {
                 .durationMs(phase.durationMs())
                 .build();
     }
-    private BankDataIngestionDto.ImportResultJson toImportResultJson(ImportJob.ImportResult result) {
+    private ImportDto.ImportResultJson toImportResultJson(ImportJob.ImportResult result) {
         if (result == null) return null;
 
-        return BankDataIngestionDto.ImportResultJson.builder()
+        return ImportDto.ImportResultJson.builder()
                 .categoriesCreated(result.categoriesCreated())
                 .transactionsImported(result.transactionsImported())
                 .transactionsFailed(result.transactionsFailed())
                 .errors(result.errors().stream()
-                        .map(e -> BankDataIngestionDto.ImportErrorJson.builder()
+                        .map(e -> ImportDto.ImportErrorJson.builder()
                                 .bankTransactionId(e.bankTransactionId())
                                 .error(e.error())
                                 .build())
                         .toList())
                 .build();
     }
-    private BankDataIngestionDto.ImportSummaryJson toImportSummaryJson(ImportJob.ImportSummary summary) {
+    private ImportDto.ImportSummaryJson toImportSummaryJson(ImportJob.ImportSummary summary) {
         if (summary == null) return null;
 
-        return BankDataIngestionDto.ImportSummaryJson.builder()
+        return ImportDto.ImportSummaryJson.builder()
                 .categoryBreakdown(summary.categoryBreakdown().stream()
                         .map(this::toImportCategoryBreakdownJson)
                         .toList())
@@ -250,9 +249,9 @@ public class ImportRestController {
                 .totalDurationMs(summary.totalDurationMs())
                 .build();
     }
-    private BankDataIngestionDto.ImportCategoryBreakdownJson toImportCategoryBreakdownJson(
+    private ImportDto.ImportCategoryBreakdownJson toImportCategoryBreakdownJson(
             ImportJob.CategoryBreakdown breakdown) {
-        return BankDataIngestionDto.ImportCategoryBreakdownJson.builder()
+        return ImportDto.ImportCategoryBreakdownJson.builder()
                 .categoryName(breakdown.categoryName())
                 .parentCategory(breakdown.parentCategory())
                 .transactionCount(breakdown.transactionCount())
@@ -262,9 +261,9 @@ public class ImportRestController {
                 .isNewCategory(breakdown.isNewCategory())
                 .build();
     }
-    private BankDataIngestionDto.ImportMonthlyBreakdownJson toImportMonthlyBreakdownJson(
+    private ImportDto.ImportMonthlyBreakdownJson toImportMonthlyBreakdownJson(
             ImportJob.MonthlyBreakdown breakdown) {
-        return BankDataIngestionDto.ImportMonthlyBreakdownJson.builder()
+        return ImportDto.ImportMonthlyBreakdownJson.builder()
                 .month(breakdown.month())
                 .inflowTotal(breakdown.inflowTotal().getAmount().doubleValue())
                 .outflowTotal(breakdown.outflowTotal().getAmount().doubleValue())
@@ -272,9 +271,9 @@ public class ImportRestController {
                 .transactionCount(breakdown.transactionCount())
                 .build();
     }
-    private BankDataIngestionDto.ImportJobSummaryJson toImportJobSummaryJson(
+    private ImportDto.ImportJobSummaryJson toImportJobSummaryJson(
             ListImportJobsResult.ImportJobSummary summary) {
-        return BankDataIngestionDto.ImportJobSummaryJson.builder()
+        return ImportDto.ImportJobSummaryJson.builder()
                 .jobId(summary.jobId().id())
                 .status(summary.status().name())
                 .createdAt(summary.createdAt())

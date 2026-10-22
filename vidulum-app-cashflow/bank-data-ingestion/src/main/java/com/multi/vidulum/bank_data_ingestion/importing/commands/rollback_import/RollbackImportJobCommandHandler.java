@@ -2,7 +2,7 @@ package com.multi.vidulum.bank_data_ingestion.importing.commands.rollback_import
 
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.RollbackResult;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 import com.multi.vidulum.bank_data_ingestion.importing.domain.BankDataIngestionEvent.ImportJobRolledBackEvent;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;

@@ -1,6 +1,6 @@
 package com.multi.vidulum.bank_data_ingestion.classification.commands.accept_ai_suggestions;
 
-import com.multi.vidulum.bank_data_ingestion.domain.StagingSessionId;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.StagingSessionId;
 import com.multi.vidulum.common.CashFlowId;
 
 import java.util.List;

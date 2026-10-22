@@ -1,7 +1,7 @@
 package com.multi.vidulum.bank_data_ingestion.importing.infrastructure;
 
 import com.multi.vidulum.bank_data_ingestion.importing.domain.*;
-import com.multi.vidulum.bank_data_ingestion.domain.*;
+import com.multi.vidulum.bank_data_ingestion.staging.domain.*;
 import com.multi.vidulum.bank_data_ingestion.importing.infrastructure.entity.ImportJobEntity;
 import com.multi.vidulum.common.CashFlowId;
 import lombok.AllArgsConstructor;
