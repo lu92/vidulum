@@ -272,6 +272,10 @@ IngestionPhase:
          ─▶ PROVISIONING_CATEGORIES → IMPORTING → IMPORTED
                                                  └─▶ PARTIALLY_IMPORTED
   stany końcowe: IMPORTED · PARTIALLY_IMPORTED · FAILED · COMPENSATED · EXPIRED · ABANDONED
+
+  Kontrola salda NIE dodaje fazy: gdy wyciąg nie nosi salda, sesja stoi w IMPORTED z pustym
+  balanceCheck. Import jest skończony i pieniądze są w cash flow, więc oczekiwanie na sumę
+  kontrolną nie może wyglądać jak niedokończony import - a saga nie ma już nic do zrobienia.
 ```
 
 Cztery rzeczy, które ta encja naprawia, każda wzięta z tabeli porażek:
@@ -1545,8 +1549,9 @@ flow w fazie SETUP, ta strzałka potrafi zabrać dane innej sesji.
 
 ## Powiązane
 
-- [`ingestion-v2-tasks.md`](ingestion-v2-tasks.md) — **tablica zadań: 67 zadań w 9 ścieżkach, graf
-  zależności, postęp i dziennik.** Źródło prawdy o statusach; ten dokument o uzasadnieniach
+- [`ingestion-v2-tasks.md`](ingestion-v2-tasks.md) — **tablica zadań: ścieżki, graf zależności,
+  postęp i dziennik.** Źródło prawdy o statusach; ten dokument o uzasadnieniach. Liczb zadań tu nie
+  powtarzam, bo rosną — są przeliczane w sekcji „Postęp" tamtego pliku
 - [`ingestion-conductor-design/`](ingestion-conductor-design/00-index.md) — **specyfikacje per moduł**:
   kontrakty, metody, scenariusze testowe i reguły architektoniczne, plik na artefakt
 - `2026-10-23-ingestion-process-monitor.md` — F68: pomiar dzisiejszego monitora i jego sześciu

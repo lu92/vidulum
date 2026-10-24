@@ -28,7 +28,8 @@ nie ma i gdzie to jest**.
 > każda poprawka jest w nich naniesiona i oznaczona.
 
 **Zadania, statusy i graf zależności:** [`../ingestion-v2-tasks.md`](../ingestion-v2-tasks.md) —
-67 zadań wyprowadzonych z tych plików, każde z tytułem gotowym do PR i definicją ukończenia.
+zadania wyprowadzone z tych plików, każde z tytułem gotowym do PR i definicją ukończenia. Liczby są
+przeliczane w sekcji „Postęp" tamtego pliku, więc nie powtarzam ich tutaj.
 
 ## Dwie rzeczy, o których trzeba wiedzieć przed pierwszym commitem
 

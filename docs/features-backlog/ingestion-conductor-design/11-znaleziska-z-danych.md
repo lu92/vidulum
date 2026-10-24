@@ -140,7 +140,8 @@ To czyni z tego **trzecią** brakującą rzecz w `cashflow-api`:
 |---|---|---|
 | `recategorize(cashFlowId, cashChangeId, category)` | tryb `AUTOPILOT` (decyzja po imporcie) | X1 |
 | `deleteImported(cashFlowId, ids)` | kompensacja selektywna, wiele wyciągów na jeden SETUP | X2 |
-| rachunek + waluta w skeletonie | walidacja rachunku **i** walidacja waluty | **X7** |
+| rachunek + waluta w skeletonie | walidacja rachunku **i** walidacja waluty | **X7** (zrobione) |
+| `confirmBalance(cashFlowId, asOf, declared, createAdjustment)` | kontrola zgodności z bankiem po **każdym** wgraniu — kontrakt nie przenosi dziś ani salda, ani porównania ([specyfikacja 13 §7](13-import-ciagly.md)) | **X9** |
 
 ### Proponowany kształt zmiany w kontrakcie (X7)
 

@@ -134,7 +134,7 @@ record Ignore(String reason) implements NextAction {}                 // duplika
 | `shouldDispatchProvisionBeforeImport` | `ResolutionApplied` → `Dispatch(ProvisionCategoriesCommand)` |
 | `shouldNotImportWhenProvisioningFailed` | `StepReply(PROVISION_CATEGORIES, FAILED)` → `Compensate`, **nigdy** `Dispatch(ImportRowsCommand)` |
 | `shouldConfirmBalanceWithoutAskingWhenStatementCarriesIt` | plik z kolumną salda → `Dispatch(ConfirmBalanceCommand(source=FROM_STATEMENT))` **bez** pytania ownera |
-| `shouldAskForBalanceOnlyWhenStatementDoesNotCarryIt` | plik bez kolumny salda → faza oczekiwania na jedną liczbę, z `asOf` = data ostatniej operacji **w pliku** |
+| `shouldAskForBalanceOnlyWhenStatementDoesNotCarryIt` | plik bez kolumny salda → sesja zostaje w `IMPORTED` z `balanceCheck == null` i `source = DECLARED_BY_OWNER`; `asOf` = data ostatniej operacji **w pliku**. **Bez nowej fazy** — import się skończył i pieniądze są w cash flow, więc oczekiwanie na sumę kontrolną nie może wyglądać jak niedokończony import |
 | `shouldNeverCreateAnAdjustmentWithoutConsent` | różnica ≠ 0 i `createAdjustment=false` → `balanceCheck` zapisany, `adjustmentCashChangeId` **null**, zero zapisów do cash flow |
 | `shouldFinishImportedWhenNothingFailed` | `RowsImported(failed=[])` → `Finish(IMPORTED)` |
 | `shouldFinishPartiallyImportedWhenSomeRowsFailed` | `RowsImported(failed=15)` → `Finish(PARTIALLY_IMPORTED)` |

@@ -67,6 +67,11 @@ public final class CanonicalColumns {
     public static final List<String> HEADERS = List.of(/* 17 nazw w kolejności */);
 }
 
+// PLANOWANA osiemnasta, opcjonalna (zadanie S19): balanceAfter - saldo rachunku po tej operacji.
+// Nest ją podaje i jej ostatnia wartość to dokładnie ta liczba, którą przewodnik manualnego testu
+// każe przepisywać ręcznie; Pekao nie podaje jej wcale, więc pole jest nullable, a kontrola salda
+// bez pytania ownera działa tylko dla banków, które je dają (specyfikacja 13 §7).
+
 /**
  * Klucz grupy: jednostka pracy CAŁEGO pipeline'u. Grup jest ~38 tam, gdzie wierszy 402.
  * Nadawany w VALIDATE, czytany przez conductor, resolution i classification.

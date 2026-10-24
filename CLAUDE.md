@@ -804,7 +804,7 @@ column before planning against one.
 
 | File | Feature | Status | Priority |
 |------|---------|--------|----------|
-| **`ingestion-v2-tasks.md`** | **Ingestion v2 (`data-ingestion-conductor`): saga, small modules, 2 user requests instead of 7.** The board is the source of truth for statuses and links the design, the specs and the boundary audit | open — 3/67 | High |
+| **`ingestion-v2-tasks.md`** | **Ingestion v2 (`data-ingestion-conductor`): saga, small modules, 2 user requests instead of 7.** The board is the source of truth for statuses and links the design, the specs and the boundary audit | open — see its Postęp | High |
 | `2026-10-13-fee-in-cost-basis.md` | Trading fees must reach the portfolio: cost basis, realised result, and a fee paid in a third asset | open | High |
 | `2026-10-15-alerts-module-design.md` | Alerts module: who decides something is an alert — `vidulum-alerts` as a leaf consumer of domain facts | open | Medium |
 | `2026-02-14-business-analysis-alerts-cashchange-lifecycle.md` | Alerts system — business analysis + `CashChange` lifecycle; its section 7 design is superseded by the file above | open | Medium |
