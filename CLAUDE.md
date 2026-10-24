@@ -621,7 +621,7 @@ AI categorize → accept-ai (or `force-uncategorized`) → check staging → sta
 
 | | |
 |---|---|
-| test CSV | `src/test/resources/lista_operacji_20260111.csv` — Nest Bank, 402 rows, PLN, 2023-01-13 … 2025-12-31 |
+| test CSV | `nestbank_lista_operacji_20260111.csv` in vidulum-cashflow-tests — raw Nest Bank, 402 rows, PLN, 2023-01-13 … 2025-12-31. Canonical 17-column fixtures (Nest, Pekao) sit in `resources/canonical/`; its README explains how they were made |
 | `startPeriod` | **the month of the OLDEST row**, so `2023-01`. Check `suggestedStartPeriod` in the AI transform response |
 | `initialBalance` | `863.94 PLN` for that file |
 | `confirmedBalance` at attestation | the last row's "Saldo po operacji" — `76047.25 PLN` |

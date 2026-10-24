@@ -57,8 +57,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
-| `finished` | 3 | 0 | 0 | 0 | **3** |
-| `open` | 32 | 23 | 9 | 6 | **70** |
+| `finished` | 4 | 0 | 0 | 0 | **4** |
+| `open` | 31 | 23 | 9 | 6 | **69** |
 | **razem** | 35 | 23 | 9 | 6 | **73** |
 
 ## Gotowe do wzięcia
@@ -67,7 +67,6 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 
 | # | prio | zadanie | odblokowuje |
 |---|---|---|---|
-| **K12** | P0 | Fixture kanoniczny: skąd wziąć 402 wiersze | T1 |
 | **K4** | P0 | Agregator vidulum-app-ingestion i miejsce w reaktorze | K5, K7 |
 | **K9** | P0 | Osiem ErrorCode w shared-kernel jednym commitem | — |
 
@@ -88,7 +87,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **K9** | P0 | `open` | Osiem ErrorCode w shared-kernel jednym commitem | K3 | — |
 | **K10** | P0 | `open` | Testy kontraktowe protokołu | K8 | — |
 | **K11** | P0 | `open` | GroupKey zgodny z ContextMapping silnika | K5, K8 | L3, M4 |
-| **K12** | P0 | `open` | Fixture kanoniczny: skąd wziąć 402 wiersze | K3 | T1 |
+| **K12** | P0 | **finished** | Fixture kanoniczny dla dwóch banków | K3 | T1 |
 | **K13** | P0 | `open` | Katalog kluczy konfiguracyjnych z wartościami domyślnymi | K7 | — |
 | **K14** | P0 | `open` | Dopełnienie pól typów wyników kroków | K7 | — |
 
@@ -278,6 +277,7 @@ CanonicalCsvParser.parse(byte[], Charset) zamiast MultipartFile, błąd wiersza 
 - 25 testów, w tym plik złoty 402-wierszowy
 - zły wiersz nie zabiera 401 pozostałych
 - to samo wejście dwa razy → to samo id
+- UWAGA z K12: udokumentowany przepis hash(operationDate+amount+name) zlepia 30 z 402 wierszy Nest, które są różnymi transakcjami — do skrótu musi wejść coś różnicującego wiersz (saldo po operacji albo numer linii)
 
 **Pliki:** `vidulum-app-ingestion/ingestion-intake/`
 **Specyfikacja:** [02](ingestion-conductor-design/02-ingestion-intake.md)
@@ -353,19 +353,21 @@ Silnik kategoryzacji grupuje po effectiveMerchant() i odpowiada ContextMapping k
 **Pliki:** `vidulum-app-ingestion/ingestion-canonical/src/test/`
 **Specyfikacja:** [10](ingestion-conductor-design/10-granice-artefaktow.md) §4
 
-### K12 · Fixture kanoniczny: skąd wziąć 402 wiersze
+### K12 · Fixture kanoniczny dla dwóch banków
 
-**PR:** `test(ingestion): fixture kanonicznego CSV i decyzja, jak go wytworzyć`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K3 · **Odblokowuje:** T1
+**PR:** `test(ingestion): fixture kanonicznego CSV dla Nest i Pekao`  
+**Priorytet:** P0 · **Status:** **finished** · **Zależy od:** K3 · **Odblokowuje:** T1
 
-Plik 402-wierszowy w repo jest SUROWY (nestbank_lista_operacji_20260111.csv, 409 linii, kolumny banku), a jedyny fixture kanoniczny ma 23 wiersze i 11 kolumn — stary nagłówek bez merchant, paymentMethod, classification. Pliku kanonicznego 17-kolumnowego nie ma w repo wcale, a specyfikacje 02 i 09 na nim stoją.
+Pliku kanonicznego 17-kolumnowego nie było w repo wcale (ten w zasobach jest SUROWY, a jedyny kanoniczny miał 23 wiersze i 11 kolumn), a specyfikacje 02 i 09 na nim stały. Rozstrzygnięcie: transformator regułowy w tools/fixtures/ zamiast przebiegu przez model — determinizm zamiast rachunku za tokeny — plus generator przez prawdziwy adapter, włączany kluczem, na kiedyś.
 
 **Definicja ukończenia:**
-- decyzja zapisana: generowany adapterem raz i zacommitowany, czy pisany ręcznie
-- fixture 17-kolumnowy w zasobach, z liczbą wierszy podaną w pliku README obok
-- nazwa pliku poprawiona w dokumentach i w CLAUDE.md (jest nestbank_ prefix)
+- nestbank-canonical.csv 402 wiersze, pekao-canonical.csv 791 wierszy, oba 17 kolumn
+- sumy Nest zgodne CO DO GROSZA z metadanymi wyciągu: 1217096.34 i -1141912.03
+- CanonicalFixtureMatchesRawStatementTest pinuje oba pliki wobec surowych wyciągów (4 testy)
+- CanonicalCsvFixtureGenerator gotowy na klucz, pomijany bez niego
+- README obok fixture'u: proweniencja, zmierzone właściwości i świadome braki
 
-**Pliki:** `vidulum-ingestion-tests/src/test/resources/`
+**Pliki:** `tools/fixtures/make_canonical_csv.py`, `vidulum-cashflow-tests/src/test/resources/canonical/`
 **Specyfikacja:** [02](ingestion-conductor-design/02-ingestion-intake.md)
 
 ### K13 · Katalog kluczy konfiguracyjnych z wartościami domyślnymi
@@ -508,6 +510,7 @@ Progi 90/50, pokrycie 90 procent wartości, maxQuestions 7, TTL decyzji, fallbac
 - 8 kandydatów → 5 pytań i 3 IMMATERIAL
 - granice 89/90 i 49/50 zamrożone testem
 - każda nieprzepytana grupa ma zapisany powód
+- ZMIERZONE w K12: na wyciągu kartowym 90 % wartości to 35 grup przy limicie 7 — limit wygrywa, a sesja raportuje, ile wartości naprawdę pokryły pytania
 
 **Pliki:** `vidulum-app-ingestion/ingestion-conductor/.../policy/`
 **Specyfikacja:** [04](ingestion-conductor-design/04-ingestion-conductor.md) §B
@@ -1306,6 +1309,41 @@ K12 nie istnieje. W definicjach ukończenia zastępują je asercje niezmiennikow
 liczba grup = liczba unikalnych kluczy, `total = valid + duplicate + rejected`), a konkretne liczby
 wolno wpisać **po** pierwszym przebiegu na prawdziwym fixture.
 
+### 2026-10-24 — fixture kanoniczny dla dwóch banków (K12 zrobione)
+
+Klucza do modelu nie było, więc rolę, którą w adapterze gra model, odegrałem sam: najpierw
+profilowanie obu wyciągów (typy operacji, kategorie, najczęstsi kontrahenci), potem **reguły
+mapowania kolumn i enrichmentu wypisane w `tools/fixtures/make_canonical_csv.py`**. To nie jest
+przebieg produkcyjnego pipeline'u i README przy fixture'ie mówi to wprost — ale jest
+deterministyczne, darmowe i sprawdzalne.
+
+- **`nestbank-canonical.csv`** — 402 wiersze, 2023-01-13 … 2025-12-31, PLN.
+- **`pekao-canonical.csv`** — 791 wierszy, 2025-01-11 … 2026-01-09, PLN + **2 wiersze EUR**.
+- **`CanonicalFixtureMatchesRawStatementTest`** (4 testy, bez Springa, 0,08 s) pinuje oba pliki
+  wobec źródła. Najmocniejsza asercja: sumy Nest zgadzają się **co do grosza z metadanymi samego
+  banku** (`1217096.34` i `-1141912.03`), czyli przepisanie nie zgubiło pieniędzy.
+- **`CanonicalCsvFixtureGenerator`** czeka na klucz (`@EnabledIfEnvironmentVariable`) i bez niego
+  pomija się w 0,002 s. Różnica między jego wynikiem a regułowym będzie miarą tego, co wnosi model.
+
+**Trzy rzeczy, których nie dało się przewidzieć bez tych danych:**
+
+1. **Udokumentowany fallback na `bankTransactionId` koliduje.** `hash(operationDate + amount + name)`
+   zlepia **30 z 402** wierszy Nest w 13 grup — trzy osobne prowizje 10 zł tego samego dnia różnią
+   się tylko saldem po operacji. Import keyowany takim id uznałby 17 z nich za duplikaty i cicho
+   pominął. Fixture dokłada saldo do skrótu; **K6** ma to naprawić w kodzie.
+2. **Liczby z projektu były zawyżone w jedną stronę i zaniżone w drugą.** Zmierzone: Nest **22
+   grupy** (szacowałem ~38) i **4** pokrywają 90 % wartości; Pekao **165 grup** i **35** pokrywa
+   90 %. Czyli `maxQuestions = 7` i `askOnlyTopShareOfValue = 0.9` są na wyciągu kartowym
+   **sprzeczne** — nowe pytanie 6 w §18 projektu.
+3. **Pekao nadaje ten sam numer referencyjny obu stronom przelewu wewnętrznego** (`1342556624908662`,
+   +30 i −30 PLN). Jedyny duplikat w 791 wierszach jest prawdziwy i jest zapinowany testem, bo to
+   gotowy przypadek dla deduplikacji — i pytanie, czy idempotencja po samym id nie gubi drugiej
+   strony.
+
+Plus dwa defekty danych złapane przez test pinujący, nie przez przeglądanie: siedem wierszy opłat
+Pekao ma **puste pole kontrahenta** (`name` jest w kontrakcie wymagane, więc spada na tytuł), a kwoty
+≥ 1000 mają **spację jako separator tysięcy** (`3 000,00`).
+
 ## Graf zależności
 
 ```mermaid
@@ -1327,7 +1365,7 @@ flowchart LR
     K9["K9 Osiem ErrorCode w shared-kernel jedny…"]:::p0
     K10["K10 Testy kontraktowe protokołu"]:::p0
     K11["K11 GroupKey zgodny z ContextMapping siln…"]:::p0
-    K12["K12 Fixture kanoniczny: skąd wziąć 402 wi…"]:::p0
+    K12["K12 Fixture kanoniczny dla dwóch banków"]:::done
     K13["K13 Katalog kluczy konfiguracyjnych z war…"]:::p0
     K14["K14 Dopełnienie pól typów wyników kroków"]:::p0
     L1["L1 Worker klasyfikacji i mapowanie na ko…"]:::p1

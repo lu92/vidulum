@@ -380,8 +380,21 @@ mapowania pojedynczo** — nie ma stanu „odpowiedziałem na 3 z 7".
 **(b) Filtr istotności — to jest główna dźwignia.** Pytamy tylko o grupy, które **coś znaczą**:
 posortowane po |sumie|, do pokrycia `askOnlyTopShareOfValue = 0.9`, nie więcej niż
 `maxQuestions = 7`. Ogon (grupy po 1–2 wiersze na 12 zł) **nie jest pytaniem** — dostaje najlepszy
-typ AI, a jeśli go nie ma, `Uncategorized` z flagą `provisional`. Na testowym pliku: ~40 grup →
-**≤7 pytań**, bo rozkład wartości w wyciągu bankowym jest skrajnie skośny.
+typ AI, a jeśli go nie ma, `Uncategorized` z flagą `provisional`.
+
+**Zmierzone na dwóch prawdziwych wyciągach** (fixture kanoniczny, 2026-10-24 — wcześniej był tu
+szacunek „~40 grup → ≤7 pytań"):
+
+| | Nest Bank, 402 wiersze (przelewowy) | Pekao SA, 791 wierszy (kartowy) |
+|---|---|---|
+| grup | **22** | **165** |
+| grup pokrywających 90 % wartości | **4** | **35** |
+
+Dla wyciągu przelewowego filtr jest hojny: **4 pytania** i mamy 90 % wartości. Dla kartowego
+**90 % wymaga 35 pytań**, więc `maxQuestions = 7` i `askOnlyTopShareOfValue = 0.9` **nie dają się
+spełnić jednocześnie** — limit pytań wygrywa, a ogon 158 grup idzie w fallback z `provisional`. To
+nie unieważnia dźwigni (7 pytań zamiast 165 to nadal redukcja 23×), ale przesuwa ciężar na poprawę
+kategorii **po** imporcie, czyli na `recategorize` z §11(d) i zadanie X1.
 
 **(c) Druga wysyłka nie pyta o nic.** Odpowiedź z `remember = true` (domyślnie tak) jedzie krokiem
 `LEARN` do `category-resolution` i staje się mapowaniem **oraz** wzorcem. Przy kolejnym wyciągu z
@@ -649,6 +662,11 @@ parytet — nie ma użytkowników produkcyjnych, więc wyłączenie to usunięci
    `ingestion-staging-api` istnieje od P1, ale tylko do czytania.
 5. ~~Prefiks nowych endpointów~~ — **potwierdzony pomiarem, §16**: `/api/v2`, bez zmian w
    shared-kernelu, bez kolizji, z darmową autoryzacją i CORS-em.
+6. **Co wygrywa, gdy `maxQuestions` i pokrycie wartości są sprzeczne** — na wyciągu kartowym 90 %
+   wartości to 35 grup, a limit to 7. Moja propozycja: **limit pytań wygrywa zawsze**, a sesja
+   raportuje, jaki procent wartości naprawdę pokryły zadane pytania (`decisions[].valueCovered`),
+   żeby user wiedział, ile zostało na fallbacku. Alternatywa — podnieść limit dla wyciągów
+   kartowych — zamienia jeden ekran w trzydzieści pięć decyzji i przeczy całemu celowi.
 6. **Atestacja** — zostaje ręczna (user potwierdza `confirmedBalance`) czy conductor proponuje
    saldo z ostatniego wiersza i pyta tylko o potwierdzenie?
 
