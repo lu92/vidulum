@@ -19,6 +19,7 @@ import com.multi.vidulum.shared.cqrs.QueryGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.common.BankAccountId;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Checksum;
 import com.multi.vidulum.common.Currency;
@@ -70,6 +71,8 @@ class CashFlowSkeletonComponentTest {
                         CashFlowSkeletonView.LifecyclePhase.OPEN,
                         ACTIVE,
                         START,
+                        new BankAccountId("PL61109010140000071219812874"),
+                        Currency.of("PLN"),
                         List.of(new CategoryNodeView(new CategoryName("Salary"), null, false, List.of())),
                         List.of(new CategoryNodeView(
                                 new CategoryName("Home"), null, false,

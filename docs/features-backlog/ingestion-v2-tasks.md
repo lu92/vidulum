@@ -57,8 +57,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
-| `finished` | 4 | 0 | 0 | 0 | **4** |
-| `open` | 34 | 26 | 10 | 6 | **76** |
+| `finished` | 5 | 0 | 0 | 0 | **5** |
+| `open` | 33 | 26 | 10 | 6 | **75** |
 | **razem** | 38 | 26 | 10 | 6 | **80** |
 
 ## Gotowe do wzięcia
@@ -68,8 +68,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | # | prio | zadanie | odblokowuje |
 |---|---|---|---|
 | **K4** | P0 | Agregator vidulum-app-ingestion i miejsce w reaktorze | K5, K7 |
-| **K9** | P0 | Osiem ErrorCode w shared-kernel jednym commitem | K15, M7 |
-| **X7** | P0 | Rachunek bankowy w kontrakcie cashflow | M7, M8 |
+| **K9** | P0 | Siedem ErrorCode w shared-kernel jednym commitem | K15, M7 |
 
 ## Zadania według ścieżek
 
@@ -85,7 +84,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **K6** | P0 | `open` | ingestion-intake: parser CSV bez Springa | K5 | S4 |
 | **K7** | P0 | `open` | Protokół: StepCommand, StepReply, typy wartości | K4 | K8, K13, K14, M1, R1, S1 |
 | **K8** | P0 | `open` | Jedenaście komend i jedenaście gniazd handlerów | K5, K7 | K10, K11, L1, M3, M5, R2, S2, S12, Z1 |
-| **K9** | P0 | `open` | Osiem ErrorCode w shared-kernel jednym commitem | K3 | K15, M7 |
+| **K9** | P0 | `open` | Siedem ErrorCode w shared-kernel jednym commitem | K3 | K15, M7 |
 | **K10** | P0 | `open` | Testy kontraktowe protokołu | K8 | — |
 | **K11** | P0 | `open` | GroupKey zgodny z ContextMapping silnika | K5, K8 | L3, M4 |
 | **K12** | P0 | **finished** | Fixture kanoniczny dla dwóch banków | K3 | T1 |
@@ -196,7 +195,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **X4** | P3 | `open` | Parytet z v1 i wyłączenie bank-data-ingestion | T3, T4, T5, T6 | X5 |
 | **X5** | P3 | `open` | Dokumentacja: CLAUDE.md i przewodnik manualny | X4 | — |
 | **X6** | P3 | `open` | Lista kontrolna parytetu v1 do v2 | T5 | — |
-| **X7** | P0 | `open` | Rachunek bankowy w kontrakcie cashflow | K3 | M7, M8 |
+| **X7** | P0 | **finished** | Rachunek bankowy w kontrakcie cashflow | K3 | M7, M8 |
 
 ## Opisy zadań
 
@@ -319,15 +318,15 @@ Komenda na krok plus interfejs handlera ze stałymi TOPIC i CONTAINER_FACTORY �
 **Pliki:** `vidulum-app-ingestion/ingestion-conductor-api/`
 **Specyfikacja:** [03](ingestion-conductor-design/03-ingestion-conductor-api.md)
 
-### K9 · Osiem ErrorCode w shared-kernel jednym commitem
+### K9 · Siedem ErrorCode w shared-kernel jednym commitem
 
-**PR:** `feat(shared-kernel): osiem kodów błędu dla ingestion v2`  
+**PR:** `feat(shared-kernel): siedem kodów błędu dla ingestion v2`  
 **Priorytet:** P0 · **Status:** `open` · **Zależy od:** K3 · **Odblokowuje:** K15, M7
 
 ErrorHttpHandler siedzi w shared-kernelu i mapuje BusinessException.getErrorCode(), więc każdy nowy kod to zmiana shared-kernela, czyli pełny przebieg reaktora. Osiem kodów po jednym na moduł to osiem przebiegów zamiast jednego — stąd jeden commit na początku.
 
 **Definicja ukończenia:**
-- osiem stałych z właściwymi statusami HTTP
+- siedem stałych z właściwymi statusami HTTP — ósma (CASHFLOW_CURRENCY_MISMATCH) weszła już z X7
 - `./mvnw clean test` cały reaktor zielony, raz
 
 **Pliki:** `vidulum-shared-kernel/src/main/java/com/multi/vidulum/common/error/ErrorCode.java`
@@ -1349,13 +1348,16 @@ X4 mówi wyłączyć v1 po parytecie, ale nie wylicza, co to parytet. Dwadzieśc
 ### X7 · Rachunek bankowy w kontrakcie cashflow
 
 **PR:** `feat(cashflow-api): CashFlowSkeletonView wystawia rachunek cash flow`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K3 · **Odblokowuje:** M7, M8
+**Priorytet:** P0 · **Status:** **finished** · **Zależy od:** K3 · **Odblokowuje:** M7, M8
 
 CashFlow ma JEDEN bankAccount, więc Nest i Pekao to dwa osobne cash flow — ale skeleton nie wystawia rachunku, więc ingestion nie ma czym sprawdzić, czy wyciąg należy do tego cash flow. Jedno pole w widoku, bez którego walidacja z M8 jest niewykonalna.
 
 **Definicja ukończenia:**
-- skeleton nosi numer rachunku i jego walutę
-- test kontraktu i widoku zaktualizowane
+- dwa pola (BankAccountId bankAccount, String currency) i dwie metody (isSameAccount, refusalFor(Money)) — kształt rozpisany w specyfikacji 11
+- BankAccountId z shared-kernela, NIE BankAccountNumber z domeny cashflow — kontrakt nie ciąga iban4j i nie re-waliduje zapisanego numeru
+- saldo NIE wchodzi: skeleton nosi kształt, nie zawartość, i musi zostać O(1)
+- oba transporty wypełniają nowe pola; CashFlowSkeletonViewComponentTest pilnuje, że payload nie rośnie z historią
+- isSameAccount tolerancyjne na brak prefiksu kraju — cztery postacie tego samego numeru w danych testowych
 
 **Pliki:** `vidulum-app-cashflow/cashflow-api/`, `vidulum-app-cashflow/cashflow/`
 **Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
@@ -1493,6 +1495,42 @@ rzeczy, których **nie dało się zobaczyć na jednym banku**. Drugi wyciąg kos
 pół godziny pomiarów, a znalazł defekt w shared-kernelu, brakujące pole w kontrakcie cashflow i dwie
 reguły walidacji, których w projekcie nie było.
 
+### 2026-10-24 — skeleton zna swój rachunek i walutę (X7 zrobione)
+
+Zmiana zaprojektowana w [specyfikacji 11](ingestion-conductor-design/11-znaleziska-z-danych.md) i
+wprowadzona: **dwa pola i dwie metody, zero nowych typów.**
+
+```java
+BankAccountId bankAccount,   // nie BankAccountNumber: kontrakt nie ciąga iban4j
+String currency,             // waluta rachunku, nigdy saldo
+boolean isSameAccount(BankAccountId candidate);
+Optional<BusinessException> refusalFor(Money money);
+```
+
+- **`isSameAccount` jest tolerancyjne, bo dane tego wymagają.** Ten sam rachunek występuje w czterech
+  postaciach (NRB 26 znaków, NRB z apostrofem, IBAN 28 znaków, IBAN ze spacjami); `BankAccountId`
+  normalizuje spacje i wielkość liter, ale **nie prefiks kraju**. Reguła: gdy prefiks ma dokładnie
+  jedna strona, porównanie leci bez niego; gdy obie — pełne, żeby `DE61…` nie zlało się z `PL61…`.
+- **`refusalFor(Money)` oddaje odmowę, nie rzuca** — tym samym idiomem co `ImportWindow.refusalFor`,
+  bo zapis chce wyjątku, a staging chce `ErrorCode` przy wierszu i jedzie dalej.
+- **Saldo nie weszło i to było świadome**: skeleton nosi kształt, nie zawartość, a oba dodatki są
+  O(1), więc obietnica „payload nie rośnie z historią" stoi.
+- **Oba transporty wypełniają nowe pola.** HTTP czyta rachunek jako **tekst** (trzy zagnieżdżone
+  rekordy z `@JsonIgnoreProperties`), bo deserializacja domenowego `BankAccount` uruchomiłaby
+  walidację iban4j **na każdej odpowiedzi** — to jest ta wpadka, którą CLAUDE.md zapisuje przy
+  profilu finansowym.
+
+**Jeden kod błędu musiał wejść od razu:** `CASHFLOW_CURRENCY_MISMATCH` plus
+`CurrencyMismatchException` w `cashflow-api/error/`, bo bez nich `refusalFor` nie ma czym odmówić.
+`ErrorHttpHandler` mapuje go sam, bo ma handler na `BusinessException` i czyta `getErrorCode()`.
+**K9 schodzi więc z ośmiu kodów na siedem.**
+
+Zmiana rekordu wywaliła **6 miejsc konstrukcji w testach** — i to był cel, nie koszt: dwa w
+`cashflow-api`, po jednym w `bank-data-ai-categorization-api`, `cashflow`, `bank-data-ingestion` i
+`recurring-rules`. Kod produkcyjny skompilował się od razu, bo oba transporty poprawiłem razem z
+kontraktem. Testy kontraktu: **44** (było 37), nowe siedem pokrywa cztery postacie numeru, kolizję
+dwóch krajów, odmowę waluty z kodem i komunikatem oraz wymagalność obu pól.
+
 ## Graf zależności
 
 ```mermaid
@@ -1511,7 +1549,7 @@ flowchart LR
     K6["K6 ingestion-intake: parser CSV bez Spri…"]:::p0
     K7["K7 Protokół: StepCommand, StepReply, typ…"]:::p0
     K8["K8 Jedenaście komend i jedenaście gniazd…"]:::p0
-    K9["K9 Osiem ErrorCode w shared-kernel jedny…"]:::p0
+    K9["K9 Siedem ErrorCode w shared-kernel jedn…"]:::p0
     K10["K10 Testy kontraktowe protokołu"]:::p0
     K11["K11 GroupKey zgodny z ContextMapping siln…"]:::p0
     K12["K12 Fixture kanoniczny dla dwóch banków"]:::done
@@ -1578,7 +1616,7 @@ flowchart LR
     X4["X4 Parytet z v1 i wyłączenie bank-data-i…"]:::p3
     X5["X5 Dokumentacja: CLAUDE.md i przewodnik…"]:::p3
     X6["X6 Lista kontrolna parytetu v1 do v2"]:::p3
-    X7["X7 Rachunek bankowy w kontrakcie cashflow"]:::p0
+    X7["X7 Rachunek bankowy w kontrakcie cashflow"]:::done
     Z1["Z1 Tworzenie kategorii jako osobny, niep…"]:::p0
     Z2["Z2 Import wierszy do cash flow z postępem"]:::p0
     Z3["Z3 Wycofanie importu z prawdziwymi liczb…"]:::p1

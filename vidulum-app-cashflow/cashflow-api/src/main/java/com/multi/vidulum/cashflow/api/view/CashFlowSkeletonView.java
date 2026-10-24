@@ -1,9 +1,14 @@
 package com.multi.vidulum.cashflow.api.view;
 
-import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.cashflow.api.Type;
+import com.multi.vidulum.cashflow.api.error.CurrencyMismatchException;
+import com.multi.vidulum.common.BankAccountId;
+import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.common.Currency;
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.error.BusinessException;
 
 import java.time.YearMonth;
 import java.util.List;
@@ -16,9 +21,17 @@ import java.util.stream.Stream;
 /**
  * How a cash flow is put together, without what is in it.
  *
- * <p>Eight fields. The aggregate's snapshot has sixteen, one of which is a map of every
+ * <p>Nine fields. The aggregate's snapshot has sixteen, one of which is a map of every
  * transaction; this view exists so that asking "how is this cash flow organised" costs the same
  * whether the answer concerns a cash flow opened today or one with four years of imports behind it.
+ *
+ * <p><b>The account is here; the balance is not, and the line between them is the point.</b> Which
+ * account a cash flow is about, and in which currency, is part of how it is put together - it is
+ * decided once and never changes, and it is what lets a consumer tell whether a bank statement is
+ * even about this cash flow. The balance is what is <i>in</i> it: it moves with every import, so a
+ * skeleton fetched once per upload would start lying immediately, and a consumer holding it would be
+ * invited to do the attestation arithmetic itself, which is cashflow's business. Both additions are
+ * O(1), so the property above still holds.
  *
  * <p>There is no direction field on a category and no {@code Type} anywhere in this contract.
  * Direction is which of the two lists a category is in - the only representation that cannot
@@ -31,6 +44,29 @@ public record CashFlowSkeletonView(
         LifecyclePhase phase,
         YearMonth activePeriod,
         YearMonth startPeriod,
+        /**
+         * The account this cash flow is about.
+         *
+         * <p>{@link BankAccountId} rather than cashflow's own {@code BankAccountNumber}, on purpose:
+         * that one validates IBANs through iban4j, so putting it here would make this contract drag
+         * iban4j along and <b>re-validate a stored number on every read</b> - the failure mode
+         * user_financial_profile already lived through, where one stored IBAN that iban4j would
+         * reject today made a whole profile unreadable. {@code BankAccountId} is a carrier that
+         * normalises whitespace and case, which is all a comparison needs.
+         */
+        BankAccountId bankAccount,
+        /**
+         * The currency this cash flow's money is in - never the balance itself.
+         *
+         * <p><b>Taken from the balance, not from {@code BankAccountNumber.denomination}, and that is
+         * a deliberate choice between two plausible sources.</b> {@code BankAccount.fromIban} accepts
+         * the denomination and the initial balance as two independent parameters and enforces no
+         * agreement between them, so they can disagree. The rule this field serves protects the
+         * balance arithmetic - {@code Money.plus} keeps the left operand's currency and adds the
+         * right one's amount - so the honest source is the currency that arithmetic actually uses.
+         * Reading the denomination instead would let a row through that the sum would still mangle.
+         */
+        Currency currency,
         List<CategoryNodeView> inflowCategories,
         List<CategoryNodeView> outflowCategories) {
 
@@ -55,6 +91,9 @@ public record CashFlowSkeletonView(
         Objects.requireNonNull(cashFlowId, "cashFlowId is required");
         Objects.requireNonNull(owner, "owner is required");
         Objects.requireNonNull(phase, "phase is required");
+        Objects.requireNonNull(bankAccount, "bankAccount is required");
+        Objects.requireNonNull(currency, "currency is required");
+        Objects.requireNonNull(currency.getId(), "currency id is required");
         inflowCategories = inflowCategories == null ? List.of() : List.copyOf(inflowCategories);
         outflowCategories = outflowCategories == null ? List.of() : List.copyOf(outflowCategories);
     }
@@ -80,6 +119,84 @@ public record CashFlowSkeletonView(
      */
     public ImportWindow importWindow() {
         return new ImportWindow(cashFlowId, phase, activePeriod, startPeriod);
+    }
+
+    /**
+     * Whether {@code candidate} is this cash flow's account.
+     *
+     * <p><b>A method rather than a field comparison, because the same account arrives in different
+     * shapes and deciding which of them are "the same" is cashflow's policy</b> - the same argument
+     * that makes {@link #findCategoryIgnoringCase} a method. Measured on two real statements:
+     *
+     * <pre>
+     * 93187010452083105656550001    26 digits  - a Polish NRB, as the bank's own header writes it
+     * '98124014441111001078171074  26 digits  - the same shape, quoted by a spreadsheet export
+     * PL61109010140000071219812874  28 chars   - an IBAN, as an owner types it
+     * </pre>
+     *
+     * {@link BankAccountId} normalises whitespace and case but not the country prefix, so
+     * {@code equals} on two correct spellings of one account answers {@code false}. Hence: anything
+     * that is not a letter or a digit goes first, and <b>when exactly one side carries a country
+     * prefix it is dropped before comparing</b>. When both carry one, they are compared in full - so
+     * two different countries never collide just because their national numbers match.
+     *
+     * @param candidate as the source system spelled it; {@code null} matches nothing
+     */
+    public boolean isSameAccount(BankAccountId candidate) {
+        if (candidate == null) {
+            return false;
+        }
+        String mine = alphanumeric(bankAccount.value());
+        String theirs = alphanumeric(candidate.value());
+        if (hasCountryPrefix(mine) == hasCountryPrefix(theirs)) {
+            return mine.equals(theirs);
+        }
+        return withoutCountryPrefix(mine).equals(withoutCountryPrefix(theirs));
+    }
+
+    /**
+     * Why this cash flow would refuse {@code money}, or empty if it would accept it.
+     *
+     * <p>Same shape as {@link ImportWindow#refusalFor}: the failure is handed back rather than
+     * thrown, because the two callers want different things from it - a write throws it, a consumer
+     * staging 791 rows records its {@code ErrorCode} against one row and carries on with the rest.
+     *
+     * <p><b>One condition only, and it is the one that silently corrupts money.</b>
+     * {@code Money.plus} keeps the currency of the left operand and adds the amount of the right,
+     * with no check - so a cash flow in PLN absorbs 22.14 EUR as 22.14 PLN. Refusing is also the
+     * right answer rather than merely the safe one: measured on a real statement, the two
+     * foreign-currency rows have <b>no PLN counterpart</b>, so they are genuine transactions the
+     * bank did not convert, not informational copies of a settlement.
+     *
+     * @param money {@code null} is accepted - a caller with nothing to record is not an error here
+     */
+    public Optional<BusinessException> refusalFor(Money money) {
+        if (money == null || money.getCurrency() == null) {
+            return Optional.empty();
+        }
+        return currency.getId().equalsIgnoreCase(money.getCurrency())
+                ? Optional.empty()
+                : Optional.of(new CurrencyMismatchException(
+                        cashFlowId, currency, Currency.of(money.getCurrency())));
+    }
+
+    /** {@link #refusalFor}, for callers that only need the verdict. */
+    public boolean accepts(Money money) {
+        return refusalFor(money).isEmpty();
+    }
+
+    private static String alphanumeric(String account) {
+        return account == null ? "" : account.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+    }
+
+    private static boolean hasCountryPrefix(String account) {
+        return account.length() > 2
+                && Character.isLetter(account.charAt(0))
+                && Character.isLetter(account.charAt(1));
+    }
+
+    private static String withoutCountryPrefix(String account) {
+        return hasCountryPrefix(account) ? account.substring(2) : account;
     }
 
     /**

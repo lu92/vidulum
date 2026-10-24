@@ -37,6 +37,7 @@ public enum ErrorCode {
     // CashFlow - Conflicts
     CASHFLOW_ACCESS_DENIED(HttpStatus.FORBIDDEN, "Access to CashFlow denied"),
     CASHFLOW_BALANCE_MISMATCH(HttpStatus.CONFLICT, "Balance mismatch during attestation"),
+    CASHFLOW_CURRENCY_MISMATCH(HttpStatus.BAD_REQUEST, "Money in a different currency than the CashFlow"),
     CASHFLOW_NAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "CashFlow with this name already exists"),
     CATEGORY_ALREADY_EXISTS(HttpStatus.CONFLICT, "Category already exists"),
     CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "Someone else changed this at the same time; read it again and retry"),

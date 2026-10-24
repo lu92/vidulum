@@ -17,6 +17,8 @@ import com.multi.vidulum.cashflow.api.RollbackResult;
 import com.multi.vidulum.common.CashChangeId;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.common.BankAccountId;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -83,6 +85,8 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
                 phaseOf(response.status()),
                 response.activePeriod(),
                 response.startPeriod(),
+                new BankAccountId(response.bankAccount().bankAccountNumber().iban().value()),
+                Currency.of(response.bankAccount().balance().getCurrency()),
                 nodesOf(response.inflowCategories(), null),
                 nodesOf(response.outflowCategories(), null));
     }
@@ -408,6 +412,7 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
             CashFlow.CashFlowStatus status,
             YearMonth activePeriod,
             YearMonth startPeriod,
+            BankAccountResponse bankAccount,
             List<CategoryResponse> inflowCategories,
             List<CategoryResponse> outflowCategories,
             Map<String, CashChangeResponse> cashChanges
@@ -416,6 +421,26 @@ class HttpCashFlowModuleApi implements CashFlowModuleApi {
         public Map<String, CashChangeResponse> cashChanges() {
             return cashChanges == null ? Map.of() : cashChanges;
         }
+    }
+
+    /**
+     * The account, read as <b>text</b> rather than as cashflow's own {@code BankAccount}.
+     *
+     * <p>Deserialising the domain type would run {@code IbanNumber}'s iban4j validation on every
+     * response - a stored number re-validated on read, which is the failure mode CLAUDE.md records
+     * for user_financial_profile. Three nested records with
+     * {@code @JsonIgnoreProperties} cost nothing and promise nothing.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record BankAccountResponse(BankAccountNumberResponse bankAccountNumber, Money balance) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record BankAccountNumberResponse(IbanResponse iban) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record IbanResponse(String value) {
     }
 
     /**

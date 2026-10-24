@@ -1,15 +1,24 @@
 package com.multi.vidulum.cashflow.api.view;
 
 import com.multi.vidulum.cashflow.api.Type;
+import com.multi.vidulum.common.BankAccountId;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
+import com.multi.vidulum.common.error.BusinessException;
+import com.multi.vidulum.common.error.ErrorCode;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The tree operations the contract took over from {@code CashFlowInfo}.
@@ -43,6 +52,8 @@ class CashFlowSkeletonViewTest {
                 CashFlowSkeletonView.LifecyclePhase.SETUP,
                 YearMonth.of(2022, 1),
                 YearMonth.of(2021, 10),
+                new BankAccountId("PL61109010140000071219812874"),
+                Currency.of("PLN"),
                 List.of(node("Salary", child("Salary", "Bonus")), node("Transfer")),
                 List.of(node("Home", child("Home", "Rent"), child("Home", "Utilities")),
                         node("Transfer")));
@@ -129,5 +140,103 @@ class CashFlowSkeletonViewTest {
                         new CategoryName("Salary"), new CategoryName("Bonus"),
                         new CategoryName("Transfer"), new CategoryName("Home"),
                         new CategoryName("Rent"), new CategoryName("Utilities"));
+    }
+
+    // ─────────────────────────────── rachunek: isSameAccount
+
+    @Test
+    @DisplayName("ten sam rachunek rozpoznany we wszystkich czterech postaciach z prawdziwych danych")
+    void shouldRecogniseTheSameAccountInEverySpellingTheDataContains() {
+        CashFlowSkeletonView skeleton = skeleton();
+
+        assertThat(skeleton.isSameAccount(new BankAccountId("PL61109010140000071219812874")))
+                .as("IBAN, tak jak wpisuje go owner")
+                .isTrue();
+        assertThat(skeleton.isSameAccount(new BankAccountId("61109010140000071219812874")))
+                .as("NRB bez prefiksu kraju, tak jak pisze go nagłówek wyciągu Nest")
+                .isTrue();
+        assertThat(skeleton.isSameAccount(new BankAccountId("PL 61 1090 1014 0000 0712 1981 2874")))
+                .as("IBAN ze spacjami - BankAccountId je usuwa")
+                .isTrue();
+        assertThat(skeleton.isSameAccount(new BankAccountId("'61109010140000071219812874")))
+                .as("apostrof z eksportu arkusza, tak jak w kolumnach Pekao")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("inny rachunek to inny rachunek")
+    void shouldRefuseADifferentAccount() {
+        assertThat(skeleton().isSameAccount(new BankAccountId("PL98124014441111001078171074")))
+                .as("rachunek Pekao wobec cash flow Nest - to jest dokładnie przypadek, który dziś przechodzi po cichu")
+                .isFalse();
+        assertThat(skeleton().isSameAccount(null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("dwa kraje nie kolidują, gdy oba numery mają prefiks")
+    void shouldNotCollapseTwoCountriesWhenBothCarryAPrefix() {
+        assertThat(skeleton().isSameAccount(new BankAccountId("DE61109010140000071219812874")))
+                .as("ten sam numer krajowy, inny kraj - porównanie pełne, bo prefiks mają oba")
+                .isFalse();
+    }
+
+    // ─────────────────────────────── waluta: refusalFor(Money)
+
+    @Test
+    @DisplayName("kwota w walucie cash flow przechodzi")
+    void shouldAcceptMoneyInTheCashFlowCurrency() {
+        assertThat(skeleton().refusalFor(Money.of(new BigDecimal("1234.50"), "PLN"))).isEmpty();
+        assertThat(skeleton().accepts(Money.of(new BigDecimal("1234.50"), "pln")))
+                .as("wielkość liter kodu waluty nie jest różnicą")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("kwota w obcej walucie odmawiana z kodem i obiema walutami w komunikacie")
+    void shouldRefuseMoneyInAForeignCurrency() {
+        Optional<BusinessException> refusal = skeleton().refusalFor(Money.of(new BigDecimal("22.14"), "EUR"));
+
+        assertThat(refusal).isPresent();
+        assertThat(refusal.get().getErrorCode()).isEqualTo(ErrorCode.CASHFLOW_CURRENCY_MISMATCH);
+        assertThat(refusal.get().getMessage())
+                .contains("PLN")
+                .contains("EUR")
+                .contains(CASH_FLOW_ID.id());
+    }
+
+    @Test
+    @DisplayName("brak kwoty nie jest błędem")
+    void shouldAcceptNoMoneyAtAll() {
+        assertThat(skeleton().refusalFor(null)).isEmpty();
+    }
+
+    // ─────────────────────────────── kontrakt rekordu
+
+    @Test
+    @DisplayName("rachunek i waluta są wymagane - cash flow bez rachunku nie istnieje")
+    void shouldRequireAccountAndCurrency() {
+        assertThatThrownBy(() -> new CashFlowSkeletonView(
+                CASH_FLOW_ID, UserId.of("U10000001"), CashFlowSkeletonView.LifecyclePhase.SETUP,
+                YearMonth.of(2022, 1), YearMonth.of(2021, 10), null,
+                Currency.of("PLN"), List.of(), List.of()))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("bankAccount");
+
+        assertThatThrownBy(() -> new CashFlowSkeletonView(
+                CASH_FLOW_ID, UserId.of("U10000001"), CashFlowSkeletonView.LifecyclePhase.SETUP,
+                YearMonth.of(2022, 1), YearMonth.of(2021, 10),
+                new BankAccountId("PL61109010140000071219812874"), null, List.of(), List.of()))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("currency");
+
+        assertThatThrownBy(() -> new CashFlowSkeletonView(
+                CASH_FLOW_ID, UserId.of("U10000001"), CashFlowSkeletonView.LifecyclePhase.SETUP,
+                YearMonth.of(2022, 1), YearMonth.of(2021, 10),
+                new BankAccountId("PL61109010140000071219812874"), new Currency(), List.of(), List.of()))
+                .as("Currency jest klasą Lomboka z konstruktorem bezargumentowym, więc puste Currency "
+                        + "jest konstruowalne - i bez tego sprawdzenia wszystkie odmowy waluty "
+                        + "wysypałyby się na NPE w equalsIgnoreCase")
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("currency id");
     }
 }

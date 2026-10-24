@@ -142,6 +142,98 @@ To czyni z tego **trzecią** brakującą rzecz w `cashflow-api`:
 | `deleteImported(cashFlowId, ids)` | kompensacja selektywna, wiele wyciągów na jeden SETUP | X2 |
 | rachunek + waluta w skeletonie | walidacja rachunku **i** walidacja waluty | **X7** |
 
+### Proponowany kształt zmiany w kontrakcie (X7)
+
+**Dwa pola i dwie metody. Żadnego nowego typu.**
+
+```java
+public record CashFlowSkeletonView(
+        CashFlowId cashFlowId,
+        UserId owner,
+        LifecyclePhase phase,
+        YearMonth activePeriod,
+        YearMonth startPeriod,
+        BankAccountId bankAccount,          // NOWE
+        String currency,                    // NOWE — waluta rachunku, nie saldo
+        List<CategoryNodeView> inflowCategories,
+        List<CategoryNodeView> outflowCategories) {
+
+    /**
+     * Czy ten numer to ten sam rachunek. Tolerancja należy do cashflow, nie do konsumenta.
+     */
+    public boolean isSameAccount(BankAccountId candidate) { … }
+
+    /**
+     * Czy ta kwota w ogóle może wejść do tego cash flow. Pusty Optional = może.
+     */
+    public Optional<BusinessException> refusalFor(Money money) { … }
+}
+```
+
+#### Dlaczego `BankAccountId`, a nie `BankAccountNumber` cashflow
+
+`BankAccountId` z shared-kernela ma w javadocu dokładnie ten przypadek użycia: *„used for account
+matching without requiring full IBAN validation or iban4j dependency"* — normalizuje białe znaki i
+wielkość liter, i nic więcej. `BankAccountNumber` z domeny cashflow **waliduje IBAN przez iban4j**,
+więc wciągnięcie go do kontraktu znaczyłoby: kontrakt ciągnie iban4j, a każdy odczyt skeletonu
+re-waliduje numer, który został zapisany dawno temu. To jest udokumentowana w CLAUDE.md wpadka
+`user_financial_profile`: *„storage re-validating what it stored is a failure mode with no upside"* —
+jeden zapisany IBAN, który iban4j odrzuciłby dziś, czynił cały profil nieczytelnym.
+
+#### Dlaczego porównanie jest **metodą**, a nie porównaniem pól przez konsumenta
+
+Bo w tych danych numery tego samego rachunku **mają różne długości**:
+
+| skąd | postać | długość |
+|---|---|---|
+| metadane wyciągu Nest | `93187010452083105656550001` | 26 |
+| wiersz Pekao | `'98124014441111001078171074` | 26 + apostrof |
+| cash flow utworzony przez ownera | `PL61109010140000071219812874` | 28 |
+| po przejściu przez `CsvParserService` | prefiks **doklejony z waluty** (`PLN → PL`) | 28 |
+
+`BankAccountId` normalizuje spacje i wielkość liter, ale **nie prefiks kraju** — więc
+`equals` na dwóch poprawnych reprezentacjach tego samego rachunku zwróci `false`. I to nie jest
+hipoteza: „czy to ten sam rachunek" ma już **trzy implementacje** w repo
+(`CsvParserService.normalizeIban`, `OwnedAccountNumber.fromIban` w profilu, `BankAccountNumber` w
+cashflow), bo każdy konsument rozwiązywał to u siebie.
+
+Precedens jest w tym samym pliku: `findCategoryIgnoringCase` jest **metodą widoku**, a jej javadoc
+mówi wprost — *„deciding what counts as the same category is cashflow's policy: today that means
+trimming and ignoring case, and if it ever means more every consumer should start agreeing with it on
+the same day"*. „Ten sam rachunek" jest tą samą klasą pytania.
+
+#### Dlaczego waluta, ale **nie saldo**
+
+| | w skeletonie | dlaczego |
+|---|---|---|
+| waluta rachunku | **tak** | jest własnością *kształtu* cash flow, zmienia się nigdy, O(1) |
+| saldo rachunku | **nie** | jest tym, *co w nim jest*, a nie *jak jest zorganizowany* — czyli dokładnie to, czego skeleton obiecuje nie nosić; zmienia się przy każdym imporcie, więc skeleton pobrany raz na sesję natychmiast kłamie; a konsument, który je dostanie, zacznie sam liczyć atestację, która jest sprawą cashflow |
+
+Obietnica skeletonu zostaje nienaruszona: *„cash flow z czterema latami historii odpowiada tym samym
+payloadem co utworzony minutę temu"*. Oba dodatki są O(1) i to jest kryterium akceptacji, nie
+komentarz.
+
+#### Czego świadomie **nie** dodajemy
+
+| rzecz | gdzie należy | dlaczego nie w skeletonie |
+|---|---|---|
+| lista generycznych kategorii banku (`Inne`, `Bez kategorii`) | `ingestion-category-resolution` (R9) | to wiedza o **bankach**, nie o tym cash flow; dwa banki dają dwie listy, a cash flow nie ma z tym nic wspólnego |
+| statusy miesięcy | `CashFlowForecastApi` | już jest osobnym kontraktem, bo należy do read modelu, nie do agregatu (§9 projektu) |
+| kurs walutowy do przeliczenia EUR | `vidulum-quotation` | cashflow nie zna kursów, a przeliczanie zmieniłoby kwotę zapisaną przez bank — pomiar mówi, że te 2 wiersze EUR **nie mają** odpowiednika w PLN, więc odrzucenie jest poprawne, nie tylko bezpieczne |
+| saldo i atestacja | pozostaje w cashflow | patrz wyżej |
+
+#### Dwa transporty muszą wypełnić to samo
+
+`CashFlowModuleApi` ma dwie implementacje — `CashFlowModuleApiImpl` (gateway + repozytorium) i
+`HttpCashFlowModuleApi` (REST). **Obie muszą wypełnić nowe pola**, a REST ma czym: `CashFlowDto`
+wystawia już `BankAccountJson`. To nie jest formalność — CLAUDE.md opisuje dokładnie ten tryb awarii,
+gdy jedna implementacja przekazywała `null` tam, gdzie druga tłumaczyła wartość, i projekcja prognozy
+umarła na NPE, podczas gdy **każdy zapis nadal odpowiadał 2xx**.
+
+Pinuje to: `CashFlowSkeletonViewTest` (wartości i `isSameAccount` z czterema postaciami numeru z
+tabeli wyżej), `CashFlowSkeletonViewComponentTest` (że payload nie rośnie z historią) oraz
+`BootstrapWiresEveryModuleTest` (że bean jest dokładnie jeden i nie jest tym po HTTP).
+
 ### Jak ma działać walidacja
 
 Rachunek właściciela jest **w każdym wierszu**: źródłowy dla wypłat, docelowy dla wpłat. Więc
