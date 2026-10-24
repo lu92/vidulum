@@ -155,9 +155,13 @@ Pięć zasad, każda z powodu wziętego z pomiaru powyżej:
    (`ingestion-conductor-api`), od słownika (`ingestion-canonical`) i — tylko do czytania —
    od `cashflow-api`. Workerzy zależą od protokołu conductora. Kontrakty nie zależą od siebie, więc
    cyklu w reaktorze nie ma, choć implementacje „widzą się" w obie strony.
-2. **Żaden worker nie zależy od innego workera.** Dziś `importing` czyta `staging` (dozwolone
-   jednym wyjątkiem w ArchUnit); tutaj wiersze podróżują w komendzie albo są czytane przez
-   `staging-api`, nie przez cudze repozytorium Spring Data.
+2. **Żaden worker nie zależy od implementacji innego workera.** Dziś `importing` czyta
+   `StagingSessionMongoRepository` (11 plików), a `classification` woła metody cyklu życia na encji
+   stagingu (6 plików) — obie krawędzie idą po cudzym repozytorium Spring Data. Tutaj magazyn
+   wierszy wystawia kontrakt **tylko do czytania** (`ingestion-staging-api`), z którego korzystają
+   **dwa** workery: `cashflow-writer` (import) i `ingestion-classification` (wiersze grup do
+   klasyfikacji — dlaczego, w §10). Pisać do `ingestion_rows` może wyłącznie `ingestion-staging`, i
+   tylko w odpowiedzi na komendę sagi.
 3. **Sesja jest jednym rekordem procesu** — nie ma `ImportJob` obok niej. `rollbackData` to pole
    kompensacji w sesji, nie druga encja z własnym TTL (albo bez niego).
 4. **Kafka do sterowania sagą i do obserwacji — rozdzielone.** Porażka, na którą saga musi
@@ -176,11 +180,10 @@ Pięć zasad, każda z powodu wziętego z pomiaru powyżej:
 > plus [`09-ingestion-tests.md`](ingestion-conductor-design/09-ingestion-tests.md) z testami
 > integracyjnymi całego przepływu.
 >
-> **Granice z tej tabeli zostały zmierzone na dzisiejszym kodzie:**
-> [`10-granice-artefaktow.md`](ingestion-conductor-design/10-granice-artefaktow.md). Audyt poprawił
-> jedną granicę z tego dokumentu — **klasyfikacja nie może dostawać samych grup**, bo kontrakt F66
-> bierze transakcje i grupuje je sam; czyta więc wiersze grup przez `ingestion-staging-api` (§4
-> tamtego pliku). Tam też jest potwierdzenie prefiksu `/api/v2`.
+> **Granice poniżej są zmierzone na dzisiejszym kodzie, nie zadeklarowane** — pomiar krawędź po
+> krawędzi, wywołanie po wywołaniu:
+> [`10-granice-artefaktow.md`](ingestion-conductor-design/10-granice-artefaktow.md). Ten dokument
+> jest z nim spójny; tam są liczby i dowody, tu tylko wnioski.
 
 ```
 vidulum-app-ingestion/                      AGREGATOR (pom), jak market/ i wealth/
@@ -188,14 +191,15 @@ vidulum-app-ingestion/                      AGREGATOR (pom), jak market/ i wealt
 │                                           PaymentMethod, nazwy kolumn CSV. Bez Springa,
 │                                           bez storage, zależy tylko od shared-kernel + cashflow-api (Type)
 ├── ingestion-intake/                       bajty → wiersze kanoniczne. Liść, zero storage
-├── ingestion-conductor-api/                PROTOKÓŁ: IngestionConductorApi (ModuleApi),
-│                                           komendy kroków + interfejsy handlerów (ModuleEventHandler),
-│                                           StepReply, IngestionSessionView, DecisionRequest/Answer.
-│                                           Bez Springa
+├── ingestion-conductor-api/                PROTOKÓŁ, kształtem ModuleSpi: komendy kroków +
+│                                           interfejsy handlerów (ModuleEventHandler), StepReply,
+│                                           typy grup i kategorii. BEZ ModuleApi - nikt dziś nie
+│                                           pyta conductora o nic (patrz niżej). Bez Springa
 ├── ingestion-conductor/                    saga + encja sesji + REST + wiring Kafki
+├── ingestion-staging-api/                  KONTRAKT R: wiersze sesji i grupy, tylko do czytania
 ├── ingestion-staging/                      wiersze + walidacja (worker kroku VALIDATE)
-├── ingestion-staging-api/                  tylko to, o co conductor pyta synchronicznie
 ├── ingestion-classification/               worker kroku CLASSIFY → bank-data-ai-categorization-api
+│                                           + staging-api (R), bo kontrakt F66 bierze transakcje
 ├── ingestion-category-resolution/          mapowania + drabina + nauka (worker kroku RESOLVE)
 ├── ingestion-cashflow-writer/              PROVISION_CATEGORIES + IMPORT + kompensacja → cashflow-api
 └── (vidulum-ingestion-tests/)              bez src/main — wszystkie testy Springowe/Testcontainers
@@ -209,6 +213,13 @@ tę zasadę z testu w fakt kompilacji. Reguły z `pom.xml` projektu obowiązują
 `lombok` i testowe startery przychodzą z roota.
 
 **Czego tu nie ma, świadomie:**
+- **`ingestion-conductor-api` nie zawiera `ModuleApi`.** Grep po repo: żaden produkcyjny plik poza
+  `bank-data-ingestion` nie importuje jego typów (tylko 9 plików testowych), więc kontrakt wejściowy
+  nie miałby konsumenta - a „kontrakt powstaje, gdy istnieje konsument" jest regułą tego projektu,
+  nie upodobaniem. Artefakt trzyma wyłącznie protokół kroków: conductor **deklaruje gniazda**,
+  workerzy je implementują, kształtem jak `ExchangeAdapter` w `vidulum-exchange-api`. Gdy pojawi się
+  konsument (alerts w P4), dopisuje się `IngestionConductorApi extends ModuleApi` z metodami, o które
+  ten konsument pyta, i ani jedną więcej.
 - `ingestion-canonical` nie jest wspólny z `bank-data-adapter`. Adapter dokleja kolumnę CSV,
   ingestion ją parsuje — kontrakt to **nazwa kolumny i słownik słów**, nie typ Javy. Ta kopia ma
   zostać kopią pilnowaną testem słownika (`TransactionClassificationVocabularyTest`), bo tolerancja,
@@ -293,17 +304,17 @@ Trzy rodzaje wiadomości i to jest najważniejsze rozróżnienie całego projekt
 
 ```java
 // ingestion-conductor-api — komenda i gniazdo dla workera klasyfikacji
-public record ClassifyRowsCommand(
+public record ClassifyGroupsCommand(
         String sessionId, String commandId, int attempt,
         CashFlowId cashFlowId, String detectedLanguage,
-        List<CanonicalRow> rows,          // słownik z ingestion-canonical
+        List<GroupKey> openGroups,        // KLUCZE grup, nie wiersze i nie podsumowania
         CategorySnapshot categories       // drzewo kategorii, raz na sesję
-) implements IntegrationEvent {}
+) implements StepCommand {}
 
-public interface ClassifyRowsHandler extends ModuleEventHandler {
+public interface ClassifyGroupsHandler extends ModuleEventHandler {
     String TOPIC = "ingestion.cmd.classify";
     String CONTAINER_FACTORY = "ingestionClassifyContainerFactory";
-    void onClassifyRows(ClassifyRowsCommand command);
+    void onClassifyGroups(ClassifyGroupsCommand command);
 }
 
 // jedna koperta odpowiedzi dla wszystkich kroków
@@ -322,7 +333,7 @@ Komendy (jeden topic na krok, bo inaczej każdy worker czyta wszystko i filtruje
 |---|---|---|---|
 | `VALIDATE` | `ValidateRowsCommand` | staging | `RowsValidated(valid, duplicate, rejected[], groups[])` |
 | `RESOLVE` ① | `ResolveCategoriesCommand(pass=1)` | category-resolution | `CategoriesResolved(resolved[], open[], plan)` |
-| `CLASSIFY` | `ClassifyGroupsCommand` | classification | `GroupsClassified(suggestions[], cost)` |
+| `CLASSIFY` | `ClassifyGroupsCommand` (klucze grup) | classification | `GroupsClassified(suggestions[], cost)` |
 | `RESOLVE` ② | `ResolveCategoriesCommand(pass=2, suggestions)` | category-resolution | `CategoriesResolved(resolved[], open[], plan)` |
 | `LEARN` | `LearnDecisionsCommand` | category-resolution | `DecisionsLearned(mappingIds[], patternIds[])` |
 | `APPLY_RESOLUTION` | `ApplyResolutionCommand(groupMappings[])` | staging | `ResolutionApplied(rowsResolved)` |
@@ -332,6 +343,18 @@ Komendy (jeden topic na krok, bo inaczej każdy worker czyta wszystko i filtruje
 | ↩ `UNIMPORT` | `CompensateImportCommand` | cashflow-writer | `ImportCompensated(deleted, categoriesDeleted)` |
 | ↩ `UNLEARN` | `ForgetLearnedCommand` | category-resolution | `LearnedForgotten(count)` |
 | ↩ `DISCARD_ROWS` | `DiscardRowsCommand` | staging | `RowsDiscarded(count)` |
+
+**Jeden wyjątek od reguły „dane grupowe wartością" i jest zmierzony, nie przyjęty.**
+`ClassifyGroupsCommand` nosi **klucze** grup, a worker klasyfikacji czyta ich wiersze przez
+`ingestion-staging-api`. Powód leży w kontrakcie F66: `CategorizationRequest` bierze
+`List<TransactionToCategorize>` — **transakcje** — i silnik grupuje je sam po `effectiveMerchant()`.
+Wysłanie syntetycznych reprezentantów grup zrobiłoby z jego grupowania operację jałową i dałoby
+`transactionCount == 1` w sugestiach: pola wypełnione nieprawdą, czyli ten sam kształt defektu, który
+F67 usunęło razem z `aiTokensUsed`. Odwzorowanie odpowiedzi wraca na grupy naturalnie, bo silnik
+**już** odpowiada per grupa — `ContextMapping` po parze (pattern, bankCategory),
+`AutoCategorizableSuggestion` po słowie klasyfikacji, `BankCategoryFallback` po bankCategory. Cena:
+`GroupKey` **musi** używać `effectiveMerchant()`, bo tym grupuje silnik, i to jest wymóg zgodności z
+obcym modułem, nie konwencja.
 
 `RESOLVE` jedzie **dwa razy i to jest oszczędność, nie powtórzenie**: pierwszy przebieg używa
 wyłącznie darmowej drabiny (direct match, wyuczone wzorce, mapowania, słowo klasyfikacji z CSV), a
@@ -472,7 +495,7 @@ jednej flagi `deleteCategories`:
 |---|---|---|
 | cash changes | tak, póki cash flow w SETUP | `UNIMPORT` po `importedCashChangeIds` (okno 1 h, `rollbackDeadline`) |
 | kategorie | **warunkowo** — user mógł już ich użyć | kasujemy tylko te z `createdCategoryNames`, których nie używa nic poza tą sesją; `Uncategorized` nigdy |
-| wyuczone wzorce | tak | `UNLEARN` po `learnedPatternIds` — bo to była ta sama decyzja co import |
+| wyuczone wzorce | tak | `UNLEARN` po `learnedPatternIds` — bo to była ta sama decyzja co import. `TransactionCategorizationApi.forget` ma dziś **zero wywołań produkcyjnych**: metoda kontraktu bez konsumenta, której ten krok jest pierwszym |
 | mapowania | tak, ale zwykle nie chcemy | zostają; to wiedza o banku, nie o tym wyciągu |
 | wiersze staged | tak | `DISCARD_ROWS` lub TTL |
 
@@ -514,20 +537,35 @@ implementacji):
 
 1. `ingestion-canonical` nie zależy od niczego w rodzinie ingestion (to ta sama reguła, którą
    `CanonicalRowIsSelfContainedTest` już dowiózł — przenosimy ją na poziom modułów).
-2. Żaden worker nie zależy od innego workera ani od `ingestion-conductor` (tylko od
-   `ingestion-conductor-api`).
-3. `ingestion-conductor` nie zależy od żadnego workera — ani od `*-api` workera poza
-   `ingestion-staging-api`, jeśli ten powstanie.
-4. Każda klasa z `@KafkaListener` implementuje `ModuleEventHandler` (reguła z
+2. Żaden worker nie zależy od **implementacji** innego workera ani od `ingestion-conductor`.
+   Jedyna dozwolona krawędź między workerami to `ingestion-staging-api` (tylko czytanie) i mają ją
+   dokładnie dwa: `cashflow-writer` i `classification`.
+3. Do `ingestion_rows` pisze wyłącznie `ingestion-staging`; `staging-api` nie wystawia metody
+   zapisującej.
+4. `ingestion-conductor` nie zależy od żadnego workera, również nie od `ingestion-staging-api` —
+   podgląd wierszy wystawia przez własny endpoint, pytając kontraktu.
+5. Każda klasa z `@KafkaListener` implementuje `ModuleEventHandler` (reguła z
    `ModuleBoundariesArchTest`, tu **bez listy wyjątków** — moduł jest nowy, więc nie ma długu).
-5. Każda komenda i każda odpowiedź to `record` implementujący `IntegrationEvent` (też bez
+6. Każda komenda i każda odpowiedź to `record` implementujący `IntegrationEvent` (też bez
    wyjątków — siedem klas na liście `EVENTS_STILL_CLASSES` to dług starych modułów).
-6. `assertSealed("ingestion_*")` dla każdego workera: `app` / `domain` / `infrastructure`
+7. `assertSealed("ingestion_*")` dla każdego workera: `app` / `domain` / `infrastructure`
    nieosiągalne z zewnątrz.
-7. Brak cykli między modułami rodziny (`slices`).
-8. **Conductor nie zna AI**: nic w `ingestion-conductor` nie zależy od
+8. Brak cykli między modułami rodziny (`slices`).
+9. **Conductor nie zna AI**: nic w `ingestion-conductor` nie zależy od
    `bank_data_ai_categorization` ani od `spring-ai`. To jest ta sama reguła, którą F67 wymusiło dla
    sekcji `classification`, i to ona czyni klasyfikator wymiennym.
+10. **Nic nie zależy od `ingestion-classification`** — liść, i to warunek wymienialności
+    klasyfikatora.
+
+Trzy reguły są na poziomie **wywołań metod**, nie pakietów, bo tam leży granica, którą zmierzyłem:
+
+11. `createCategory`, `importHistorical` i `rollbackImport` wywołuje **wyłącznie**
+    `ingestion-cashflow-writer`. Dziś `createCategory` woła **trzy** sekcje, każda z własnym
+    `catch`-em.
+12. `ingestion-conductor` używa z `CashFlowModuleApi` tylko `exists` i `skeletonOf`.
+13. `ingestion-category-resolution` ma `cashflow-api` w pomie **wyłącznie dla typów**
+    (`Type`, `CategoryName`) i nie wywołuje z niego ani jednej metody — drzewo kategorii przychodzi
+    w komendzie jako `CategorySnapshot`.
 
 ### 16. Wejście — bez zmian w `bank-data-adapter`
 
@@ -542,6 +580,28 @@ GET  /api/v2/ingestion/{sessionId}        → cała sesja: fazy, kroki, czasy, l
 POST /api/v2/ingestion/{sessionId}/decisions   → odpowiedzi na ≤7 pytań, jedno żądanie
 POST /api/v2/ingestion/{sessionId}/compensate  → świadome wycofanie (w oknie)
 ```
+
+**Prefiks `/api/v2` jest sprawdzony, nie przyjęty**, i jest darmowy:
+
+| co | stan faktyczny | wniosek |
+|---|---|---|
+| kolizje | `api/v2` nie występuje **nigdzie** w repo (ani w kodzie, ani w yml) | wolne |
+| autoryzacja | `SecurityConfiguration`: whitelist to tylko `/api/v1/auth/**` i `/actuator/health`, dalej `anyRequest().authenticated()` | `/api/v2/**` **chronione JWT bez żadnej zmiany** |
+| role | `hasAnyAuthority` dotyczy wyłącznie `/api/v1/management/**` | v2 bez nowych uprawnień |
+| CORS | `source.registerCorsConfiguration("/**", …)` | obejmuje v2 |
+| obsługa błędów | `ErrorHttpHandler` to globalny `@RestControllerAdvice` | nowe `BusinessException` mapują się same — pod warunkiem z §17 |
+| multipart | `max-file-size: 10MB` | plik 402-wierszowy ≈ 160 KB; starcza na ~25 000 wierszy |
+| stare API | `/api/v1/bank-data-ingestion/**` żyje dalej | **to warunek nietykalności adaptera** |
+
+Najważniejsze: v2 **nie wymaga żadnej zmiany w `vidulum-shared-kernel`**, a każda taka zmiana
+kosztuje pełny przebieg reaktora.
+
+Jedna świadoma zmiana konwencji: **sesja jest zasobem**, więc `/api/v2/ingestion/{sessionId}/…`
+zamiast `cf={id}/staging/{sessionId}/…`. Sesja ma własny globalnie unikalny id, więc zagnieżdżanie
+jej pod cash flow dodaje do adresu to, co serwer i tak ma z dokumentu — a pięć poziomów ścieżki jest
+tym, co czyni dzisiejsze URL-e trudnymi do zapamiętania. Lista filtrowana query paramem
+(`?cashFlowId=`), jak istniejące `GET /cash-flow?userId={userId}`. Konwencja `cf={id}` **zostaje w
+v1** i nie jest przenoszona.
 
 UI ma plik kanoniczny — albo z transformacji, albo przez istniejące publiczne
 `GET /api/v1/bank-data-adapter/{transformationId}/download`. Conductor **nie woła adaptera po
@@ -560,6 +620,15 @@ z transportem in-process, i to jest zmiana adaptera, nie nasza.
 | **P4** | topic faktów + pierwszy konsument (F4 websocket-gateway albo `vidulum-alerts`) | koniec pisania w próżnię | tak |
 | **P5** | `recategorize` w `cashflow-api` → `AUTOPILOT` domyślnie | zero interakcji | — |
 
+**Jedna rzecz robi się raz, na samym początku P0: osiem nowych `ErrorCode`.** `ErrorHttpHandler`
+siedzi w `vidulum-shared-kernel` i mapuje `BusinessException.getErrorCode()`, więc każdy nowy kod to
+zmiana shared-kernela — a to z reguł CLAUDE.md znaczy **pełne `./mvnw clean test`** (~7 min, 21
+modułów). Dopisywanie ich po jednym na moduł to osiem pełnych przebiegów zamiast jednego. Własny enum
+w rodzinie nie jest obejściem: wyjątku z nieznanym kodem `ErrorHttpHandler` nie odwzoruje, czyli
+endpoint odpowie **500 zamiast 404** — dokładnie ta wpadka, którą CLAUDE.md opisuje przy
+zagnieżdżonym `RuntimeException` w porcie ingestion. Lista kodów:
+[`10-granice-artefaktow.md`](ingestion-conductor-design/10-granice-artefaktow.md) §6.
+
 P0 i P1 nie potrzebują nowych zdarzeń obserwacyjnych i nie potrzebują zmian w cashflow. Stary
 `bank-data-ingestion` żyje przez cały czas na `/api/v1/...` i jest wyłączany dopiero, gdy v2 ma
 parytet — nie ma użytkowników produkcyjnych, więc wyłączenie to usunięcie modułu, nie migracja.
@@ -575,7 +644,9 @@ parytet — nie ma użytkowników produkcyjnych, więc wyłączenie to usunięci
    dane wierszowe podróżują **referencją** (jedna komenda `ValidateRowsCommand` je wnosi, dalej już
    tylko `sessionId`), dane grupowe **wartością** (bo grup jest ~38, nie 402). Czyli
    `ingestion-staging-api` istnieje od P1, ale tylko do czytania.
-5. **Atestacja** — zostaje ręczna (user potwierdza `confirmedBalance`) czy conductor proponuje
+5. ~~Prefiks nowych endpointów~~ — **potwierdzony pomiarem, §16**: `/api/v2`, bez zmian w
+   shared-kernelu, bez kolizji, z darmową autoryzacją i CORS-em.
+6. **Atestacja** — zostaje ręczna (user potwierdza `confirmedBalance`) czy conductor proponuje
    saldo z ostatniego wiersza i pyta tylko o potwierdzenie?
 
 ---
