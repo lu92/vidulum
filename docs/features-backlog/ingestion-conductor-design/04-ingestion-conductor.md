@@ -65,6 +65,7 @@ ingestion_conductor/
 | GET | `/api/v2/ingestion?cashFlowId=` | — | lista skrótów sesji |
 | GET | `/api/v2/ingestion/{sessionId}/rows?status=` | — | wiersze sesji, stronicowo (przez `staging-api`) |
 | POST | `/api/v2/ingestion/{sessionId}/decisions` | `[{decisionId, action, category, parent?, remember}]` | `IngestionSessionJson` — **nowy stan w tej samej odpowiedzi** |
+| POST | `/api/v2/ingestion/{sessionId}/balance` | `{asOf, declaredBalance, createAdjustment}` | `IngestionSessionJson` z `balanceCheck` — różnicą i kandydatami |
 | POST | `/api/v2/ingestion/{sessionId}/compensate` | `{reason}` | `IngestionSessionJson` (faza `COMPENSATED`) |
 
 `userId` pochodzi z JWT, nigdy z body — jak w `/exchange-connection`. Sesja innego użytkownika
@@ -81,6 +82,8 @@ record RecordStepReplyCommand(StepReply reply) implements Command {}
 record AnswerDecisionsCommand(SessionId sessionId, UserId answeredBy,
                               List<DecisionAnswer> answers) implements Command {}
 record AutoResolveExpiredDecisionsCommand() implements Command {}        // z harmonogramu
+record ConfirmBalanceCommand(SessionId sessionId, LocalDate asOf, Money declaredBalance,
+                             boolean createAdjustment) implements Command {}
 record CompensateIngestionCommand(SessionId sessionId, String reason) implements Command {}
 record ResumeStalledStepsCommand() implements Command {}                 // z harmonogramu
 
@@ -130,6 +133,9 @@ record Ignore(String reason) implements NextAction {}                 // duplika
 | `shouldDispatchLearnBeforeApplyingResolution` | odpowiedzi usera z `remember=true` → `Dispatch(LearnDecisionsCommand)`, a `APPLY_RESOLUTION` dopiero po `DecisionsLearned` |
 | `shouldDispatchProvisionBeforeImport` | `ResolutionApplied` → `Dispatch(ProvisionCategoriesCommand)` |
 | `shouldNotImportWhenProvisioningFailed` | `StepReply(PROVISION_CATEGORIES, FAILED)` → `Compensate`, **nigdy** `Dispatch(ImportRowsCommand)` |
+| `shouldConfirmBalanceWithoutAskingWhenStatementCarriesIt` | plik z kolumną salda → `Dispatch(ConfirmBalanceCommand(source=FROM_STATEMENT))` **bez** pytania ownera |
+| `shouldAskForBalanceOnlyWhenStatementDoesNotCarryIt` | plik bez kolumny salda → faza oczekiwania na jedną liczbę, z `asOf` = data ostatniej operacji **w pliku** |
+| `shouldNeverCreateAnAdjustmentWithoutConsent` | różnica ≠ 0 i `createAdjustment=false` → `balanceCheck` zapisany, `adjustmentCashChangeId` **null**, zero zapisów do cash flow |
 | `shouldFinishImportedWhenNothingFailed` | `RowsImported(failed=[])` → `Finish(IMPORTED)` |
 | `shouldFinishPartiallyImportedWhenSomeRowsFailed` | `RowsImported(failed=15)` → `Finish(PARTIALLY_IMPORTED)` |
 | `shouldRejectWithoutRetryWhenCashFlowRefuses` | `StepReply(REJECTED, CASHFLOW_CLOSED)` → `Fail`, zero ponowień |

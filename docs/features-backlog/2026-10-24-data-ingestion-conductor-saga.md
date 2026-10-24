@@ -341,6 +341,7 @@ Komendy (jeden topic na krok, bo inaczej każdy worker czyta wszystko i filtruje
 | `PROVISION_CATEGORIES` | `ProvisionCategoriesCommand` | cashflow-writer | `CategoriesProvisioned(created[], existed[])` |
 | `IMPORT` | `ImportRowsCommand` | cashflow-writer | `RowsImported(pairs[], failed[])` + `PARTIAL` co 50 wierszy |
 | `MARK_IMPORTED` | `MarkImportedCommand(pairs[])` | staging | `ImportMarked(count)` |
+| `CONFIRM_BALANCE` | `ConfirmBalanceCommand(asOf, declaredBalance, createAdjustment)` | cashflow-writer | `BalanceConfirmed(declared, calculated, difference, adjustmentId)` |
 | ↩ `UNIMPORT` | `CompensateImportCommand` | cashflow-writer | `ImportCompensated(deleted, categoriesDeleted)` |
 | ↩ `UNLEARN` | `ForgetLearnedCommand` | category-resolution | `LearnedForgotten(count)` |
 | ↩ `DISCARD_ROWS` | `DiscardRowsCommand` | staging | `RowsDiscarded(count)` |
@@ -498,6 +499,8 @@ START (HTTP, 202 + sessionId)
   ├─▶ APPLY_RESOLUTION ──── staging                 (grupa → 381 wierszy)
   ├─▶ PROVISION_CATEGORIES ─ cashflow-writer
   ├─▶ IMPORT ─────────────── cashflow-writer        (+ MARK_IMPORTED → staging)
+  ├─▶ CONFIRM_BALANCE ───── cashflow-writer        (automatycznie, gdy wyciąg nosi saldo;
+  │                                                 inaczej po odpowiedzi ownera)
   └─▶ IMPORTED | PARTIALLY_IMPORTED
 ```
 
@@ -597,6 +600,8 @@ POST /api/v2/ingestion            multipart: file (CSV kanoniczny) + cashFlowId
   → 202 { sessionId, phase: RECEIVED }
 GET  /api/v2/ingestion/{sessionId}        → cała sesja: fazy, kroki, czasy, liczniki, decyzje, odrzuty
 POST /api/v2/ingestion/{sessionId}/decisions   → odpowiedzi na ≤7 pytań, jedno żądanie
+POST /api/v2/ingestion/{sessionId}/balance     → saldo na dzień ostatniej operacji w pliku
+                                                 + zgoda na wyrównanie (albo jej brak)
 POST /api/v2/ingestion/{sessionId}/compensate  → świadome wycofanie (w oknie)
 ```
 
@@ -806,6 +811,7 @@ class IngestionSessionEntity {
     List<GroupRecord>    groups;              // ~38 — jednostka pracy i decyzji
     List<DecisionRecord> decisions;           // audyt interakcji z userem
     Compensations        compensations;
+    BalanceCheck         balanceCheck;        // kontrola zgodności z bankiem po imporcie
     Failure              failure;             // NIGDY nie zerowane
     @Version Long version;
 }
@@ -840,6 +846,21 @@ record DecisionRecord(String decisionId, DecisionKind kind, String groupKey,
 record Compensations(List<String> createdCategoryNames, List<String> importedCashChangeIds,
                      List<String> learnedPatternIds, List<String> createdMappingIds,
                      Instant rollbackDeadline) {}
+
+/**
+ * Czy dane zgadzają się z bankiem - sprawdzane po KAŻDYM wgraniu, nie raz na życie cash flow.
+ *
+ * `asOf` to dzień ostatniej operacji w pliku, nigdy "dzisiaj": saldo dzisiejsze objęłoby
+ * transakcje, których w pliku jeszcze nie ma, a te przyjdą w następnym wyciągu i zostałyby
+ * policzone dwa razy (specyfikacja 13 §7).
+ */
+record BalanceCheck(Source source,              // FROM_STATEMENT albo DECLARED_BY_OWNER
+                    LocalDate asOf,
+                    Money declaredBalance,      // z kolumny wyciągu albo od ownera
+                    Money calculatedBalance,    // policzone przez cashflow, nie przez nas
+                    Money difference,
+                    String adjustmentCashChangeId,   // null, dopóki owner nie zgodził się na wyrównanie
+                    Instant checkedAt) {}
 ```
 
 #### 20.3 `ingestion_rows` — dane
@@ -1095,7 +1116,25 @@ grupowa staje się 381 zapisami.
 | conductor | `compensations.importedCashChangeIds[381]`, `rollbackDeadline = now+1h`, `phase: IMPORTED`; wysyła `MarkImportedCommand(pairs)` |
 | T12b | `ingestion-staging` zapisuje `importResult.cashChangeId` na 381 wierszach → `ImportMarked(381)` |
 
-#### T13 · user → cashflow: ATESTACJA (poza ingestion)
+#### T12c · conductor → cashflow-writer: CONFIRM_BALANCE
+
+| | |
+|---|---|
+| odpala | **conductor** po `MARK_IMPORTED` — automatycznie, gdy wyciąg nosi saldo; inaczej czeka na ownera |
+| kod | `ingestion-cashflow-writer` → `ConfirmBalanceListener` → `cashFlowApi.confirmBalance(...)` |
+| wejście | `asOf` = data ostatniej operacji w pliku (**nie** „dzisiaj"), `declaredBalance`, `createAdjustment` |
+| skąd saldo | Nest: kolumna `Saldo po operacji` ostatniego wiersza — **76 047,25**, czyli bez pytania ownera. Pekao: tej kolumny nie ma, więc pyta UI |
+| kto liczy | **cashflow, nie my.** `CashFlow.calculateCurrentBalance()` sumuje saldo początkowe i wszystkie potwierdzone cash changes; kontrakt oddaje **porównanie**, nie saldo — inaczej konsument zacząłby sam „poprawiać" różnicę |
+| zapis | `ingestion_sessions.balanceCheck`; przy zgodzie ownera **cash change** „Wyrównanie salda za…" w cash flow |
+| wynik na pliku Nest | różnica **0,00 PLN** → cisza, żadnego pytania |
+| wynik na pliku Pekao | różnica **95,20 PLN** (wiersz EUR nie wszedł) → ekran z kandydatami na przyczynę |
+
+**Dlaczego ten krok wykrywa błąd waluty:** `calculateCurrentBalance` sumuje przez `Money.plus`,
+czyli przez tę samą arytmetykę, która nie pilnuje walut. Wiersz 22,14 EUR odrzucony przez M7 **nie
+wchodzi wcale**, więc saldo policzone różni się od bankowego o jego prawdziwą wartość — i to jest
+dokładnie ta liczba, którą owner widzi na ekranie.
+
+#### T13 · user → cashflow: ATESTACJA (tylko `BACKFILL`, poza ingestion)
 
 | | |
 |---|---|
@@ -1225,7 +1264,12 @@ reaktor) i **M7** (odrzucenie wiersza przy walidacji, bo tam owner to zobaczy).
 `bankAccount`, a okresy obu wyciągów nachodzą się na cały 2025 rok — więc import Pekao do cash flow
 Nest przechodzi po cichu: daty się zgadzają, kategorie powstają, 791 cash changes wchodzi. **I nie
 da się tego dziś sprawdzić przez kontrakt**, bo `CashFlowSkeletonView` nie wystawia rachunku — co
-czyni z tego **trzecią** brakującą rzecz w `cashflow-api`, obok `recategorize` i `deleteImported`.
+czyni z tego **trzecią** brakującą rzecz w `cashflow-api`, obok `recategorize` i `deleteImported` —
+a czwartą dołożyła propozycja kontroli salda przy każdym wgraniu:
+`confirmBalance(cashFlowId, asOf, declaredBalance, createAdjustment)`, bo kontrakt nie przenosi dziś
+**ani salda, ani porównania** (zadanie **X9**, specyfikacja 13 §7). Cztery razy ta sama diagnoza:
+kontrakt nie przenosi tego, czego potrzeba do kontroli, więc konsument albo zgaduje, albo nie robi
+nic.
 Zadania: **X7** (pole w widoku) i **M8** (walidacja całej sesji, nie wiersza).
 
 **(c) 24 wiersze przechodzą przez granicę miesiąca.** `operationDate` różni się od `bookingDate` w

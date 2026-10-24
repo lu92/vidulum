@@ -73,7 +73,22 @@ public record Failure(ErrorCode code, String message, boolean retryable, Ingesti
 public sealed interface StepOutcome
         permits RowsValidated, CategoriesResolved, GroupsClassified, DecisionsLearned,
                 ResolutionApplied, CategoriesProvisioned, ImportProgress, RowsImported,
-                ImportMarked, ImportCompensated, LearnedForgotten, RowsDiscarded {}
+                ImportMarked, BalanceConfirmed, ImportCompensated, LearnedForgotten, RowsDiscarded {}
+
+/**
+ * Wynik kontroli zgodności z bankiem. Niesie <b>porównanie</b>, nie saldo - bo saldo liczy cashflow
+ * i tylko ono ma do tego prawo; konsument, który dostałby samą liczbę, zacząłby sam "poprawiać"
+ * różnicę, a to utrwala błąd zamiast go pokazać.
+ *
+ * <p>{@code asOf} jest dniem ostatniej operacji w pliku, nigdy dniem dzisiejszym - inaczej różnica
+ * objęłaby transakcje, których w pliku jeszcze nie ma, i te same pieniądze zostałyby policzone
+ * dwa razy, gdy przyjdą w następnym wyciągu.
+ */
+public record BalanceConfirmed(BalanceSource source, LocalDate asOf,
+                               Money declaredBalance, Money calculatedBalance, Money difference,
+                               CashChangeId adjustmentId) implements StepOutcome {}
+
+public enum BalanceSource { FROM_STATEMENT, DECLARED_BY_OWNER }
 ```
 
 ## Kontrakt — komendy i gniazda, krok po kroku
@@ -113,6 +128,7 @@ public record RowsValidated(
 | `PROVISION_CATEGORIES` | `cashFlowId`, `plan: CategoryPlan` | `CategoriesProvisioned(created[], existed[])` |
 | `IMPORT` | `cashFlowId`, `batchSize`, `progressEvery` | `ImportProgress` (PARTIAL) → `RowsImported(pairs[], failed[])` |
 | `MARK_IMPORTED` | `pairs: List<ImportedPair>` | `ImportMarked(count)` |
+| `CONFIRM_BALANCE` | `cashFlowId`, `asOf`, `declaredBalance`, `source`, `createAdjustment` | `BalanceConfirmed(declared, calculated, difference, adjustmentId)` |
 | `UNIMPORT` | `cashFlowId`, `cashChangeIds[]`, `categoryNames[]` | `ImportCompensated(deleted, categoriesDeleted)` |
 | `UNLEARN` | `cashFlowId`, `patternIds[]`, `mappingIds[]` | `LearnedForgotten(count)` |
 | `DISCARD_ROWS` | — | `RowsDiscarded(count)` |

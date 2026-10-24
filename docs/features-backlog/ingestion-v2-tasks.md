@@ -59,8 +59,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
 | `finished` | 5 | 0 | 0 | 0 | **5** |
-| `open` | 33 | 37 | 15 | 5 | **90** |
-| **razem** | 38 | 37 | 15 | 5 | **95** |
+| `open` | 33 | 38 | 15 | 5 | **91** |
+| **razem** | 38 | 38 | 15 | 5 | **96** |
 
 ## Gotowe do wzięcia
 
@@ -70,6 +70,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 |---|---|---|---|
 | **K4** | P0 | Agregator vidulum-app-ingestion i miejsce w reaktorze | K5, K7 |
 | **K9** | P0 | Siedem ErrorCode w shared-kernel jednym commitem | K15, M7 |
+| **X9** | P1 | confirmBalance w cashflow-api | S18 |
 
 ## Zadania według ścieżek
 
@@ -113,7 +114,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **S15** | P1 | `open` | Endpoint przerwania sesji | S5 | U7 |
 | **S16** | P1 | `open` | Jaki procent wartości pokryły zadane pytania | S8 | U4 |
 | **S17** | P1 | `open` | Tryb sesji: backfill czy dowgranie | S4 | S18, U8, X8 |
-| **S18** | P1 | `open` | Wyrównanie salda na koniec każdego wgrania | S17 | U9 |
+| **S18** | P1 | `open` | Wyrównanie salda na koniec każdego wgrania | S17, X9 | U9 |
 | **S19** | P2 | `open` | Osiemnasta kolumna: saldo po operacji | K5 | — |
 
 ### M — Magazyn wierszy
@@ -215,8 +216,9 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **X4** | P3 | `open` | Parytet z v1 i wyłączenie bank-data-ingestion | T3, T4, T5, T6 | X5 |
 | **X5** | P3 | `open` | Dokumentacja: CLAUDE.md i przewodnik manualny | X4 | — |
 | **X6** | P3 | `open` | Lista kontrolna parytetu v1 do v2 | T5 | — |
-| **X7** | P0 | **finished** | Rachunek bankowy w kontrakcie cashflow | K3 | M7, M8 |
+| **X7** | P0 | **finished** | Rachunek bankowy w kontrakcie cashflow | K3 | M7, M8, X9 |
 | **X8** | P3 | `open` | Endpoint atestacji miesiąca — opcjonalny po S18 | S17 | — |
+| **X9** | P1 | `open` | confirmBalance w cashflow-api | X7 | S18 |
 
 ## Opisy zadań
 
@@ -678,7 +680,7 @@ Cały projekt opisuje backfill, a po atestacji cash flow jest OPEN i kolejne wyc
 ### S18 · Wyrównanie salda na koniec każdego wgrania
 
 **PR:** `feat(ingestion): potwierdzenie salda po wgraniu i korekta wyrównująca`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S17 · **Odblokowuje:** U9
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S17, X9 · **Odblokowuje:** U9
 
 Uogólnienie mechanizmu, który już istnieje dla importu historycznego: AttestHistoricalImportCommand ma createAdjustment, agregat tworzy cash change Balance Adjustment (CONFIRMED, Uncategorized, bankTransactionId=null), a projekcja dokłada go do miesiąca ACTIVE. Tutaj to samo, ale po KAŻDYM wgraniu — i to zastępuje atestację miesiąca jako mechanizm kontroli.
 
@@ -1590,7 +1592,7 @@ X4 mówi wyłączyć v1 po parytecie, ale nie wylicza, co to parytet. Dwadzieśc
 ### X7 · Rachunek bankowy w kontrakcie cashflow
 
 **PR:** `feat(cashflow-api): CashFlowSkeletonView wystawia rachunek cash flow`  
-**Priorytet:** P0 · **Status:** **finished** · **Zależy od:** K3 · **Odblokowuje:** M7, M8
+**Priorytet:** P0 · **Status:** **finished** · **Zależy od:** K3 · **Odblokowuje:** M7, M8, X9
 
 CashFlow ma JEDEN bankAccount, więc Nest i Pekao to dwa osobne cash flow — ale skeleton nie wystawia rachunku, więc ingestion nie ma czym sprawdzić, czy wyciąg należy do tego cash flow. Jedno pole w widoku, bez którego walidacja z M8 jest niewykonalna.
 
@@ -1618,6 +1620,22 @@ MakeMonthlyAttestationCommand i MonthAttestedEvent są w kodzie od dawna, ale na
 - to ożywia komendę bez nadawcy — ta sama klasa zaległości co forget przed R7
 
 **Pliki:** `vidulum-app-cashflow/cashflow/`
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
+
+### X9 · confirmBalance w cashflow-api
+
+**PR:** `feat(cashflow-api): porównanie salda z bankiem jako operacja kontraktu`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** X7 · **Odblokowuje:** S18
+
+Kontrola salda po każdym wgraniu wymaga metody, której nie ma: kontrakt nie przenosi ani salda, ani porównania. Saldo MUSI zostać w cashflow — ten sam argument, który trzymał je poza skeletonem: konsument, który dostanie samą liczbę, zacznie sam poprawiać różnicę, a to utrwala błąd zamiast go pokazać. Wzór jest obok: AttestHistoricalImportCommandHandler liczy calculateCurrentBalance i różnicę u siebie.
+
+**Definicja ukończenia:**
+- confirmBalance(cashFlowId, asOf, declaredBalance, createAdjustment) → declared, calculated, difference, adjustmentId
+- agregat dostaje wariant liczenia salda NA DZIEŃ — calculateCurrentBalance nie ma dziś filtra daty, a cash flow może mieć transakcje późniejsze niż ostatnia operacja w pliku
+- wyrównanie powstaje tylko przy createAdjustment, z nazwą nazywającą okres, nie Balance Adjustment
+- metoda nie zwraca samego salda — oddaje porównanie
+
+**Pliki:** `vidulum-app-cashflow/cashflow-api/`, `vidulum-app-cashflow/cashflow/`
 **Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
 
 ## Dziennik
@@ -1945,6 +1963,7 @@ flowchart LR
     X6["X6 Lista kontrolna parytetu v1 do v2"]:::p3
     X7["X7 Rachunek bankowy w kontrakcie cashflow"]:::done
     X8["X8 Endpoint atestacji miesiąca — opcjona…"]:::p3
+    X9["X9 confirmBalance w cashflow-api"]:::p1
     Z1["Z1 Tworzenie kategorii jako osobny, niep…"]:::p0
     Z2["Z2 Import wierszy do cash flow z postępem"]:::p0
     Z3["Z3 Wycofanie importu z prawdziwymi liczb…"]:::p1
@@ -2026,6 +2045,7 @@ flowchart LR
     S8 --> S16
     S4 --> S17
     S17 --> S18
+    X9 --> S18
     K5 --> S19
     K12 --> T1
     M3 --> T1
@@ -2099,6 +2119,7 @@ flowchart LR
     T5 --> X6
     K3 --> X7
     S17 --> X8
+    X7 --> X9
     K8 --> Z1
     M1 --> Z1
     M2 --> Z2

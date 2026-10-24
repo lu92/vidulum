@@ -35,7 +35,13 @@ void onImportRows(ImportRowsCommand command);
 //    co `progressEvery` wierszy: StepReply(PARTIAL, ImportProgress)
 //    finalnie: RowsImported(pairs, failed) — SUCCEEDED gdy failed puste, inaczej PARTIAL
 
-// 3. implements CompensateImportHandler
+// 3. implements ConfirmBalanceHandler
+void onConfirmBalance(ConfirmBalanceCommand command);
+//    cashFlowApi.confirmBalance(cashFlowId, asOf, declaredBalance, createAdjustment)
+//    porównanie robi CASHFLOW (CashFlow.calculateCurrentBalance), nie ten moduł
+//    wyrównanie powstaje TYLKO gdy createAdjustment == true
+
+// 4. implements CompensateImportHandler
 void onCompensateImport(CompensateImportCommand command);
 //    skeletonOf().isInSetup() ? rollbackImport(cashFlowId, deleteCategories) : REJECTED(ATTESTED)
 ```
@@ -94,7 +100,17 @@ jak mówi komentarz w obecnym handlerze.
 | `shouldReturnTheSameIdsOnRetry` | ponowienie z tym samym `commandId`, atrapa idempotentna po `bankTransactionId` → te same `pairs`, `failed` puste |
 | `shouldPageWithoutLosingOrDuplicatingRows` | 381 wierszy, strona 100 → 381 unikalnych `rowId` w `pairs` |
 
-### C. `UNIMPORT` — component
+### C. `CONFIRM_BALANCE` — component
+
+| test | given → then |
+|---|---|
+| `shouldAskCashFlowForTheComparisonNotForTheBalance` | atrapa kontraktu → wołane `confirmBalance`, **nigdy** metoda zwracająca samo saldo; ten moduł niczego nie odejmuje sam |
+| `shouldPassTheStatementDateNotToday` | `asOf` z komendy przekazane bez zmian; przesunięcie zegara testowego o 5 dni nie zmienia wyniku |
+| `shouldNotCreateAdjustmentWithoutConsent` | `createAdjustment=false`, różnica 95,20 → `BalanceConfirmed` z różnicą i `adjustmentId == null` |
+| `shouldCreateAdjustmentOnConsent` | `createAdjustment=true` → `adjustmentId` niepuste, dokładnie jedno wywołanie kontraktu |
+| `shouldReportZeroDifferenceAsSuccess` | saldo zgodne → `SUCCEEDED`, różnica `0.00`, zero wyrównań |
+
+### D. `UNIMPORT` — component
 
 | test | given → then |
 |---|---|
@@ -103,7 +119,7 @@ jak mówi komentarz w obecnym handlerze.
 | `shouldReportRealNumbersFromRollbackResult` | atrapa zwraca `RollbackResult(299, 9)` → `ImportCompensated(299, 9)`; **żadnych zer z palca** (udokumentowany powód istnienia `RollbackResult`) |
 | `shouldReplyFailedWhenRollbackBreaks` | atrapa rzuca → `FAILED(retryable=true)`, kompensacja wznawialna |
 
-### D. Czego nie testujemy tutaj
+### E. Czego nie testujemy tutaj
 
 | rzecz | gdzie |
 |---|---|
