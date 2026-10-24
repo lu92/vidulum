@@ -171,6 +171,23 @@ class ForecastHttpActor {
 | `shouldRunTheWholeFlowWithInProcessTransport` | `vidulum.ingestion.step.transport=in-process` → ten sam przepływ bez Kafki; **ten test pilnuje, że testy komponentowe modułów nie kłamią** |
 | `shouldNotEmitFactsUntilThereIsAConsumer` | przegląd topików → brak `ingestion.facts` dopóki nie ma konsumenta w reaktorze (P4). Test, żeby nikt nie dopisał szóstego zdarzenia w próżnię — dokładnie to, co dziś robi `bank_data_ingestion` |
 
+### E2. `OngoingImportTest` — wgrywanie kolejnych plików po atestacji
+
+Grupa dopisana po analizie importu ciągłego (specyfikacja 13). **Żadnego z tych przypadków nie da
+się pokazać testem komponentowym**, bo każdy zależy od tego, co atestacja zrobiła z cash flow.
+
+| test | scenariusz → asercje |
+|---|---|
+| `shouldImportSubsequentStatementAfterAttestation` | backfill Nest → atestacja → cash flow **OPEN** → wgranie wyciągu grudniowego (61 wierszy) → tryb sesji `ONGOING`, **zero pytań** (pamięć po backfillu), 60 zaimportowanych, 1 odrzucony (EUR) |
+| `shouldAcceptOverlappingDateRanges` | po wgraniu grudnia wgranie zakresu **1 XII – 11 I** (75 wierszy) → **61 duplikatów pominiętych**, 14 nowych, zero pytań; duplikaty raportowane jako normalny wynik, nie ostrzeżenie |
+| `shouldImportAMultiMonthFileAfterAQuarterOfSilence` | harmonogram rollover przeszedł **trzy razy bez ownera** (zegar przesuwany) → wgranie pliku za XII–II → wszystkie trzy miesiące przyjmują dane, **jedno** pytanie o saldo, **jedna** korekta w miesiącu bieżącym |
+| `shouldFileLateBookedRowsIntoTheBookingMonthWhenOperationMonthIsAttested` | grudzień zaatestowany, wyciąg styczniowy nosi **dwa wiersze 21,99 PLN** z operacją 27 i 31 XII → trafiają do **stycznia**, a zaatestowane saldo grudnia **nadal się zgadza**. To arytmetyczny sens wyjątku z M9, nie wygoda |
+| `shouldRefuseCompensationInOngoingMode` | cash flow OPEN → `POST /compensate` → odmowa nazywająca powód; **po X2** ta sama sesja wycofuje **tylko swoje** 61 cash changes, a backfill zostaje nietknięty |
+| `shouldRecategoriseImportedRowsInBulk` | po imporcie w `AUTOPILOT` 147 wierszy prowizorycznych (BADOO 94 + ZABKA 53) → **jedno** wywołanie przekategoryzowania → kategorie zmienione, prognoza przeliczona, kwoty nietknięte. **Dziś ten test jest niewykonalny** i to jest jego wartość: zapina X1 |
+| `shouldTreatGenericBankCategoryAsUnresolved` | cash flow ma już kategorię `Inne`, wgrywany Pekao ma 265 wierszy z `Inne`/`Bez kategorii` → **żaden** nie rozstrzyga się priorytetem 0, wszystkie idą do wzorców i AI |
+| `shouldNotPolluteTheCategoryTreeWithTailGroups` | Pekao z progiem 3 wierszy → plan tworzy mniej niż 38 kategorii, grupy po 1–2 wiersze idą do rodzica albo fallbacku; po wycofaniu importu kategorie **zostają** (świadomie) |
+| `shouldCollapseCardAuthorisationSettlementAndReversal` | 43 rozliczenia kartowe i 45 storn o identycznych kwotach → suma per merchant **bez podwójnego liczenia**: BADOO ma tyle transakcji, ile było zakupów, nie 94 wiersze; `valueShare` liczone po zwinięciu (**M12**) |
+
 ### F. `IngestionBoundariesArchTest` — reguły rodziny
 
 Wzorzec: `ModuleBoundariesArchTest` z `vidulum-app`. **Bez listy wyjątków** — moduł jest nowy, więc

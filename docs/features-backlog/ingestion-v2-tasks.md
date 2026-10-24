@@ -59,8 +59,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
 | `finished` | 5 | 0 | 0 | 0 | **5** |
-| `open` | 33 | 38 | 15 | 5 | **91** |
-| **razem** | 38 | 38 | 15 | 5 | **96** |
+| `open` | 33 | 39 | 15 | 5 | **92** |
+| **razem** | 38 | 39 | 15 | 5 | **97** |
 
 ## Gotowe do wzięcia
 
@@ -124,12 +124,13 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **M1** | P0 | `open` | Kontrakt magazynu wierszy, tylko do czytania | K7 | L1, M2, Z1 |
 | **M2** | P0 | `open` | Encja wiersza, indeksy, TTL, cleaner | M1 | M3, M5, S11, T8, W6, Z2 |
 | **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, T1, T5, U3 |
-| **M4** | P0 | `open` | Grupowanie wierszy i udział w wartości | K11, M3 | Z4 |
+| **M4** | P0 | `open` | Grupowanie wierszy i udział w wartości | K11, M3 | M12, Z4 |
 | **M5** | P0 | `open` | Zastosowanie rozstrzygnięcia, oznaczenie importu, kasowanie | K8, M2 | W2 |
 | **M6** | P1 | `open` | Chunkowanie komendy walidacji | M3 | T9 |
 | **M7** | P0 | `open` | Waluta wiersza wobec waluty cash flow | K9, M3, X7 | — |
 | **M8** | P0 | `open` | Wyciąg musi należeć do tego cash flow | M3, X7 | — |
 | **M9** | P2 | `open` | Która data rządzi miesiącem transakcji | M3 | — |
+| **M12** | P1 | `open` | Autoryzacja, storno i rozliczenie to jedna płatność | M4 | — |
 
 ### Z — Zapis do cash flow
 
@@ -756,7 +757,7 @@ Duplikat po bankTransactionId, potem okno importu cashflow, i TYLKO jeśli przes
 ### M4 · Grupowanie wierszy i udział w wartości
 
 **PR:** `feat(ingestion): grupy jako jednostka pracy pipeline'u`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K11, M3 · **Odblokowuje:** Z4
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K11, M3 · **Odblokowuje:** M12, Z4
 
 GroupSummary z licznikiem, sumą, trzema próbkami i valueShare — wejście filtra istotności. Wiersze auto-kategorizowalne grupują się po słowie klasyfikacji, nie po merchancie; kierunki są rozdzielone.
 
@@ -842,6 +843,22 @@ W Pekao operationDate różni się od bookingDate w 292 z 791 wierszy, a w 24 te
 - test na 24 wierszach Pekao przechodzących granicę miesiąca
 - w trybie ciągłym (specyfikacja 13 §5) to ŚCIEŻKA GŁÓWNA, nie przypadek brzegowy: każdy wyciąg z początku miesiąca nosi operacje poprzedniego, zaksięgowane po jego zamknięciu
 - argument arytmetyczny, nie wygoda: bez wyjątku dla miesiąca zaatestowanego dwa wiersze 21,99 PLN z wyciągu Pekao albo przepadają, albo psują już potwierdzone saldo grudnia
+
+**Pliki:** `vidulum-app-ingestion/ingestion-staging/`
+**Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
+
+### M12 · Autoryzacja, storno i rozliczenie to jedna płatność
+
+**PR:** `feat(ingestion): zwijanie trójek kartowych przed grupowaniem`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M4 · **Odblokowuje:** —
+
+Zmierzone na wyciągu Pekao: 492 autoryzacje kartą, 43 rozliczenia i 45 storn, przy czym KAŻDE rozliczenie ma storno o identycznej kwocie. Netto wychodzi poprawnie, ale grupowanie tego nie wie: storno ma w tytule tylko numer karty i datę, więc trafia do innej grupy niż obciążenie. Skutek: BADOO pokazuje 94 wiersze i 2067 PLN, gdy zakupów było ~52 — a to valueShare napędza filtr istotności i ranking pytań.
+
+**Definicja ukończenia:**
+- parowanie po (karta, kwota, data) przed policzeniem grup
+- suma i licznik grupy liczone po zwinięciu; owner widzi tyle transakcji, ile zrobił zakupów
+- wiersze zwinięte zostają w magazynie i nadal wchodzą do cash flow — zwijamy GRUPOWANIE, nie dane
+- test na fixture Pekao: 43 pary rozliczenie/storno rozpoznane, 2 storna bez pary zostają osobno
 
 **Pliki:** `vidulum-app-ingestion/ingestion-staging/`
 **Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
@@ -1900,6 +1917,7 @@ flowchart LR
     M7["M7 Waluta wiersza wobec waluty cash flow"]:::p0
     M8["M8 Wyciąg musi należeć do tego cash flow"]:::p0
     M9["M9 Która data rządzi miesiącem transakcji"]:::p2
+    M12["M12 Autoryzacja, storno i rozliczenie to…"]:::p1
     R1["R1 Moduł rozstrzygania i trwałe mapowania"]:::p1
     R2["R2 CategoryLadder: sześć priorytetów w j…"]:::p1
     R3["R3 Przebieg pierwszy: darmowa drabina be…"]:::p1
@@ -2007,6 +2025,7 @@ flowchart LR
     M3 --> M8
     X7 --> M8
     M3 --> M9
+    M4 --> M12
     K7 --> R1
     K8 --> R2
     R1 --> R2
