@@ -171,6 +171,11 @@ Pięć zasad, każda z powodu wziętego z pomiaru powyżej:
 
 ### 8. Moduły Mavena
 
+> **Specyfikacja każdego modułu — kontrakt, metody, scenariusze testowe — leży w osobnym pliku:**
+> [`ingestion-conductor-design/`](ingestion-conductor-design/00-index.md). Jeden plik na artefakt,
+> plus [`09-ingestion-tests.md`](ingestion-conductor-design/09-ingestion-tests.md) z testami
+> integracyjnymi całego przepływu.
+
 ```
 vidulum-app-ingestion/                      AGREGATOR (pom), jak market/ i wealth/
 ├── ingestion-canonical/                    słownik: CanonicalRow, TransactionClassification,
@@ -1334,6 +1339,8 @@ flow w fazie SETUP, ta strzałka potrafi zabrać dane innej sesji.
 
 ## Powiązane
 
+- [`ingestion-conductor-design/`](ingestion-conductor-design/00-index.md) — **specyfikacje per moduł**:
+  kontrakty, metody, scenariusze testowe i reguły architektoniczne, plik na artefakt
 - `2026-10-23-ingestion-process-monitor.md` — F68: pomiar dzisiejszego monitora i jego sześciu
   miejsc obsługi porażki; ta koncepcja zakłada jego wnioski
 - `2026-10-22-bank-data-ingestion-sections.md` — F67: sekcje i ich reguły, z których wyrastają
