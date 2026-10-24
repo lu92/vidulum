@@ -49,6 +49,7 @@ Tablica OKX ma swoją (A–H), więc `F57` zawsze znaczy zadanie tamtej, a `S7` 
 | **R** — Rozstrzyganie kategorii | drabina w jednej kopii, plan kategorii, nauka i zapominanie |
 | **W** — Wytrzymałość | ponowienia, kompensacja per faza, odzysk po awarii, DLQ, retencja |
 | **T** — Testy i reguły | moduł integracyjny, reguły architektoniczne, przepływy end-to-end |
+| **U** — Interfejs użytkownika | ekrany, polling, decyzje i ścieżki porażki — projekt w specyfikacji 12 |
 | **X** — Wygaszenie v1 i obserwacja | metody w cashflow-api, topic faktów, usunięcie starego modułu, dokumentacja |
 
 ## Postęp
@@ -58,8 +59,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
 | `finished` | 5 | 0 | 0 | 0 | **5** |
-| `open` | 33 | 26 | 10 | 6 | **75** |
-| **razem** | 38 | 26 | 10 | 6 | **80** |
+| `open` | 33 | 33 | 12 | 6 | **84** |
+| **razem** | 38 | 33 | 12 | 6 | **89** |
 
 ## Gotowe do wzięcia
 
@@ -100,15 +101,17 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **S2** | P0 | `open` | IngestionSaga jako czysta funkcja | K8, S1 | L4, S3, S6, S8, S13, W2 |
 | **S3** | P0 | `open` | StepDispatcher in-process i przełącznik transportu | S2 | S6, S12 |
 | **S4** | P0 | `open` | Start sesji: pre-flight, parsowanie, idempotencja po sha256 | K6, S1 | S5, S7 |
-| **S5** | P0 | `open` | REST v2: start, widok sesji, lista | S4 | S9, S11, T11, W5 |
+| **S5** | P0 | `open` | REST v2: start, widok sesji, lista | S4 | S9, S11, S15, T11, U1, U2, W5 |
 | **S6** | P0 | `open` | Odbiór odpowiedzi kroków i idempotencja | S2, S3 | S12, W1 |
-| **S7** | P0 | `open` | Jedna aktywna sesja na cash flow w fazie SETUP | S4 | — |
-| **S8** | P1 | `open` | AutonomyPolicy i filtr istotności | S2 | S9 |
-| **S9** | P1 | `open` | Decyzje usera w jednym żądaniu | S5, S8 | R6, S10, T4 |
-| **S10** | P1 | `open` | TTL decyzji: polityka zamiast utraty uploadu | S9 | — |
+| **S7** | P0 | `open` | Jedna aktywna sesja na cash flow w fazie SETUP | S4 | U1 |
+| **S8** | P1 | `open` | AutonomyPolicy i filtr istotności | S2 | S9, S16 |
+| **S9** | P1 | `open` | Decyzje usera w jednym żądaniu | S5, S8 | R6, S10, T4, U4 |
+| **S10** | P1 | `open` | TTL decyzji: polityka zamiast utraty uploadu | S9 | U7 |
 | **S11** | P1 | `open` | Podgląd wierszy sesji przez staging-api | M2, S5 | — |
 | **S12** | P0 | `open` | Kafka: topici komend, topic odpowiedzi, dispatcher | K8, S3, S6 | T1, T9, W4, Z4 |
 | **S13** | P0 | `open` | Tabela przejść sagi jako dokument, nie tylko nazwy testów | S2 | — |
+| **S15** | P1 | `open` | Endpoint przerwania sesji | S5 | U7 |
+| **S16** | P1 | `open` | Jaki procent wartości pokryły zadane pytania | S8 | U4 |
 
 ### M — Magazyn wierszy
 
@@ -116,7 +119,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 |---|---|---|---|---|---|
 | **M1** | P0 | `open` | Kontrakt magazynu wierszy, tylko do czytania | K7 | L1, M2, Z1 |
 | **M2** | P0 | `open` | Encja wiersza, indeksy, TTL, cleaner | M1 | M3, M5, S11, T8, W6, Z2 |
-| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, T1, T5 |
+| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, T1, T5, U3 |
 | **M4** | P0 | `open` | Grupowanie wierszy i udział w wartości | K11, M3 | Z4 |
 | **M5** | P0 | `open` | Zastosowanie rozstrzygnięcia, oznaczenie importu, kasowanie | K8, M2 | W2 |
 | **M6** | P1 | `open` | Chunkowanie komendy walidacji | M3 | T9 |
@@ -129,7 +132,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | # | prio | status | zadanie | zależy od | odblokowuje |
 |---|---|---|---|---|---|
 | **Z1** | P0 | `open` | Tworzenie kategorii jako osobny, nieprzemilczany krok | K8, M1 | Z2, Z3 |
-| **Z2** | P0 | `open` | Import wierszy do cash flow z postępem | M2, Z1 | T1, W5, Z4 |
+| **Z2** | P0 | `open` | Import wierszy do cash flow z postępem | M2, Z1 | T1, U5, W5, Z4 |
 | **Z3** | P1 | `open` | Wycofanie importu z prawdziwymi liczbami | Z1 | W2 |
 | **Z4** | P0 | `open` | Pierwszy import end-to-end bez pytań (AUTOPILOT) | M4, S12, Z2 | T3 |
 
@@ -162,10 +165,10 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | # | prio | status | zadanie | zależy od | odblokowuje |
 |---|---|---|---|---|---|
 | **W1** | P2 | `open` | Ponowienia, backoff i rozróżnienie FAILED/REJECTED | S6 | W3 |
-| **W2** | P2 | `open` | Łańcuch kompensacji per faza | M5, R7, S2, Z3 | T6, X2 |
+| **W2** | P2 | `open` | Łańcuch kompensacji per faza | M5, R7, S2, Z3 | T6, U6, X2 |
 | **W3** | P2 | `open` | Odzysk po awarii: krok bez odpowiedzi | W1 | T7 |
 | **W4** | P2 | `open` | DLQ dla komend i odpowiedzi | S12 | X3 |
-| **W5** | P2 | `open` | Częściowy import i raport odrzutów | S5, Z2 | — |
+| **W5** | P2 | `open` | Częściowy import i raport odrzutów | S5, Z2 | U6 |
 | **W6** | P2 | `open` | Retencja: dane znikają, rekord procesu zostaje | M2, S1 | — |
 
 ### T — Testy i reguły
@@ -184,6 +187,18 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **T10** | P1 | `open` | Test słownika klasyfikacji wobec adaptera | K5, T1 | — |
 | **T11** | P0 | `open` | Bootstrap: wiring, zależności, cleanery | S5, T1 | — |
 | **T12** | P1 | `open` | Zegar testowy rodziny: stały i przesuwalny | T1 | — |
+
+### U — Interfejs użytkownika
+
+| # | prio | status | zadanie | zależy od | odblokowuje |
+|---|---|---|---|---|---|
+| **U1** | P1 | `open` | Ekran startu i trzy odmowy wejściowe | S5, S7 | — |
+| **U2** | P1 | `open` | Warstwa pollingu i jedno źródło stanu | S5 | U3, U4, U5, U6, U7 |
+| **U3** | P1 | `open` | Ekran przetwarzania z krokami i odrzutami | M3, U2 | — |
+| **U4** | P1 | `open` | Ekran decyzji: jeden ekran, jedno żądanie | S9, S16, U2 | — |
+| **U5** | P1 | `open` | Ekran importu, sukcesu i atestacji | U2, Z2 | — |
+| **U6** | P2 | `open` | Ekrany porażki, importu częściowego i kompensacji | U2, W2, W5 | — |
+| **U7** | P2 | `open` | Sesja zamknięta: TTL, przerwanie, wygaśnięcie | S10, S15, U2 | — |
 
 ### X — Wygaszenie v1 i obserwacja
 
@@ -482,7 +497,7 @@ exists + skeletonOf przed założeniem sesji (404/409 natychmiast), parsowanie p
 ### S5 · REST v2: start, widok sesji, lista
 
 **PR:** `feat(ingestion): endpointy /api/v2/ingestion`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** S4 · **Odblokowuje:** S9, S11, T11, W5
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** S4 · **Odblokowuje:** S9, S11, S15, T11, U1, U2, W5
 
 POST /api/v2/ingestion (202 + sessionId), GET /api/v2/ingestion/{id} z pełnym stanem procesu, GET /api/v2/ingestion?cashFlowId=. userId z JWT, sesja innego usera to 404 a nie 403.
 
@@ -510,7 +525,7 @@ Odpowiedź po commandId zamyka krok; duplikat jest ignorowany, odpowiedź na nie
 ### S7 · Jedna aktywna sesja na cash flow w fazie SETUP
 
 **PR:** `feat(ingestion): strażnik jednej aktywnej sesji na cash flow w SETUP`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** S4 · **Odblokowuje:** —
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** S4 · **Odblokowuje:** U1
 
 rollbackImport kasuje cały import cash flow, nie wiersze jednej sesji — więc dwie sesje w SETUP znaczyłyby, że kompensacja jednej zabiera dane drugiej. Druga sesja dostaje 409, dopóki pierwsza nie jest w stanie końcowym.
 
@@ -524,7 +539,7 @@ rollbackImport kasuje cały import cash flow, nie wiersze jednej sesji — więc
 ### S8 · AutonomyPolicy i filtr istotności
 
 **PR:** `feat(ingestion): polityka autonomii i filtr istotności pytań`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S2 · **Odblokowuje:** S9
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S2 · **Odblokowuje:** S9, S16
 
 Progi 90/50, pokrycie 90 procent wartości, maxQuestions 7, TTL decyzji, fallback i trzy poziomy: AUTOPILOT, REVIEW_MATERIAL, REVIEW_ALL. Polityka należy do conductora, bo to ona jest przedmiotem audytu w decisions[].
 
@@ -540,7 +555,7 @@ Progi 90/50, pokrycie 90 procent wartości, maxQuestions 7, TTL decyzji, fallbac
 ### S9 · Decyzje usera w jednym żądaniu
 
 **PR:** `feat(ingestion): jedno żądanie na wszystkie decyzje sesji`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S5, S8 · **Odblokowuje:** R6, S10, T4
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S5, S8 · **Odblokowuje:** R6, S10, T4, U4
 
 POST /api/v2/ingestion/{id}/decisions przyjmuje odpowiedzi na wszystkie pytania naraz, zapisuje je w decisions[] z autorem i czasem, i zwraca NOWY stan sesji w tej samej odpowiedzi HTTP — żeby nie było okna, w którym ekran kłamie.
 
@@ -555,7 +570,7 @@ POST /api/v2/ingestion/{id}/decisions przyjmuje odpowiedzi na wszystkie pytania 
 ### S10 · TTL decyzji: polityka zamiast utraty uploadu
 
 **PR:** `feat(ingestion): auto-rozstrzygnięcie decyzji po TTL`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S9 · **Odblokowuje:** —
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S9 · **Odblokowuje:** U7
 
 Nieodpowiedziana decyzja po 24 h dostaje recommended i zapis autoResolved=TTL, zamiast zabierać cały upload. Dziś TTL kasuje sesję i wiersze, więc trzeba powtórzyć od transformacji AI, czyli zapłacić modelowi drugi raz.
 
@@ -609,6 +624,36 @@ Najważniejsza klasa projektu jest dziś opisana wyłącznie dwudziestoma nazwam
 **Pliki:** `docs/features-backlog/ingestion-conductor-design/04-ingestion-conductor.md`
 **Specyfikacja:** [04](ingestion-conductor-design/04-ingestion-conductor.md)
 
+### S15 · Endpoint przerwania sesji
+
+**PR:** `feat(ingestion): POST /{id}/abandon dla sesji przerwanej przez ownera`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S5 · **Odblokowuje:** U7
+
+Faza ABANDONED jest w maszynie stanów od początku, ale nie ma endpointu, który by ją ustawiał — czyli przycisk Przerwij w UI nie ma czego zawołać. Wyszło przy rozpisaniu ekranów (specyfikacja 12).
+
+**Definicja ukończenia:**
+- dostępny w każdej fazie przed IMPORTING, później 409
+- wiersze zostają do TTL, nie są kasowane od razu
+- sesja przerwana jest czytelna przez GET, z powodem
+
+**Pliki:** `vidulum-app-ingestion/ingestion-conductor/`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
+### S16 · Jaki procent wartości pokryły zadane pytania
+
+**PR:** `feat(ingestion): decisions[].valueCovered w widoku sesji`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S8 · **Odblokowuje:** U4
+
+Na wyciągu przelewowym 4 pytania to 90 % wartości, na kartowym 7 pytań to znacznie mniej, bo 90 % wymagałoby 35. Bez tej liczby ekran decyzji sugeruje, że user rozstrzygnął wszystko, co istotne — a rozstrzygnął tyle, ile pozwolił limit.
+
+**Definicja ukończenia:**
+- pole w widoku sesji i w odpowiedzi POST /decisions
+- liczone z tych samych udziałów, co filtr istotności
+- UI pokazuje je zdaniem, nie procentem bez kontekstu
+
+**Pliki:** `vidulum-app-ingestion/ingestion-conductor/`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
 ### M1 · Kontrakt magazynu wierszy, tylko do czytania
 
 **PR:** `feat(ingestion): ingestion-staging-api jako kontrakt tylko do czytania`  
@@ -640,7 +685,7 @@ IngestionRowEntity (original + validation + groupKey + resolution + importResult
 ### M3 · Walidacja wiersza w jednej, zamrożonej kolejności
 
 **PR:** `feat(ingestion): walidacja wierszy — duplikaty, okno importu, miesiące, przelewy własne`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, M7, M8, M9, T1, T5
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, M7, M8, M9, T1, T5, U3
 
 Duplikat po bankTransactionId, potem okno importu cashflow, i TYLKO jeśli przeszło — statusy miesięcy prognozy, żeby jedna zła data nie dała dwóch komunikatów. Plus wykrycie przelewu własnego po IBAN-ie i nadanie groupKey.
 
@@ -761,7 +806,7 @@ CategoryPlan wykonywany osobnym krokiem: rodzice przed dziećmi (bo apply(Catego
 ### Z2 · Import wierszy do cash flow z postępem
 
 **PR:** `feat(ingestion): import wierszy przez kontrakt cashflow, z postępem`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** M2, Z1 · **Odblokowuje:** T1, W5, Z4
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** M2, Z1 · **Odblokowuje:** T1, U5, W5, Z4
 
 Wiersze czytane stronicowo przez staging-api, HistoricalCashChange z nietkniętą skalą Money i strefą paidDate, dueDate = paidDate, bankTransactionId i flaga selfTransfer. Postęp jako StepReply(PARTIAL) co 50 wierszy — telemetria, która wreszcie ma konsumenta.
 
@@ -1020,7 +1065,7 @@ maxAttempts z wykładniczym backoffem; Failure.retryable decyduje, czy w ogóle 
 ### W2 · Łańcuch kompensacji per faza
 
 **PR:** `feat(ingestion): kompensacja nazwana per faza, nie jedna flaga`  
-**Priorytet:** P2 · **Status:** `open` · **Zależy od:** M5, R7, S2, Z3 · **Odblokowuje:** T6, X2
+**Priorytet:** P2 · **Status:** `open` · **Zależy od:** M5, R7, S2, Z3 · **Odblokowuje:** T6, U6, X2
 
 UNIMPORT → UNLEARN → DISCARD_ROWS, w tej kolejności, z odmową gdy cash flow wyszedł z SETUP. Kategorie kasowane tylko te utworzone przez tę sesję; Uncategorized nigdy; mapowania zostają, bo to wiedza o banku, nie o wyciągu.
 
@@ -1063,7 +1108,7 @@ DefaultErrorHandler z DeadLetterPublishingRecoverer na topicach komend i odpowie
 ### W5 · Częściowy import i raport odrzutów
 
 **PR:** `feat(ingestion): PARTIALLY_IMPORTED z raportem, co nie weszło`  
-**Priorytet:** P2 · **Status:** `open` · **Zależy od:** S5, Z2 · **Odblokowuje:** —
+**Priorytet:** P2 · **Status:** `open` · **Zależy od:** S5, Z2 · **Odblokowuje:** U6
 
 Wiersze odrzucone i duplikaty nie blokują wyciągu, ale muszą być widoczne: liczniki, powód per wiersz, id kolidującego cash change. Dziś sesja mówi COMPLETED, tylko licznik jest mniejszy, i nic nie mówi UI, że 15 wierszy nie weszło.
 
@@ -1260,6 +1305,112 @@ FixedClockConfig istnieje tylko w vidulum-cashflow-tests (inny artefakt), a Muta
 
 **Pliki:** `vidulum-ingestion-tests/src/test/java/`
 **Specyfikacja:** [09](ingestion-conductor-design/09-ingestion-tests.md)
+
+### U1 · Ekran startu i trzy odmowy wejściowe
+
+**PR:** `feat(ui): ekran startu importu z obsługą 404, 409 i 400`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S5, S7 · **Odblokowuje:** —
+
+Jedno żądanie zmieniające stan zamiast dzisiejszych siedmiu. Trzy odmowy mają trzy różne wyjścia: 409 to LINK do trwającej sesji, niezgodny rachunek pokazuje oba numery, zły format nazywa brakującą kolumnę.
+
+**Definicja ukończenia:**
+- 409 renderowane jako link, nie jako błąd
+- komunikat o rachunku pokazuje oba numery obok siebie
+- po 202 UI przechodzi na ekran przetwarzania bez dodatkowego GET
+
+**Pliki:** `frontend`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
+### U2 · Warstwa pollingu i jedno źródło stanu
+
+**PR:** `feat(ui): render fazy z GET sesji, bez stanu lokalnego`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S5 · **Odblokowuje:** U3, U4, U5, U6, U7
+
+Każdy ekran jest funkcją phase z odpowiedzi. UI nie wyprowadza fazy, nie trzyma jej u siebie i nie zgaduje, co dalej — bo faza zmienia się też bez udziału ownera (TTL decyzji, harmonogram odzysku).
+
+**Definicja ukończenia:**
+- polling 2 s, 1 s w IMPORTING, 30 s w AWAITING_DECISION, stop w fazach końcowych
+- odpowiedź POST /decisions renderowana wprost, bez dodatkowego GET
+- zero logiki procesu w przeglądarce — żadnego wyboru ścieżki
+
+**Pliki:** `frontend`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
+### U3 · Ekran przetwarzania z krokami i odrzutami
+
+**PR:** `feat(ui): widok kroków sagi z licznikami i powodami odrzutów`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M3, U2 · **Odblokowuje:** —
+
+Krok po kroku ze stanem i czasem, zamiast jednego statusu sesji. Odrzuty i duplikaty pokazane jako informacja (pomarańcz), nie jako awaria — z numerem linii, kodem błędu i id kolidującego cash change.
+
+**Definicja ukończenia:**
+- krok w toku, zrobiony, pominięty i nieudany mają różne ikony
+- duplikat linkuje do istniejącego cash change
+- czerwień zarezerwowana dla fazy FAILED
+
+**Pliki:** `frontend`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
+### U4 · Ekran decyzji: jeden ekran, jedno żądanie
+
+**PR:** `feat(ui): ekran decyzji z rekomendacjami i pokryciem wartości`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S9, S16, U2 · **Odblokowuje:** —
+
+Do siedmiu pytań per grupa, każde z licznikiem, sumą, trzema próbkami, rekomendacją i przełącznikiem zapamiętywania. Wszystkie odpowiedzi w jednym POST. Zamiast trzech dróg z v1 (accept-ai, mapowania po jednym, force-uncategorized) — jeden ekran, a pominięcie to po prostu Zatwierdź.
+
+**Definicja ukończenia:**
+- ekran mówi, jaki procent wartości pokrywają zadane pytania (S16)
+- przycisk Pokaż kolejne 7 dla wyciągów kartowych
+- informacja o TTL: po 24 h wchodzi rekomendacja, nic nie przepada
+- tworzenie kategorii własnej i podkategorii z tego samego ekranu
+
+**Pliki:** `frontend`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
+### U5 · Ekran importu, sukcesu i atestacji
+
+**PR:** `feat(ui): postęp importu i podsumowanie z oknem wycofania`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** U2, Z2 · **Odblokowuje:** —
+
+Postęp jako stan sesji, nie jako długie żądanie — kartę można zamknąć. Podsumowanie pokazuje, co weszło ORAZ co pominięte i dlaczego, plus listę prowizorycznych. Atestacja musi powiedzieć wprost, że kończy okno wycofania.
+
+**Definicja ukończenia:**
+- ekran nie blokuje się na czas importu
+- pominięte wiersze z powodem per wiersz
+- przy atestacji ostrzeżenie o nieodwracalności i pozostały czas okna
+
+**Pliki:** `frontend`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
+### U6 · Ekrany porażki, importu częściowego i kompensacji
+
+**PR:** `feat(ui): widoki PARTIALLY_IMPORTED, FAILED i COMPENSATED`  
+**Priorytet:** P2 · **Status:** `open` · **Zależy od:** U2, W2, W5 · **Odblokowuje:** —
+
+Trzy stany, które v1 pokazuje jednym komunikatem albo wcale. Częściowy import to wynik: ile weszło, co ponowić, co jest trwale nieimportowalne (obca waluta). Porażka mówi, na którym kroku padło i ile zostało w cash flow.
+
+**Definicja ukończenia:**
+- wiersze do ponowienia oddzielone od trwale nieimportowalnych
+- porażka nazywa krok i stan cash flow
+- kompensacja z potwierdzeniem i raportem, co zostało usunięte
+
+**Pliki:** `frontend`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
+### U7 · Sesja zamknięta: TTL, przerwanie, wygaśnięcie
+
+**PR:** `feat(ui): widoki ABANDONED, EXPIRED i decyzji rozstrzygniętych po TTL`  
+**Priorytet:** P2 · **Status:** `open` · **Zależy od:** S10, S15, U2 · **Odblokowuje:** —
+
+Decyzja rozstrzygnięta po 24 h nie jest utratą: ekran pokazuje, co wybrano za ownera i pozwala to poprawić. W v1 ta sama sytuacja to skasowana sesja i stracony upload, czyli transformacja AI do zapłaty drugi raz.
+
+**Definicja ukończenia:**
+- lista tego, co zastosowano automatycznie, z oznaczeniem rekomendacji
+- żadnego straszenia przy ABANDONED i EXPIRED
+- wyjście zawsze istnieje: zacznij od nowa albo popraw w cash flow
+
+**Pliki:** `frontend`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
 
 ### X1 · recategorize w cashflow-api → AUTOPILOT domyślnie
 
@@ -1592,6 +1743,8 @@ flowchart LR
     S11["S11 Podgląd wierszy sesji przez staging-a…"]:::p1
     S12["S12 Kafka: topici komend, topic odpowiedz…"]:::p0
     S13["S13 Tabela przejść sagi jako dokument, ni…"]:::p0
+    S15["S15 Endpoint przerwania sesji"]:::p1
+    S16["S16 Jaki procent wartości pokryły zadane…"]:::p1
     T1["T1 Moduł testów integracyjnych i jego ba…"]:::p0
     T2["T2 Reguły architektoniczne rodziny, zero…"]:::p0
     T3["T3 Przepływ udany: AUTOPILOT na 402 wier…"]:::p0
@@ -1604,6 +1757,13 @@ flowchart LR
     T10["T10 Test słownika klasyfikacji wobec adap…"]:::p1
     T11["T11 Bootstrap: wiring, zależności, cleane…"]:::p0
     T12["T12 Zegar testowy rodziny: stały i przesu…"]:::p1
+    U1["U1 Ekran startu i trzy odmowy wejściowe"]:::p1
+    U2["U2 Warstwa pollingu i jedno źródło stanu"]:::p1
+    U3["U3 Ekran przetwarzania z krokami i odrzu…"]:::p1
+    U4["U4 Ekran decyzji: jeden ekran, jedno żąd…"]:::p1
+    U5["U5 Ekran importu, sukcesu i atestacji"]:::p1
+    U6["U6 Ekrany porażki, importu częściowego i…"]:::p2
+    U7["U7 Sesja zamknięta: TTL, przerwanie, wyg…"]:::p2
     W1["W1 Ponowienia, backoff i rozróżnienie FA…"]:::p2
     W2["W2 Łańcuch kompensacji per faza"]:::p2
     W3["W3 Odzysk po awarii: krok bez odpowiedzi"]:::p2
@@ -1694,6 +1854,8 @@ flowchart LR
     S3 --> S12
     S6 --> S12
     S2 --> S13
+    S5 --> S15
+    S8 --> S16
     K12 --> T1
     M3 --> T1
     S12 --> T1
@@ -1724,6 +1886,22 @@ flowchart LR
     S5 --> T11
     T1 --> T11
     T1 --> T12
+    S5 --> U1
+    S7 --> U1
+    S5 --> U2
+    M3 --> U3
+    U2 --> U3
+    S9 --> U4
+    S16 --> U4
+    U2 --> U4
+    U2 --> U5
+    Z2 --> U5
+    U2 --> U6
+    W2 --> U6
+    W5 --> U6
+    S10 --> U7
+    S15 --> U7
+    U2 --> U7
     S6 --> W1
     M5 --> W2
     R7 --> W2

@@ -20,6 +20,7 @@ nie ma i gdzie to jest**.
 | 09 | [`09-ingestion-tests.md`](09-ingestion-tests.md) | `vidulum-ingestion-tests` | nie (bez `src/main`) | integration + ArchUnit |
 | 10 | [`10-granice-artefaktow.md`](10-granice-artefaktow.md) | — | **audyt granic** zmierzony na dzisiejszym kodzie + potwierdzenie `/api/v2` | — |
 | 11 | [`11-znaleziska-z-danych.md`](11-znaleziska-z-danych.md) | — | **znaleziska z drugiego wyciągu bankowego**: mechanizmy, pomiary i scenariusze dla zadań M7, M8, M9, K15, X7, R9, R10 | — |
+| 12 | [`12-ui-flow.md`](12-ui-flow.md) | — | **przepływ po stronie UI**: faza → ekran, dostępność endpointów, czego userowi nie wolno policzyć samemu, poprawa w liczbach. Mockupy: [`docs/design/ingestion-v2-ui-mockups.html`](../../design/ingestion-v2-ui-mockups.html) | ścieżka U |
 
 > **Plik 10 jest nadrzędny wobec pozostałych tam, gdzie się różnią.** Powstał z pomiaru
 > dzisiejszego `bank-data-ingestion` i poprawił sześć rzeczy w specyfikacjach 01, 05, 06, 07 i 09 —

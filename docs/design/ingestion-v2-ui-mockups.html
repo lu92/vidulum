@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingestion v2 — mockupy przepływu importu</title>
+<style>
+:root{
+  --primary:#1976D2; --primary-dark:#1565C0; --primary-light:#E3F2FD;
+  --success:#2E7D32; --success-light:#E8F5E9;
+  --warning:#E65100; --warning-light:#FFF3E0;
+  --error:#C62828;   --error-light:#FFEBEE;
+  --info:#00695C;    --info-light:#E0F2F1;
+  --g50:#FAFAFA; --g100:#F5F5F5; --g200:#EEEEEE; --g300:#E0E0E0;
+  --g500:#9E9E9E; --g600:#757575; --g700:#616161; --g900:#212121;
+  --white:#fff; --shadow:0 1px 3px rgba(0,0,0,.12); --shadow-lg:0 6px 20px rgba(0,0,0,.12);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+     background:var(--g100);color:var(--g900);line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:30px;font-weight:700;margin-bottom:8px}
+h2{font-size:21px;font-weight:650;margin:0 0 4px}
+.sub{color:var(--g600);margin-bottom:28px}
+.sub code{font-family:var(--mono);font-size:13px;background:var(--g200);padding:1px 5px;border-radius:4px}
+
+/* legenda + spis */
+.card{background:var(--white);border-radius:12px;box-shadow:var(--shadow);padding:20px 24px;margin-bottom:28px}
+.legend{display:flex;flex-wrap:wrap;gap:10px 18px;font-size:13px;color:var(--g700)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;font-size:14px}
+.toc a{color:var(--primary-dark);text-decoration:none;padding:6px 10px;border-radius:6px;background:var(--g50);display:block}
+.toc a:hover{background:var(--primary-light)}
+
+/* sekcja ekranu */
+section{margin-bottom:46px}
+.shead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 14px}
+.chip{font-family:var(--mono);font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid var(--g300);background:var(--white);color:var(--g700)}
+.chip.phase{background:var(--primary-light);border-color:#BBDEFB;color:var(--primary-dark);font-weight:600}
+.chip.get{background:var(--info-light);border-color:#B2DFDB;color:var(--info)}
+.chip.post{background:var(--warning-light);border-color:#FFE0B2;color:var(--warning)}
+
+/* ramka przeglądarki */
+.frame{background:var(--white);border:1px solid var(--g300);border-radius:10px;overflow:hidden;box-shadow:var(--shadow-lg)}
+.bar{background:var(--g200);padding:7px 12px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--g300)}
+.bar i{width:10px;height:10px;border-radius:50%;background:var(--g500);display:block}
+.url{flex:1;background:var(--white);border-radius:5px;padding:3px 10px;font-family:var(--mono);font-size:11.5px;color:var(--g600)}
+.app{padding:22px 24px}
+
+/* elementy aplikacji */
+.apphead{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--g200);padding-bottom:12px;margin-bottom:18px}
+.apptitle{font-size:17px;font-weight:650}
+.meta{font-size:12.5px;color:var(--g600);font-family:var(--mono)}
+.steps{display:flex;flex-direction:column;gap:9px;margin:14px 0}
+.step{display:flex;align-items:center;gap:11px;font-size:14px}
+.ic{width:21px;height:21px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;flex:none}
+.ic.ok{background:var(--success)} .ic.run{background:var(--primary)} .ic.wait{background:var(--g300);color:var(--g600)}
+.ic.err{background:var(--error)} .ic.skip{background:var(--warning)}
+.stime{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--g500)}
+.bar2{height:7px;background:var(--g200);border-radius:4px;overflow:hidden;margin:4px 0}
+.bar2 > span{display:block;height:100%;background:var(--primary)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin:16px 0}
+.tile{background:var(--g50);border:1px solid var(--g200);border-radius:8px;padding:11px 13px}
+.tile b{display:block;font-size:21px;font-weight:700;line-height:1.2}
+.tile span{font-size:11.5px;color:var(--g600)}
+.tile.ok b{color:var(--success)} .tile.warn b{color:var(--warning)} .tile.err b{color:var(--error)}
+.q{border:1px solid var(--g300);border-radius:9px;padding:14px 16px;margin-bottom:11px;background:var(--white)}
+.q.answered{border-color:#A5D6A7;background:var(--success-light)}
+.qtop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:9px}
+.qname{font-weight:650;font-size:14.5px}
+.qstat{font-family:var(--mono);font-size:12px;color:var(--g600);white-space:nowrap}
+.samples{font-size:12px;color:var(--g600);margin:6px 0 10px;font-family:var(--mono)}
+.opts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.opt{font-size:13px;padding:6px 11px;border-radius:7px;border:1px solid var(--g300);background:var(--white);cursor:pointer}
+.opt.sel{border-color:var(--primary);background:var(--primary-light);color:var(--primary-dark);font-weight:600}
+.opt.rec::after{content:" ★";color:var(--warning)}
+.btn{font-size:14px;font-weight:600;padding:9px 17px;border-radius:8px;border:none;cursor:pointer}
+.btn.p{background:var(--primary);color:#fff} .btn.s{background:var(--white);border:1px solid var(--g300);color:var(--g700)}
+.btn.d{background:var(--error);color:#fff} .btn.ok{background:var(--success);color:#fff}
+.actions{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.note{font-size:12.5px;padding:10px 13px;border-radius:8px;margin:12px 0}
+.note.i{background:var(--info-light);color:var(--info)}
+.note.w{background:var(--warning-light);color:var(--warning)}
+.note.e{background:var(--error-light);color:var(--error)}
+.note.s{background:var(--success-light);color:var(--success)}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--g600);padding:7px 9px;border-bottom:1px solid var(--g300)}
+td{padding:8px 9px;border-bottom:1px solid var(--g200);font-family:var(--mono);font-size:12.5px}
+td.t{font-family:inherit}
+.why{background:var(--g50);border-left:3px solid var(--primary);padding:12px 16px;margin-top:12px;font-size:13.5px;border-radius:0 8px 8px 0}
+.why b{color:var(--primary-dark)}
+.why ul{margin:6px 0 0 18px} .why li{margin:3px 0}
+.flow{font-family:var(--mono);font-size:12.5px;background:var(--g900);color:#E8EAF6;padding:18px 20px;border-radius:10px;overflow-x:auto;white-space:pre}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Ingestion v2 — mockupy przepływu importu</h1>
+<p class="sub">Co widzi user na każdym etapie sagi, czym to jest zasilane i co wolno kliknąć.
+Projekt przepływu: <code>docs/features-backlog/ingestion-conductor-design/12-ui-flow.md</code> ·
+dane w mockupach pochodzą z prawdziwych fixture'ów (Nest 402 wiersze, Pekao 791).</p>
+
+<div class="card">
+  <div class="legend">
+    <span><span class="dot" style="background:var(--primary)"></span>w toku</span>
+    <span><span class="dot" style="background:var(--success)"></span>sukces / zrobione</span>
+    <span><span class="dot" style="background:var(--warning)"></span>pominięte, nie błąd</span>
+    <span><span class="dot" style="background:var(--error)"></span>porażka</span>
+    <span><span class="chip phase">FAZA</span> faza sesji z <code>GET /api/v2/ingestion/{id}</code></span>
+    <span><span class="chip get">GET</span><span class="chip post">POST</span> endpointy zasilające ekran</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="toc">
+    <a href="#s0">S0 · Start importu</a>
+    <a href="#s1">S1 · Przetwarzanie</a>
+    <a href="#s2">S2 · Decyzje (≤7 pytań)</a>
+    <a href="#s3">S3 · Import w toku</a>
+    <a href="#s4">S4 · Sukces</a>
+    <a href="#s5">S5 · Import częściowy</a>
+    <a href="#s6">S6 · Porażka i wycofanie</a>
+    <a href="#s7">S7 · Odmowy wejściowe</a>
+    <a href="#s8">S8 · Decyzje po TTL</a>
+    <a href="#s9">S9 · Ścieżka drugiego wyciągu</a>
+  </div>
+</div>
+
+<!-- ───────────────────────────────── S0 -->
+<section id="s0">
+  <div class="shead"><h2>S0 · Start importu</h2></div>
+  <div class="chips"><span class="chip post">POST /api/v2/ingestion</span><span class="chip">202 + sessionId</span></div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/cash-flow/CF10000001/import</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Import wyciągu</div><div class="meta">CF10000001 · Nest Bank · PLN</div></div>
+      <div style="border:2px dashed var(--g300);border-radius:10px;padding:26px;text-align:center;background:var(--g50)">
+        <div style="font-size:15px;font-weight:600;margin-bottom:4px">Przeciągnij plik kanoniczny albo wybierz transformację</div>
+        <div style="font-size:12.5px;color:var(--g600)">CSV, 17 kolumn &middot; maks. 10 MB</div>
+      </div>
+      <table>
+        <tr><th>ostatnia transformacja</th><th>bank</th><th>wiersze</th><th></th></tr>
+        <tr><td class="t">lista_operacji_20260111.csv</td><td class="t">Nest Bank</td><td>402</td><td class="t"><button class="opt sel">Użyj</button></td></tr>
+      </table>
+      <div class="actions"><button class="btn p">Rozpocznij import</button><button class="btn s">Anuluj</button></div>
+      <div class="note i">Po kliknięciu backend odpowiada <b>202</b> i identyfikatorem sesji. Import nie jedzie
+        w tym żądaniu — można zamknąć kartę i wrócić.</div>
+    </div>
+  </div>
+  <div class="why"><b>Co się zmienia wobec v1:</b> to jedyne żądanie, które user musi wykonać, żeby proces ruszył.
+    W v1 trzeba było po nim jeszcze wywołać klasyfikację, przyjąć sugestie i wystartować import.</div>
+</section>
+
+<!-- ───────────────────────────────── S1 -->
+<section id="s1">
+  <div class="shead"><h2>S1 · Przetwarzanie</h2></div>
+  <div class="chips">
+    <span class="chip phase">PARSED</span><span class="chip phase">VALIDATED</span>
+    <span class="chip phase">CLASSIFIED</span><span class="chip phase">RESOLVED</span>
+    <span class="chip get">GET /api/v2/ingestion/{id} — polling 2 s</span>
+  </div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-7f3a9c21</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Import w przygotowaniu</div><div class="meta">ING-7f3a9c21 · Nest Bank</div></div>
+      <div class="steps">
+        <div class="step"><span class="ic ok">✓</span>Odczyt pliku — 402 wiersze, 0 błędów<span class="stime">38 ms</span></div>
+        <div class="step"><span class="ic ok">✓</span>Sprawdzenie wierszy — 381 ważnych, 15 duplikatów, 6 odrzuconych<span class="stime">1,1 s</span></div>
+        <div class="step"><span class="ic ok">✓</span>Dopasowanie bez AI — rozstrzygnięto 9 z 38 grup<span class="stime">96 ms</span></div>
+        <div class="step"><span class="ic run">●</span>Klasyfikacja 29 grup<span class="stime">trwa…</span></div>
+        <div class="step"><span class="ic wait">4</span>Przypisanie kategorii</div>
+        <div class="step"><span class="ic wait">5</span>Zapis do cash flow</div>
+      </div>
+      <div class="tiles">
+        <div class="tile ok"><b>381</b><span>wejdzie do cash flow</span></div>
+        <div class="tile warn"><b>15</b><span>duplikaty, pominięte</span></div>
+        <div class="tile warn"><b>6</b><span>odrzucone, z powodem</span></div>
+        <div class="tile"><b>38</b><span>grup do rozstrzygnięcia</span></div>
+      </div>
+      <div class="actions"><button class="btn s">Pokaż odrzucone (6)</button><button class="btn s">Przerwij</button></div>
+    </div>
+  </div>
+  <div class="why"><b>Dlaczego kroki są widoczne pojedynczo:</b> w v1 user widzi jeden status sesji i nie wie,
+    czy coś trwa, czy stanęło. Tu każdy krok ma własny stan i czas, a te same dane wystarczają na ekran porażki —
+    bo wtedy jeden z wierszy zmienia ikonę na czerwoną i dopisuje przyczynę.</div>
+</section>
+
+<!-- ───────────────────────────────── S2 -->
+<section id="s2">
+  <div class="shead"><h2>S2 · Decyzje — jeden ekran, ≤7 pytań</h2></div>
+  <div class="chips">
+    <span class="chip phase">AWAITING_DECISION</span>
+    <span class="chip get">GET /api/v2/ingestion/{id}</span>
+    <span class="chip post">POST /api/v2/ingestion/{id}/decisions</span>
+  </div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-7f3a9c21/decisions</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">4 pytania, resztę rozstrzygnęliśmy</div><div class="meta">30 z 38 grup gotowych</div></div>
+      <div class="note i">Pytamy tylko o grupy, które coś znaczą. Te cztery to <b>91 % wartości wyciągu</b>;
+        pozostałe 34 grupy dostały kategorię automatycznie — 3 z fallbacku, oznaczone jako prowizoryczne.</div>
+
+      <div class="q">
+        <div class="qtop"><div><div class="qname">PRACODAWCA SP Z O O</div>
+          <div class="samples">„PRACODAWCA SP Z O O — WYNAGRODZENIE" · „…N1D8MC1 12/2022" · „…11/2022"</div></div>
+          <div class="qstat">36 wierszy<br>+248 400,00 PLN</div></div>
+        <div class="opts">
+          <button class="opt sel rec">Wynagrodzenie <small>(nowa)</small></button>
+          <button class="opt">Przychody</button>
+          <button class="opt">Inna…</button>
+          <label style="font-size:12.5px;color:var(--g600);margin-left:auto"><input type="checkbox" checked> zapamiętaj</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="qtop"><div><div class="qname">URZAD SKARBOWY</div>
+          <div class="samples">„Symbol formularza:PIT28|Okres rozliczenia:M112025" · „…M102025" · „…M092025"</div></div>
+          <div class="qstat">51 wierszy<br>−96 112,00 PLN</div></div>
+        <div class="opts">
+          <button class="opt sel rec">Podatki <small>(nowa)</small></button>
+          <button class="opt">Zarządzanie kontem › Podatki</button>
+          <button class="opt">Inna…</button>
+          <label style="font-size:12.5px;color:var(--g600);margin-left:auto"><input type="checkbox" checked> zapamiętaj</label>
+        </div>
+      </div>
+
+      <div class="q answered">
+        <div class="qtop"><div><div class="qname">IKANO <span style="font-weight:400;color:var(--success)">— wybrano</span></div>
+          <div class="samples">„Ikano — rata" · „Ikano Bank" · „Ikano — spłata"</div></div>
+          <div class="qstat">36 wierszy<br>−43 920,00 PLN</div></div>
+        <div class="opts"><button class="opt sel">Kredyty i raty <small>(nowa)</small></button>
+          <label style="font-size:12.5px;color:var(--g600);margin-left:auto"><input type="checkbox" checked> zapamiętaj</label></div>
+      </div>
+
+      <div class="q">
+        <div class="qtop"><div><div class="qname">SILVA SILVA</div>
+          <div class="samples">„czynsz Lokal: 00-070 -020 Przy Torach 3/20" · „czynsz 02/2025" · „czynsz 01/2025"</div></div>
+          <div class="qstat">15 wierszy<br>−25 342,50 PLN</div></div>
+        <div class="opts">
+          <button class="opt rec">Mieszkanie › Czynsz <small>(nowa podkategoria)</small></button>
+          <button class="opt sel">Mieszkanie</button>
+          <button class="opt">Inna…</button>
+          <label style="font-size:12.5px;color:var(--g600);margin-left:auto"><input type="checkbox" checked> zapamiętaj</label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn p">Zatwierdź i importuj</button>
+        <button class="btn s">Pokaż kolejne 7 pytań</button>
+        <button class="btn s">Pokaż 34 rozstrzygnięte</button>
+        <button class="btn s">Przerwij</button>
+      </div>
+      <div class="note w">★ oznacza rekomendację. Jeśli nie odpowiesz w ciągu 24 godzin, zastosujemy
+        rekomendacje i zaimportujemy wyciąg — nic nie przepadnie.</div>
+    </div>
+  </div>
+  <div class="why"><b>Cztery rzeczy, których ten ekran nie robi, a v1 robi:</b>
+    <ul>
+      <li>nie pyta o 38 grup, tylko o te, które pokrywają 90 % wartości — na wyciągu kartowym limit tnie to do 7
+          i ekran <b>mówi, ile wartości naprawdę pokryły</b> pytania;</li>
+      <li>nie każe wybierać między „przyjmij sugestie AI", „skonfiguruj mapowania" i „pomiń kategoryzację" —
+          rekomendacja jest przy każdym pytaniu, a „pomiń" to po prostu <i>Zatwierdź</i>;</li>
+      <li>nie blokuje importu, gdy user nie odpowie — po 24 h wchodzi rekomendacja;</li>
+      <li>odpowiedź <code>POST</code> zawiera <b>nowy stan sesji</b>, więc ekran nie miga przez chwilę starym.</li>
+    </ul></div>
+</section>
+
+<!-- ───────────────────────────────── S3 -->
+<section id="s3">
+  <div class="shead"><h2>S3 · Import w toku</h2></div>
+  <div class="chips"><span class="chip phase">PROVISIONING_CATEGORIES</span><span class="chip phase">IMPORTING</span>
+    <span class="chip get">GET /api/v2/ingestion/{id} — polling 1 s</span></div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-7f3a9c21</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Zapisywanie do cash flow</div><div class="meta">nie musisz tu czekać</div></div>
+      <div class="steps">
+        <div class="step"><span class="ic ok">✓</span>Utworzenie kategorii — 9 nowych, 2 już istniały<span class="stime">1,4 s</span></div>
+        <div class="step"><span class="ic run">●</span>Zapis transakcji<span class="stime">250 / 381</span></div>
+      </div>
+      <div class="bar2"><span style="width:66%"></span></div>
+      <div class="meta" style="margin-top:4px">66 % · postęp aktualizowany co 50 wierszy</div>
+      <div class="note i">Import jedzie po stronie serwera. Możesz zamknąć tę kartę — sesja czeka na liście importów.</div>
+    </div>
+  </div>
+  <div class="why"><b>Dlaczego to ekran, a nie spinner w modalu:</b> w v1 import jedzie w wątku żądania HTTP,
+    więc 402 wiersze to jedno długie żądanie, którego nie wolno przerwać zamknięciem karty. W v2 postęp jest
+    stanem sesji, więc ekran jest tylko jego widokiem.</div>
+</section>
+
+<!-- ───────────────────────────────── S4 -->
+<section id="s4">
+  <div class="shead"><h2>S4 · Sukces — i co zostało pominięte</h2></div>
+  <div class="chips"><span class="chip phase">IMPORTED</span>
+    <span class="chip get">GET /api/v2/ingestion/{id}</span>
+    <span class="chip get">GET …/{id}/rows?status=REJECTED</span>
+    <span class="chip post">POST /cash-flow/cf={id}/attest-historical-import</span></div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-7f3a9c21</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Zaimportowano 381 transakcji</div><div class="meta">4 pytania · 0 błędów</div></div>
+      <div class="tiles">
+        <div class="tile ok"><b>381</b><span>w cash flow</span></div>
+        <div class="tile"><b>11</b><span>nowych kategorii</span></div>
+        <div class="tile warn"><b>15</b><span>duplikaty</span></div>
+        <div class="tile warn"><b>6</b><span>odrzucone</span></div>
+        <div class="tile warn"><b>3</b><span>prowizoryczne</span></div>
+      </div>
+      <table>
+        <tr><th>pominięte</th><th>wiersz</th><th>powód</th></tr>
+        <tr><td class="t">duplikat</td><td>2023011301</td><td class="t">już w cash flow jako <b>CC00001234</b></td></tr>
+        <tr><td class="t">odrzucony</td><td>linia 7</td><td class="t">IMPORT_DATE_BEFORE_START — 2022-12-28 &lt; 2023-01</td></tr>
+        <tr><td class="t">odrzucony</td><td>linia 92</td><td class="t">miesiąc 2023-04 jest zaatestowany, tylko do odczytu</td></tr>
+      </table>
+      <div class="note s">Prognoza przeliczona: 36 miesięcy, od 2023-01 do 2025-12.</div>
+      <div class="actions">
+        <button class="btn ok">Atestuj import</button>
+        <button class="btn s">Przejrzyj 3 prowizoryczne</button>
+        <button class="btn s">Pokaż wszystkie 402 wiersze</button>
+        <button class="btn d">Wycofaj import</button>
+      </div>
+      <div class="note w"><b>Atestacja kończy okno wycofania.</b> Po niej historia należy do Ciebie i import nie da
+        się już cofnąć. Zostało 54 minuty.</div>
+    </div>
+  </div>
+  <div class="why"><b>Co tu jest nowe:</b> wiersz po wierszu <b>dlaczego</b> coś nie weszło, z identyfikatorem
+    kolidującego cash change przy duplikacie i z kodem błędu przy odrzucie. W v1 user dostaje licznik i status
+    sesji, więc nie ma jak sprawdzić ani jednego z tych przypadków.</div>
+</section>
+
+<!-- ───────────────────────────────── S5 -->
+<section id="s5">
+  <div class="shead"><h2>S5 · Import częściowy — wynik, nie porażka</h2></div>
+  <div class="chips"><span class="chip phase">PARTIALLY_IMPORTED</span>
+    <span class="chip get">GET …/{id}/rows?status=FAILED</span>
+    <span class="chip post">POST …/{id}/compensate</span></div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-2c81b4de</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Zaimportowano 299 z 381 transakcji</div><div class="meta">ING-2c81b4de · Pekao SA</div></div>
+      <div class="note w">82 transakcje nie weszły, bo cash flow był równolegle zmieniany. Pozostałe 299 są
+        w cash flow i są poprawne — możesz ponowić same nieudane.</div>
+      <div class="tiles">
+        <div class="tile ok"><b>299</b><span>w cash flow</span></div>
+        <div class="tile err"><b>82</b><span>nie weszły</span></div>
+        <div class="tile warn"><b>2</b><span>obca waluta (EUR)</span></div>
+      </div>
+      <table>
+        <tr><th>wiersz</th><th>kwota</th><th>powód</th></tr>
+        <tr><td>linia 301 — ZABKA</td><td>31,36 PLN</td><td class="t">CASHFLOW_CONFLICT — konflikt wersji, do ponowienia</td></tr>
+        <tr><td>linia 118 — CLAUDE.AI</td><td>22,14 <b>EUR</b></td><td class="t">CURRENCY_MISMATCH — cash flow prowadzi PLN</td></tr>
+        <tr><td>linia 452 — ETSY.COM</td><td>12,18 <b>EUR</b></td><td class="t">CURRENCY_MISMATCH — cash flow prowadzi PLN</td></tr>
+      </table>
+      <div class="actions"><button class="btn p">Ponów 80 nieudanych</button><button class="btn ok">Atestuj 299</button><button class="btn d">Wycofaj wszystko</button></div>
+    </div>
+  </div>
+  <div class="why"><b>Dwie wiadomości na jednym ekranie, celowo rozdzielone:</b> 80 wierszy, które warto ponowić
+    (konflikt wersji jest przejściowy), i 2 wiersze w EUR, których <b>nie da się</b> zaimportować, bo wyciąg nie
+    zawiera kwoty w złotych. Pierwsze to przycisk, drugie to informacja — mieszanie ich w jeden komunikat
+    kazałoby userowi ponawiać coś, co nigdy nie przejdzie.</div>
+</section>
+
+<!-- ───────────────────────────────── S6 -->
+<section id="s6">
+  <div class="shead"><h2>S6 · Porażka i wycofanie</h2></div>
+  <div class="chips"><span class="chip phase">FAILED</span><span class="chip phase">COMPENSATED</span>
+    <span class="chip post">POST …/{id}/compensate</span></div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-9ab0c7f1</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Import nie został ukończony</div><div class="meta">ING-9ab0c7f1</div></div>
+      <div class="steps">
+        <div class="step"><span class="ic ok">✓</span>Odczyt pliku — 791 wierszy<span class="stime">61 ms</span></div>
+        <div class="step"><span class="ic ok">✓</span>Sprawdzenie wierszy<span class="stime">2,3 s</span></div>
+        <div class="step"><span class="ic skip">!</span>Klasyfikacja — pominięta po 3 próbach (model nie odpowiedział)<span class="stime">31 s</span></div>
+        <div class="step"><span class="ic ok">✓</span>Przypisanie kategorii — fallbackiem<span class="stime">84 ms</span></div>
+        <div class="step"><span class="ic err">✕</span>Utworzenie kategorii — <b>nie udało się utworzyć „Opłaty bankowe"</b><span class="stime">0,9 s</span></div>
+        <div class="step"><span class="ic wait">6</span>Zapis transakcji — nie rozpoczęty</div>
+      </div>
+      <div class="note e"><b>W cash flow nie ma ani jednej transakcji z tego importu.</b> Zapis nie zaczął się,
+        bo krok tworzenia kategorii zawiódł — utworzonych zostało 7 kategorii i to one są do wycofania.</div>
+      <div class="actions"><button class="btn d">Wycofaj 7 kategorii</button><button class="btn s">Spróbuj ponownie</button><button class="btn s">Pobierz szczegóły</button></div>
+      <div class="note i">Pominięta klasyfikacja nie zatrzymała procesu — kategorie zostały dobrane bez modelu.
+        Po ponowieniu dostaniesz zwykły ekran decyzji.</div>
+    </div>
+  </div>
+  <div class="why"><b>Trzy rzeczy, których v1 nie potrafi powiedzieć:</b> na którym kroku padło (sesja gubi
+    <code>importJobId</code> dokładnie w momencie porażki), że klasyfikacja została <b>pominięta, a nie zepsuta</b>,
+    oraz ile dokładnie zostało w cash flow do wycofania.</div>
+</section>
+
+<!-- ───────────────────────────────── S7 -->
+<section id="s7">
+  <div class="shead"><h2>S7 · Odmowy wejściowe — zanim powstanie sesja</h2></div>
+  <div class="chips"><span class="chip post">POST /api/v2/ingestion</span><span class="chip">404 · 409 · 400</span></div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/cash-flow/CF10000001/import</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Import nie został rozpoczęty</div><div class="meta">trzy różne odmowy, trzy różne wyjścia</div></div>
+
+      <div class="note e" style="display:flex;justify-content:space-between;align-items:center;gap:14px">
+        <div><b>409 · Trwa już inny import tego cash flow</b><br>
+          <span style="font-weight:400">Sesja ING-7f3a9c21 czeka na Twoje decyzje od 12 minut.</span></div>
+        <button class="btn p" style="flex:none">Przejdź do tej sesji</button>
+      </div>
+
+      <div class="note e"><b>Ten wyciąg należy do innego rachunku</b><br>
+        <span style="font-weight:400">Cash flow prowadzi rachunek <code>PL61 1090 1014 0000 0712 1981 2874</code>,
+        a wyciąg dotyczy <code>PL98 1240 1444 1111 0010 7817 1074</code>. Wybierz cash flow tego drugiego rachunku
+        albo inny plik.</span></div>
+
+      <div class="note e"><b>400 · Plik nie jest w formacie kanonicznym</b><br>
+        <span style="font-weight:400">Brakuje kolumny <code>classification</code>. Przepuść plik przez transformację,
+        zanim go wgrasz.</span></div>
+    </div>
+  </div>
+  <div class="why"><b>Każda z tych trzech odmów ma inne wyjście, i to jest cała różnica.</b> 409 to link, nie błąd.
+    Niezgodny rachunek pokazuje <b>oba numery</b> — to jedyny komunikat, który user potrafi sam zweryfikować,
+    patrząc na wyciąg. A zły format nazywa brakującą kolumnę, zamiast mówić „nieprawidłowy plik".</div>
+</section>
+
+<!-- ───────────────────────────────── S8 -->
+<section id="s8">
+  <div class="shead"><h2>S8 · Decyzje rozstrzygnięte po 24 h</h2></div>
+  <div class="chips"><span class="chip phase">IMPORTED</span><span class="chip">decisions[].autoResolved = TTL</span></div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-55d1e802</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Zaimportowano bez Twojej odpowiedzi</div><div class="meta">decyzje wygasły po 24 h</div></div>
+      <div class="note i">Nie odpowiedziałeś na 4 pytania w ciągu 24 godzin, więc zastosowaliśmy rekomendacje
+        i dokończyliśmy import — <b>nic nie przepadło</b>. Poniżej to, co wybraliśmy za Ciebie.</div>
+      <table>
+        <tr><th>grupa</th><th>zastosowano</th><th>wierszy</th></tr>
+        <tr><td>PRACODAWCA SP Z O O</td><td class="t">Wynagrodzenie <span style="color:var(--g600)">(rekomendacja)</span></td><td>36</td></tr>
+        <tr><td>URZAD SKARBOWY</td><td class="t">Podatki <span style="color:var(--g600)">(rekomendacja)</span></td><td>51</td></tr>
+        <tr><td>IKANO</td><td class="t">Kredyty i raty <span style="color:var(--g600)">(rekomendacja)</span></td><td>36</td></tr>
+        <tr><td>SILVA SILVA</td><td class="t">Mieszkanie <span style="color:var(--g600)">(rekomendacja)</span></td><td>15</td></tr>
+      </table>
+      <div class="actions"><button class="btn p">Popraw kategorie w cash flow</button><button class="btn ok">Atestuj</button></div>
+    </div>
+  </div>
+  <div class="why"><b>Ta sama sytuacja w v1 to skasowana sesja i stracony upload</b> — TTL kasuje dokument wraz z
+    wierszami, więc trzeba powtórzyć transformację AI, płacąc modelowi drugi raz. Tu jest wynik plus lista tego,
+    co wybrano automatycznie.</div>
+</section>
+
+<!-- ───────────────────────────────── S9 -->
+<section id="s9">
+  <div class="shead"><h2>S9 · Drugi wyciąg tego samego banku — zero pytań</h2></div>
+  <div class="chips"><span class="chip phase">RESOLVED</span><span class="chip">AWAITING_DECISION pominięte</span></div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-c04b7a39</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Zaimportowano 214 transakcji</div><div class="meta">bez pytań</div></div>
+      <div class="note s"><b>Nie zapytaliśmy o nic.</b> Wszystkie 19 grup rozstrzygnęły się z tego, co zapamiętaliśmy
+        przy poprzednim imporcie: 12 z wyuczonych wzorców, 5 z mapowań banku, 2 z nazw kategorii.</div>
+      <div class="steps">
+        <div class="step"><span class="ic ok">✓</span>Dopasowanie bez AI — <b>19 z 19 grup</b><span class="stime">71 ms</span></div>
+        <div class="step"><span class="ic skip">—</span>Klasyfikacja — niepotrzebna, model nie był wołany<span class="stime">0 zł</span></div>
+        <div class="step"><span class="ic ok">✓</span>Zapis transakcji — 214<span class="stime">6,2 s</span></div>
+      </div>
+      <div class="actions"><button class="btn ok">Atestuj</button><button class="btn s">Pokaż rozstrzygnięcia</button></div>
+    </div>
+  </div>
+  <div class="why"><b>To jest moment, w którym cała redukcja interakcji zwraca się z nawiązką:</b> drugi wyciąg nie
+    kosztuje ani pytania, ani wywołania modelu. W v1 ten sam plik przechodzi tę samą ścieżkę co pierwszy —
+    z klasyfikacją i ekranem sugestii włącznie.</div>
+</section>
+
+<!-- ───────────────────────────────── ścieżki -->
+<section id="paths">
+  <div class="shead"><h2>Wszystkie ścieżki na jednym rysunku</h2></div>
+  <div class="flow">S0 start ──▶ S1 przetwarzanie ──┬─▶ S2 decyzje ──▶ S3 import ──┬─▶ S4 sukces ──▶ atestacja (koniec)
+                              │                                │
+                              │   (nic do pytania)             ├─▶ S5 częściowy ──▶ ponów | atestuj | wycofaj
+                              └────────────────────────────────┤
+                                                               └─▶ S6 porażka ──▶ wycofaj ──▶ COMPENSATED
+
+  S1/S2 ──(Przerwij)──▶ S7 zamknięta            S2 ──(brak odpowiedzi 24 h)──▶ S8 rozstrzygnięte po TTL ──▶ S4
+  S0 ──(404 | 409 | 400)──▶ S7 odmowa wejściowa  S1..S3 ──(awaria serwera)──▶ wznowienie samo, user widzi postęp dalej</div>
+  <div class="why"><b>Osiem ekranów, z których user w typowym przebiegu widzi trzy:</b> start, decyzje,
+    podsumowanie. Pozostałe pięć to ścieżki, które w v1 albo kończą się komunikatem bez wyjścia, albo nie są
+    rozróżnialne od siebie.</div>
+</section>
+
+</div>
+</body>
+</html>
