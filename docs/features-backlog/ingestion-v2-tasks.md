@@ -58,8 +58,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
 | `finished` | 4 | 0 | 0 | 0 | **4** |
-| `open` | 31 | 23 | 9 | 6 | **69** |
-| **razem** | 35 | 23 | 9 | 6 | **73** |
+| `open` | 34 | 26 | 10 | 6 | **76** |
+| **razem** | 38 | 26 | 10 | 6 | **80** |
 
 ## Gotowe do wzięcia
 
@@ -68,7 +68,8 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | # | prio | zadanie | odblokowuje |
 |---|---|---|---|
 | **K4** | P0 | Agregator vidulum-app-ingestion i miejsce w reaktorze | K5, K7 |
-| **K9** | P0 | Osiem ErrorCode w shared-kernel jednym commitem | — |
+| **K9** | P0 | Osiem ErrorCode w shared-kernel jednym commitem | K15, M7 |
+| **X7** | P0 | Rachunek bankowy w kontrakcie cashflow | M8 |
 
 ## Zadania według ścieżek
 
@@ -78,18 +79,19 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 |---|---|---|---|---|---|
 | **K1** | P0 | **finished** | Analiza stanu obecnego i projekt sagi z conductorem | — | K2 |
 | **K2** | P0 | **finished** | Specyfikacje per moduł: kontrakty, metody, testy | K1 | K3 |
-| **K3** | P0 | **finished** | Audyt granic artefaktów i potwierdzenie /api/v2 | K2 | K4, K9, K12 |
+| **K3** | P0 | **finished** | Audyt granic artefaktów i potwierdzenie /api/v2 | K2 | K4, K9, K12, X7 |
 | **K4** | P0 | `open` | Agregator vidulum-app-ingestion i miejsce w reaktorze | K3 | K5, K7 |
 | **K5** | P0 | `open` | ingestion-canonical: słownik wiersza i GroupKey | K4 | K6, K8, K11, T10 |
 | **K6** | P0 | `open` | ingestion-intake: parser CSV bez Springa | K5 | S4 |
 | **K7** | P0 | `open` | Protokół: StepCommand, StepReply, typy wartości | K4 | K8, K13, K14, M1, R1, S1 |
 | **K8** | P0 | `open` | Jedenaście komend i jedenaście gniazd handlerów | K5, K7 | K10, K11, L1, M3, M5, R2, S2, S12, Z1 |
-| **K9** | P0 | `open` | Osiem ErrorCode w shared-kernel jednym commitem | K3 | — |
+| **K9** | P0 | `open` | Osiem ErrorCode w shared-kernel jednym commitem | K3 | K15, M7 |
 | **K10** | P0 | `open` | Testy kontraktowe protokołu | K8 | — |
 | **K11** | P0 | `open` | GroupKey zgodny z ContextMapping silnika | K5, K8 | L3, M4 |
 | **K12** | P0 | **finished** | Fixture kanoniczny dla dwóch banków | K3 | T1 |
 | **K13** | P0 | `open` | Katalog kluczy konfiguracyjnych z wartościami domyślnymi | K7 | — |
 | **K14** | P0 | `open` | Dopełnienie pól typów wyników kroków | K7 | — |
+| **K15** | P1 | `open` | Money.plus i minus nie pilnują waluty | K9 | — |
 
 ### S — Saga i sesja
 
@@ -115,10 +117,13 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 |---|---|---|---|---|---|
 | **M1** | P0 | `open` | Kontrakt magazynu wierszy, tylko do czytania | K7 | L1, M2, Z1 |
 | **M2** | P0 | `open` | Encja wiersza, indeksy, TTL, cleaner | M1 | M3, M5, S11, T8, W6, Z2 |
-| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, T1, T5 |
+| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, T1, T5 |
 | **M4** | P0 | `open` | Grupowanie wierszy i udział w wartości | K11, M3 | Z4 |
 | **M5** | P0 | `open` | Zastosowanie rozstrzygnięcia, oznaczenie importu, kasowanie | K8, M2 | W2 |
 | **M6** | P1 | `open` | Chunkowanie komendy walidacji | M3 | T9 |
+| **M7** | P0 | `open` | Waluta wiersza wobec waluty cash flow | K9, M3 | — |
+| **M8** | P0 | `open` | Wyciąg musi należeć do tego cash flow | M3, X7 | — |
+| **M9** | P1 | `open` | Która data rządzi miesiącem transakcji | M3 | — |
 
 ### Z — Zapis do cash flow
 
@@ -143,13 +148,15 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | # | prio | status | zadanie | zależy od | odblokowuje |
 |---|---|---|---|---|---|
 | **R1** | P1 | `open` | Moduł rozstrzygania i trwałe mapowania | K7 | R2, R6, R7, T8 |
-| **R2** | P1 | `open` | CategoryLadder: sześć priorytetów w jednej kopii | K8, R1 | R3, R5 |
+| **R2** | P1 | `open` | CategoryLadder: sześć priorytetów w jednej kopii | K8, R1 | R3, R5, R9 |
 | **R3** | P1 | `open` | Przebieg pierwszy: darmowa drabina bez modelu | R2 | R4 |
 | **R4** | P1 | `open` | Przebieg drugi z sugestiami i progami | L3, R3 | R8, T4 |
-| **R5** | P1 | `open` | Plan kategorii: rodzice przed dziećmi | R2 | — |
+| **R5** | P1 | `open` | Plan kategorii: rodzice przed dziećmi | R2 | R10 |
 | **R6** | P1 | `open` | Nauka z decyzji człowieka | R1, S9 | R8 |
 | **R7** | P2 | `open` | Zapominanie: pierwszy konsument forget | R1 | W2 |
 | **R8** | P1 | `open` | Drugi upload tego samego banku nie pyta o nic | R4, R6 | — |
+| **R9** | P1 | `open` | Generyczne kategorie banku nie są dopasowaniem | R2 | — |
+| **R10** | P2 | `open` | Próg tworzenia nowej kategorii dla ogona | R5 | — |
 
 ### W — Wytrzymałość
 
@@ -189,6 +196,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **X4** | P3 | `open` | Parytet z v1 i wyłączenie bank-data-ingestion | T3, T4, T5, T6 | X5 |
 | **X5** | P3 | `open` | Dokumentacja: CLAUDE.md i przewodnik manualny | X4 | — |
 | **X6** | P3 | `open` | Lista kontrolna parytetu v1 do v2 | T5 | — |
+| **X7** | P0 | `open` | Rachunek bankowy w kontrakcie cashflow | K3 | M8 |
 
 ## Opisy zadań
 
@@ -226,7 +234,7 @@ Jeden plik na artefakt: co posiada, jaki ma kontrakt, jakie testy i na którym p
 ### K3 · Audyt granic artefaktów i potwierdzenie /api/v2
 
 **PR:** `docs: audyt granic rodziny ingestion zmierzony na kodzie`  
-**Priorytet:** P0 · **Status:** **finished** · **Zależy od:** K2 · **Odblokowuje:** K4, K9, K12
+**Priorytet:** P0 · **Status:** **finished** · **Zależy od:** K2 · **Odblokowuje:** K4, K9, K12, X7
 
 Dziesięć krawędzi między sekcjami policzonych plik po pliku, wywołania kontraktów zmapowane na nowych właścicieli. Unieważnił jedną granicę z projektu (klasyfikacja nie może dostawać samych grup, bo kontrakt F66 bierze transakcje) i potwierdził prefiks /api/v2 bez zmian w shared-kernelu.
 
@@ -314,7 +322,7 @@ Komenda na krok plus interfejs handlera ze stałymi TOPIC i CONTAINER_FACTORY �
 ### K9 · Osiem ErrorCode w shared-kernel jednym commitem
 
 **PR:** `feat(shared-kernel): osiem kodów błędu dla ingestion v2`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K3 · **Odblokowuje:** —
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K3 · **Odblokowuje:** K15, M7
 
 ErrorHttpHandler siedzi w shared-kernelu i mapuje BusinessException.getErrorCode(), więc każdy nowy kod to zmiana shared-kernela, czyli pełny przebieg reaktora. Osiem kodów po jednym na moduł to osiem przebiegów zamiast jednego — stąd jeden commit na początku.
 
@@ -398,6 +406,21 @@ Pięć wyników kroków ma w specyfikacji tylko podpis w tabeli (CategoriesResol
 
 **Pliki:** `vidulum-app-ingestion/ingestion-conductor-api/`
 **Specyfikacja:** [03](ingestion-conductor-design/03-ingestion-conductor-api.md)
+
+### K15 · Money.plus i minus nie pilnują waluty
+
+**PR:** `fix(shared-kernel): Money odmawia arytmetyki na różnych walutach`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** K9 · **Odblokowuje:** —
+
+new Money(amount.add(other.amount), currency) — kwota z drugiej strony, waluta z tej. Zero kontroli, zero wyjątku. Dotyczy nie tylko ingestion: Money.plus liczy salda cash flow, wyceny portfela i pnl, więc każde zmieszanie walut jest dziś cichym błędem arytmetycznym. Zmiana w shared-kernelu, czyli pełny przebieg reaktora — do zrobienia razem z K9.
+
+**Definicja ukończenia:**
+- plus/minus na różnych walutach rzuca, z komunikatem nazywającym obie
+- przegląd wywołań w portfolio, pnl i cashflow: czy któreś polegało na dzisiejszym zachowaniu
+- pełne ./mvnw clean test zielone
+
+**Pliki:** `vidulum-shared-kernel/src/main/java/com/multi/vidulum/common/Money.java`
+**Specyfikacja:** —
 
 ### S1 · Encja sesji: jedna maszyna stanów z FAILED
 
@@ -618,7 +641,7 @@ IngestionRowEntity (original + validation + groupKey + resolution + importResult
 ### M3 · Walidacja wiersza w jednej, zamrożonej kolejności
 
 **PR:** `feat(ingestion): walidacja wierszy — duplikaty, okno importu, miesiące, przelewy własne`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, T1, T5
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, M7, M8, M9, T1, T5
 
 Duplikat po bankTransactionId, potem okno importu cashflow, i TYLKO jeśli przeszło — statusy miesięcy prognozy, żeby jedna zła data nie dała dwóch komunikatów. Plus wykrycie przelewu własnego po IBAN-ie i nadanie groupKey.
 
@@ -673,6 +696,52 @@ Jedyna komenda z danymi wierszowymi: 402 wiersze to ~160 KB i mieści się w dom
 
 **Pliki:** `vidulum-app-ingestion/ingestion-staging/.../commands/`
 **Specyfikacja:** [projekt](2026-10-24-data-ingestion-conductor-saga.md) §19
+
+### M7 · Waluta wiersza wobec waluty cash flow
+
+**PR:** `feat(ingestion): odrzucenie wiersza w obcej walucie na etapie walidacji`  
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K9, M3 · **Odblokowuje:** —
+
+Pekao ma 2 wiersze EUR w 789 PLN, a cash flow jest jednowalutowy. Money.plus bierze kwotę drugiej strony i SWOJĄ walutę bez żadnej kontroli, a ścieżka importu w cashflow nie patrzy na walutę ani razu — więc 22,14 EUR wchodzi jako 22,14 PLN i wychodzi dopiero jako CASHFLOW_BALANCE_MISMATCH przy atestacji, bez wyjaśnienia.
+
+**Definicja ukończenia:**
+- wiersz w walucie innej niż cash flow → REJECTED z INGESTION_CURRENCY_MISMATCH, nie import
+- komunikat nazywa obie waluty
+- reszta wyciągu wchodzi normalnie (odrzut nie blokuje)
+- test na fixture Pekao: dokładnie 2 wiersze odrzucone z tego powodu
+
+**Pliki:** `vidulum-app-ingestion/ingestion-staging/`
+**Specyfikacja:** [05](ingestion-conductor-design/05-ingestion-staging.md)
+
+### M8 · Wyciąg musi należeć do tego cash flow
+
+**PR:** `feat(ingestion): walidacja rachunku wyciągu wobec rachunku cash flow`  
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** M3, X7 · **Odblokowuje:** —
+
+Okresy obu wyciągów nachodzą się na cały 2025 rok, więc import Pekao do cash flow Nest przechodzi dziś po cichu: daty się zgadzają, kategorie powstają, 791 cash changes wchodzi, a błąd wychodzi dopiero przy atestacji salda. Rachunek właściciela jest w każdym wierszu (źródłowy dla wypłat, docelowy dla wpłat), więc da się to sprawdzić raz na sesję.
+
+**Definicja ukończenia:**
+- wyciąg innego rachunku → cała sesja odrzucona przed zapisem wierszy, z ErrorCode
+- komunikat podaje oba numery rachunków
+- test: fixture Pekao do cash flow Nest = odmowa
+
+**Pliki:** `vidulum-app-ingestion/ingestion-staging/`
+**Specyfikacja:** [05](ingestion-conductor-design/05-ingestion-staging.md)
+
+### M9 · Która data rządzi miesiącem transakcji
+
+**PR:** `feat(ingestion): wybór daty decydującej o miesiącu, z regułą dla miesiąca zaatestowanego`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M3 · **Odblokowuje:** —
+
+W Pekao operationDate różni się od bookingDate w 292 z 791 wierszy, a w 24 te daty są w RÓŻNYCH miesiącach (operacja 2025-12-31, księgowanie 2026-01-07). W Nest taki wiersz jest jeden, dlatego problem nie wyszedł wcześniej. Projekt nigdy tego nie wybrał, a wybór przesuwa 24 transakcje między miesiącami — i decyduje, czy wpadną w miesiąc read-only.
+
+**Definicja ukończenia:**
+- reguła zapisana: operationDate rządzi, bookingDate zostaje jako dana
+- wyjątek: gdy miesiąc operacji jest ATTESTED a miesiąc księgowania otwarty, wiersz idzie do miesiąca księgowania z zapisanym powodem
+- test na 24 wierszach Pekao przechodzących granicę miesiąca
+
+**Pliki:** `vidulum-app-ingestion/ingestion-staging/`
+**Specyfikacja:** [05](ingestion-conductor-design/05-ingestion-staging.md)
 
 ### Z1 · Tworzenie kategorii jako osobny, nieprzemilczany krok
 
@@ -807,7 +876,7 @@ CategoryMapping z @Version, repozytorium, cleaner. Pom ma cashflow-api wyłączn
 ### R2 · CategoryLadder: sześć priorytetów w jednej kopii
 
 **PR:** `feat(ingestion): drabina rozstrzygania kategorii w jednym miejscu`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** K8, R1 · **Odblokowuje:** R3, R5
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** K8, R1 · **Odblokowuje:** R3, R5, R9
 
 Self-transfer, dopasowanie bezpośrednie, wzorzec wyuczony, mapowanie, słowo klasyfikacji, sugestia AI — w tej kolejności, raz. Dziś drabina stoi w dwóch kopiach (763 i 436 linii), które już się rozjechały co do priorytetów.
 
@@ -850,7 +919,7 @@ Pewność ≥ 90 przyjęta bez pytania, 50–90 kandydat na pytanie, poniżej 50
 ### R5 · Plan kategorii: rodzice przed dziećmi
 
 **PR:** `feat(ingestion): CategoryPlan z walidacją kolejności`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** R2 · **Odblokowuje:** —
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** R2 · **Odblokowuje:** R10
 
 Kolejność listy JEST kontraktem, więc validated() rzuca, gdy dziecko stoi przed rodzicem. Brakujący rodzic dopisany, nawet gdy model proponował tylko dziecko; ta sama nazwa w dwóch kierunkach to dwie pozycje.
 
@@ -903,6 +972,36 @@ Po pierwszym imporcie drugi plik tego samego banku rozstrzyga się na prioryteta
 
 **Pliki:** `—`
 **Specyfikacja:** [projekt](2026-10-24-data-ingestion-conductor-saga.md) §11
+
+### R9 · Generyczne kategorie banku nie są dopasowaniem
+
+**PR:** `feat(ingestion): lista kategorii generycznych pomijanych w priorytecie 0 drabiny`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** R2 · **Odblokowuje:** —
+
+265 z 791 wierszy Pekao ma kategorię Inne albo Bez kategorii. Priorytet 0 drabiny dopasowuje bankCategory bezpośrednio do kategorii użytkownika, więc gdy w cash flow istnieje kategoria Inne, 173 wiersze wpadają do kosza, mijając wzorce i AI. Kontrakt silnika już zna to pojęcie (BankCategoryFallback pomija generyczne), więc drabina musi się z nim zgadzać.
+
+**Definicja ukończenia:**
+- lista generycznych w jednym miejscu, z Inne, Bez kategorii, Uncategorized i pustą
+- wiersz z kategorią generyczną przechodzi do wzorców i AI, nie do dopasowania bezpośredniego
+- test: 265 wierszy Pekao nie rozstrzyga się priorytetem 0
+
+**Pliki:** `vidulum-app-ingestion/ingestion-category-resolution/`
+**Specyfikacja:** [07](ingestion-conductor-design/07-ingestion-category-resolution.md)
+
+### R10 · Próg tworzenia nowej kategorii dla ogona
+
+**PR:** `feat(ingestion): minimalna liczba wierszy, żeby plan tworzył nową kategorię`  
+**Priorytet:** P2 · **Status:** `open` · **Zależy od:** R5 · **Odblokowuje:** —
+
+Plan kategorii dla Nest to 4 pozycje, dla Pekao 38 — z czego 11 dotyczy grup po jednej lub dwie transakcje (Obuwie, Hotele, Kary i mandaty). Jeden wyciąg kartowy zaśmieca drzewo kategorii na stałe, bo kategorie zostają po imporcie, nawet gdy import zostanie wycofany.
+
+**Definicja ukończenia:**
+- próg konfigurowalny, domyślnie 3 wiersze
+- grupa poniżej progu idzie do rodzica albo do fallbacku, z zapisanym powodem
+- test: plan Pekao schodzi z 38 do liczby zmierzonej po zastosowaniu progu
+
+**Pliki:** `vidulum-app-ingestion/ingestion-category-resolution/`
+**Specyfikacja:** [07](ingestion-conductor-design/07-ingestion-category-resolution.md)
 
 ### W1 · Ponowienia, backoff i rozróżnienie FAILED/REJECTED
 
@@ -1246,6 +1345,20 @@ X4 mówi wyłączyć v1 po parytecie, ale nie wylicza, co to parytet. Dwadzieśc
 **Pliki:** `docs/features-backlog/ingestion-v2-tasks.md`
 **Specyfikacja:** [10](ingestion-conductor-design/10-granice-artefaktow.md)
 
+### X7 · Rachunek bankowy w kontrakcie cashflow
+
+**PR:** `feat(cashflow-api): CashFlowSkeletonView wystawia rachunek cash flow`  
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K3 · **Odblokowuje:** M8
+
+CashFlow ma JEDEN bankAccount, więc Nest i Pekao to dwa osobne cash flow — ale skeleton nie wystawia rachunku, więc ingestion nie ma czym sprawdzić, czy wyciąg należy do tego cash flow. Jedno pole w widoku, bez którego walidacja z M8 jest niewykonalna.
+
+**Definicja ukończenia:**
+- skeleton nosi numer rachunku i jego walutę
+- test kontraktu i widoku zaktualizowane
+
+**Pliki:** `vidulum-app-cashflow/cashflow-api/`, `vidulum-app-cashflow/cashflow/`
+**Specyfikacja:** —
+
 ## Dziennik
 
 Co zrobione i czego się przy tym nauczyliśmy — wpis z datą na każdą zamkniętą porcję pracy.
@@ -1344,6 +1457,41 @@ Plus dwa defekty danych złapane przez test pinujący, nie przez przeglądanie: 
 Pekao ma **puste pole kontrahenta** (`name` jest w kontrakcie wymagane, więc spada na tytuł), a kwoty
 ≥ 1000 mają **spację jako separator tysięcy** (`3 000,00`).
 
+### 2026-10-24 — wyciąg Pekao wywraca cztery rzeczy (M7, M8, M9, K15, X7, R9, R10)
+
+Cały projekt był mierzony na Nest: 402 wiersze, przelewowy, jedna waluta, cztery wartości kategorii
+banku. Pekao jest **innym kształtem danych** — 791 wierszy, kartowy, 36 kategorii semantycznych, dwie
+waluty — i to on pokazał cztery rzeczy, których Nest nie mógł pokazać.
+
+1. **Wiersz w obcej walucie cicho psuje saldo, i to nie jest wina ingestion.**
+   `Money.plus` to `new Money(amount.add(other.amount), currency)` — kwota z drugiej strony, waluta z
+   tej, zero kontroli. Ścieżka importu w cashflow nie patrzy na walutę ani razu. Dwa wiersze EUR w
+   Pekao wejdą do złotówkowego cash flow jako **+34,32 PLN**, a user dowie się przy atestacji, jako
+   `CASHFLOW_BALANCE_MISMATCH` bez wyjaśnienia. **Money.plus liczy też wyceny portfela i pnl**, więc
+   to defekt szerszy niż ingestion → **K15** (shared-kernel, razem z K9) i **M7** (odrzucenie wiersza
+   przy walidacji, bo tam user to zobaczy).
+2. **Pekao to drugi cash flow, a nic tego nie pilnuje.** `CashFlow` ma **jeden** `bankAccount`, a
+   okresy obu wyciągów nachodzą się na cały 2025 rok — więc import Pekao do cash flow Nest
+   przechodzi po cichu. I nie da się tego sprawdzić przez kontrakt, bo `CashFlowSkeletonView` **nie
+   wystawia rachunku** → **X7** (jedno pole w widoku) i **M8** (walidacja).
+3. **24 wiersze przechodzą przez granicę miesiąca.** `operationDate ≠ bookingDate` w 292 z 791
+   wierszy, a w 24 daty są w różnych miesiącach. W Nest taki wiersz jest **jeden**, dlatego problem
+   nie wyszedł. Projekt nigdy nie wybrał, która data rządzi miesiącem → **M9**, razem z regułą dla
+   miesiąca zaatestowanego, bo inaczej wyciąg ściągnięty w styczniu traci grudniowe operacje
+   zaksięgowane po atestacji.
+4. **Co trzecia kategoria Pekao jest generyczna** (`Inne` 173, `Bez kategorii` 92 z 791). Priorytet 0
+   drabiny dopasowałby je bezpośrednio, wrzucając 173 wiersze do kosza i mijając wzorce oraz AI.
+   Kontrakt silnika już zna to pojęcie, moje specyfikacje nie znały → **R9**.
+
+Plus jedno mniejsze: plan kategorii dla Nest ma **4** pozycje, dla Pekao **38**, z czego 11 dotyczy
+grup po 1–2 transakcje — jeden wyciąg kartowy zaśmieca drzewo kategorii na stałe, bo kategorie
+zostają nawet po wycofaniu importu → **R10** (próg tworzenia).
+
+**Wniosek metodyczny, ważniejszy od każdego z tych punktów:** cztery z siedmiu nowych zadań to
+rzeczy, których **nie dało się zobaczyć na jednym banku**. Drugi wyciąg kosztował jeden plik i
+pół godziny pomiarów, a znalazł defekt w shared-kernelu, brakujące pole w kontrakcie cashflow i dwie
+reguły walidacji, których w projekcie nie było.
+
 ## Graf zależności
 
 ```mermaid
@@ -1368,6 +1516,7 @@ flowchart LR
     K12["K12 Fixture kanoniczny dla dwóch banków"]:::done
     K13["K13 Katalog kluczy konfiguracyjnych z war…"]:::p0
     K14["K14 Dopełnienie pól typów wyników kroków"]:::p0
+    K15["K15 Money.plus i minus nie pilnują waluty"]:::p1
     L1["L1 Worker klasyfikacji i mapowanie na ko…"]:::p1
     L2["L2 Cache odpowiedzi modelu z czyszczeniem"]:::p1
     L3["L3 Odwzorowanie odpowiedzi silnika na gr…"]:::p1
@@ -1378,6 +1527,9 @@ flowchart LR
     M4["M4 Grupowanie wierszy i udział w wartości"]:::p0
     M5["M5 Zastosowanie rozstrzygnięcia, oznacze…"]:::p0
     M6["M6 Chunkowanie komendy walidacji"]:::p1
+    M7["M7 Waluta wiersza wobec waluty cash flow"]:::p0
+    M8["M8 Wyciąg musi należeć do tego cash flow"]:::p0
+    M9["M9 Która data rządzi miesiącem transakcji"]:::p1
     R1["R1 Moduł rozstrzygania i trwałe mapowania"]:::p1
     R2["R2 CategoryLadder: sześć priorytetów w j…"]:::p1
     R3["R3 Przebieg pierwszy: darmowa drabina be…"]:::p1
@@ -1386,6 +1538,8 @@ flowchart LR
     R6["R6 Nauka z decyzji człowieka"]:::p1
     R7["R7 Zapominanie: pierwszy konsument forget"]:::p2
     R8["R8 Drugi upload tego samego banku nie py…"]:::p1
+    R9["R9 Generyczne kategorie banku nie są dop…"]:::p1
+    R10["R10 Próg tworzenia nowej kategorii dla og…"]:::p2
     S1["S1 Encja sesji: jedna maszyna stanów z F…"]:::p0
     S2["S2 IngestionSaga jako czysta funkcja"]:::p0
     S3["S3 StepDispatcher in-process i przełączn…"]:::p0
@@ -1423,6 +1577,7 @@ flowchart LR
     X4["X4 Parytet z v1 i wyłączenie bank-data-i…"]:::p3
     X5["X5 Dokumentacja: CLAUDE.md i przewodnik…"]:::p3
     X6["X6 Lista kontrolna parytetu v1 do v2"]:::p3
+    X7["X7 Rachunek bankowy w kontrakcie cashflow"]:::p0
     Z1["Z1 Tworzenie kategorii jako osobny, niep…"]:::p0
     Z2["Z2 Import wierszy do cash flow z postępem"]:::p0
     Z3["Z3 Wycofanie importu z prawdziwymi liczb…"]:::p1
@@ -1443,6 +1598,7 @@ flowchart LR
     K3 --> K12
     K7 --> K13
     K7 --> K14
+    K9 --> K15
     K8 --> L1
     M1 --> L1
     L1 --> L2
@@ -1459,6 +1615,11 @@ flowchart LR
     K8 --> M5
     M2 --> M5
     M3 --> M6
+    K9 --> M7
+    M3 --> M7
+    M3 --> M8
+    X7 --> M8
+    M3 --> M9
     K7 --> R1
     K8 --> R2
     R1 --> R2
@@ -1471,6 +1632,8 @@ flowchart LR
     R1 --> R7
     R4 --> R8
     R6 --> R8
+    R2 --> R9
+    R5 --> R10
     K7 --> S1
     K8 --> S2
     S1 --> S2
@@ -1541,6 +1704,7 @@ flowchart LR
     T6 --> X4
     X4 --> X5
     T5 --> X6
+    K3 --> X7
     K8 --> Z1
     M1 --> Z1
     M2 --> Z2

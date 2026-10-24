@@ -56,9 +56,10 @@ public abstract class IngestionIntegrationTest {
     /**
      * NIE 2022-01-01, mimo że tak robi FixedClockConfig w cashflow.
      *
-     * Plik testowy ma transakcje z 2023-01-13 … 2025-12-31, a ImportWindow odrzuca datę
-     * z przyszłości. Zegar na 2022-01-01 sprawiłby, że WSZYSTKIE 402 wiersze są "w przyszłości"
-     * i cały przepływ zwróciłby 402 odrzuty - test przechodziłby, nie testując niczego.
+     * Fixture Nest ma transakcje do 2025-12-31, a Pekao **do 2026-01-09** - i to Pekao wyznacza
+     * dolną granicę zegara, nie Nest. ImportWindow odrzuca datę z przyszłości, więc zegar na
+     * 2022-01-01 sprawiłby, że WSZYSTKIE wiersze są "w przyszłości" i przepływ zwróciłby same
+     * odrzuty - test przechodziłby, nie testując niczego.
      */
     protected static final ZonedDateTime FIXED_NOW = ZonedDateTime.parse("2026-01-15T10:00:00Z[UTC]");
 
@@ -117,6 +118,8 @@ class ForecastHttpActor {
 | `shouldAskNothingOnSecondUploadOfTheSameBank` | po pierwszym imporcie drugi plik tego samego banku (inne `bankTransactionId`, te same merchanci) → `decisions` **puste**, faza `IMPORTED`; dowód, że `LEARN` działa |
 | `shouldCountOnlyTwoUserRequestsForTheWholeImport` | licznik żądań w aktorze → dokładnie **2** wywołania zmieniające stan (`start`, `decisions`); `GET`-y nie liczone |
 | `shouldPlaceEveryImportedRowInTheRightForecastMonth` | po imporcie → suma przepływów miesiąca 2023-01 z prognozy równa sumie wierszy tego miesiąca z `GET rows` |
+| `shouldImportTwoStatementsIntoTwoCashFlows` | **fixture Pekao obok Nest**: dwa cash flow (bo `CashFlow` ma jeden rachunek), dwie sesje, nachodzące się miesiące 2025 → każdy wyciąg trafia do swojego cash flow, a próba wgrania Pekao do cash flow Nest kończy się odmową (M8) |
+| `shouldHandleCardHeavyStatement` | Pekao, 791 wierszy, 165 grup, 492 płatności kartą → `IMPORTED`; liczba pytań **≤ maxQuestions**, a sesja raportuje, jaki procent wartości pokryły (bo 90 % wymagałoby 35 pytań) |
 
 ### B. `IngestionValidationTest` — wiersz nie blokuje wyciągu
 

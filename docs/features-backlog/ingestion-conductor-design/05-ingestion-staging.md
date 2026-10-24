@@ -82,12 +82,24 @@ sesji (`GroupRecord.resolution == null`), a nie wadą wiersza. Wiersz jest `VALI
 Walidacja, w tej kolejności i ani w innej:
 
 ```java
-1. duplikat        alreadyImported.find(bankTransactionId)        → DUPLICATE + id istniejącego
-2. okno importu    skeleton.importWindow().refusalFor(date, now)  → REJECTED + ErrorCode cashflow
-3. status miesiąca monthStatuses.acceptsImportAt(period)          → REJECTED  [TYLKO gdy 2. przeszło]
-4. przelew własny  ownedAccounts.contains(counterpartyAccount)    → selfTransfer = true
-5. grupa           GroupKey.of(row, selfTransfer)
+0a. rachunek wyciągu  == skeleton.bankAccount()                   → cała sesja odrzucona (M8, X7)
+0b. waluta wiersza    == waluta cash flow                         → REJECTED + CURRENCY_MISMATCH (M7)
+1.  duplikat          alreadyImported.find(bankTransactionId)     → DUPLICATE + id istniejącego
+2.  okno importu      skeleton.importWindow().refusalFor(date, now) → REJECTED + ErrorCode cashflow
+3.  status miesiąca   monthStatuses.acceptsImportAt(period)       → REJECTED  [TYLKO gdy 2. przeszło]
+4.  przelew własny    ownedAccounts.contains(counterpartyAccount) → selfTransfer = true
+5.  grupa             GroupKey.of(row, selfTransfer)
 ```
+
+**Kroki 0a i 0b wyszły z wyciągu Pekao i nie było ich w pierwszej wersji projektu.** 0a jest
+sprawdzeniem **sesji**, nie wiersza: `CashFlow` ma jeden rachunek, a okresy dwóch wyciągów tej samej
+osoby nachodzą się, więc import Pekao do cash flow Nest przechodził po cichu aż do atestacji salda.
+0b jest wierszowe: `Money.plus` bierze kwotę drugiej strony i **swoją** walutę bez kontroli, więc
+22,14 EUR wchodzi jako 22,14 PLN (zadania M7, M8, K15, X7).
+
+**Którą datą mierzy się miesiąc — to decyzja, nie szczegół.** W Pekao `operationDate` różni się od
+`bookingDate` w 292 z 791 wierszy, a w **24** te daty są w różnych miesiącach; w Nest taki wiersz
+jest jeden. Reguła i wyjątek dla miesiąca zaatestowanego: zadanie **M9**.
 
 Punkt 3 **tylko wtedy, gdy 2 przeszło** — żeby jedna zła data nie dała dwóch komunikatów. To reguła,
 którą dzisiejszy `StageTransactionsCommandHandler` ma i którą trzeba przenieść wraz z testem.
@@ -106,6 +118,9 @@ którą dzisiejszy `StageTransactionsCommandHandler` ma i którą trzeba przenie
 | `shouldNotConsultMonthStatusesWhenWindowAlreadyRefused` | atrapa `CashFlowForecastApi` → **zero** wywołań dla takiego wiersza |
 | `shouldNotConsultMonthStatusesInSetup` | skeleton `SETUP` → statusy miesięcy nie decydują (dzisiejsza reguła `skeleton.isOpen()`) |
 | `shouldAcceptRowInsideTheWindow` | data w zakresie, miesiąc `FORECASTED`/`ACTIVE` → `VALID`, `errors` puste |
+| `shouldRejectRowInForeignCurrency` | wiersz EUR w cash flow PLN → `REJECTED`, `INGESTION_CURRENCY_MISMATCH`, komunikat nazywa obie waluty; na fixture Pekao **dokładnie 2** takie wiersze |
+| `shouldRefuseWholeSessionWhenStatementBelongsToAnotherAccount` | rachunek z wiersza ≠ `skeleton.bankAccount()` → odmowa **przed** zapisem wierszy, oba numery w komunikacie |
+| `shouldUseBookingMonthWhenOperationMonthIsAttested` | operacja 2025-12-31, księgowanie 2026-01-07, grudzień `ATTESTED` → wiersz idzie do stycznia z zapisanym powodem, nie do odrzutów (M9) |
 
 ### B. Przelew własny — unit
 

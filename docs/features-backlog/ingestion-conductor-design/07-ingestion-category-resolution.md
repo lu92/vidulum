@@ -109,6 +109,8 @@ public record CategoryMapping(
 | `shouldCoverEveryPriorityExactlyOnce` | **parametryzowany po `ResolutionSource.values()`** → dla każdego źródła istnieje sytuacja, w której wygrywa; żadne nie jest martwe |
 | `shouldIgnorePatternWhenTargetCategoryDoesNotExist` | wzorzec → „Subskrypcje", której cash flow nie ma → grupa idzie niżej (dzisiejsza reguła) |
 | `shouldMatchDirectIgnoringCase` | bankCategory „zakupy kartą", kategoria „Zakupy kartą" → trafia |
+| `shouldNotDirectMatchGenericBankCategories` | bankCategory `Inne` / `Bez kategorii` / puste → **nie** jest dopasowaniem, nawet gdy w cash flow istnieje kategoria o tej nazwie; grupa idzie do wzorców i AI. Na fixture Pekao dotyczy **265 z 791** wierszy (R9) |
+| `shouldNotPlanACategoryForATailGroup` | grupa z 1–2 wierszami przy progu 3 → brak pozycji w planie, rozstrzygnięcie na rodzicu albo fallbacku (R10); plan Pekao schodzi z 38 pozycji |
 | `shouldNotMatchAcrossDirections` | kategoria „Transfer" istnieje jako INFLOW, grupa jest OUTFLOW → nie trafia |
 | `shouldNotUseAiSuggestionsInPassOne` | `pass=1` z wypełnioną listą sugestii → sugestie **ignorowane**, grupa w `open[]` |
 | `shouldAcceptAiAtOrAboveAutoAccept` | sugestia 90 przy `autoAccept=90` → `resolved`, `source == AI` |

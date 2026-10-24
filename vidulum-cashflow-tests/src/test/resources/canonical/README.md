@@ -54,6 +54,23 @@ kanonicznego. To najmocniejszy dowód, że przepisanie nie zgubiło ani nie znie
 | duplikat `bankTransactionId` | brak | **1 para** | bank nadał **ten sam numer referencyjny obu stronom** przelewu wewnętrznego (`1342556624908662`, +30 i −30 PLN tego samego dnia). Prawdziwy przypadek do testu deduplikacji — i otwarte pytanie, czy idempotencja keyowana samym id nie zgubi drugiej strony |
 | wiele walut | nie | **2 wiersze EUR** | `CLAUDE.AI SUBSCRIPTION` i `ETSY.COM`. Cash flow jest jednowalutowy, więc te dwa wiersze to gotowy przypadek graniczny |
 
+## Co wyszło dopiero na Pekao — i co wymaga interwencji
+
+Cały projekt był mierzony na Nest. Drugi wyciąg pokazał cztery rzeczy, których jeden bank pokazać
+nie mógł (zadania **M7**, **M8**, **M9**, **K15**, **X7**, **R9**, **R10**):
+
+| co | Nest | Pekao | konsekwencja |
+|---|---|---|---|
+| waluty | 1 | **2** (2 wiersze EUR) | `Money.plus` bierze kwotę drugiej strony i **swoją** walutę bez kontroli, a import w cashflow nie patrzy na walutę ani razu → 22,14 EUR wchodzi jako 22,14 PLN i wychodzi przy atestacji jako `CASHFLOW_BALANCE_MISMATCH` bez wyjaśnienia |
+| `operationDate` ≠ `bookingDate` | **1** wiersz | **292** wiersze, z tego **24 przez granicę miesiąca** | wybór daty przesuwa 24 transakcje między miesiącami i decyduje, czy wpadną w miesiąc read-only |
+| kategorie generyczne (`Inne`, `Bez kategorii`) | 0 | **265 z 791** | priorytet 0 drabiny dopasowałby je bezpośrednio, wrzucając 173 wiersze do kosza i mijając wzorce oraz AI |
+| pozycje w planie kategorii | **4** | **38**, z czego 11 to grupy po 1–2 wiersze | jeden wyciąg kartowy zaśmieca drzewo kategorii na stałe — kategorie zostają nawet po wycofaniu importu |
+| rachunek w cash flow | — | — | `CashFlow` ma **jeden** `bankAccount`, a okresy obu wyciągów nachodzą się na cały 2025 rok, więc import Pekao do cash flow Nest przechodzi po cichu. `CashFlowSkeletonView` nie wystawia rachunku, więc dziś nie da się tego sprawdzić przez kontrakt |
+
+Dodatkowo oba wyciągi należą do tej samej osoby, a przelewy między nimi to **te same pieniądze**:
+111 wierszy `SELF_TRANSFER` po stronie Nest i 30 po stronie Pekao są dwiema stronami tych samych
+przelewów. W dwóch cash flow to jest poprawne, ale widok zbiorczy musiałby o tym wiedzieć.
+
 ## Zmierzone liczby, które zastępują szacunki z projektu
 
 Dokumenty projektowe szacowały „~38 grup" i „≤7 pytań pokrywa 90 % wartości". Po zmierzeniu na
