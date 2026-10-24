@@ -59,8 +59,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
 | `finished` | 5 | 0 | 0 | 0 | **5** |
-| `open` | 33 | 33 | 12 | 6 | **84** |
-| **razem** | 38 | 33 | 12 | 6 | **89** |
+| `open` | 33 | 37 | 15 | 5 | **90** |
+| **razem** | 38 | 37 | 15 | 5 | **95** |
 
 ## Gotowe do wzięcia
 
@@ -81,7 +81,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **K2** | P0 | **finished** | Specyfikacje per moduł: kontrakty, metody, testy | K1 | K3 |
 | **K3** | P0 | **finished** | Audyt granic artefaktów i potwierdzenie /api/v2 | K2 | K4, K9, K12, X7 |
 | **K4** | P0 | `open` | Agregator vidulum-app-ingestion i miejsce w reaktorze | K3 | K5, K7 |
-| **K5** | P0 | `open` | ingestion-canonical: słownik wiersza i GroupKey | K4 | K6, K8, K11, T10 |
+| **K5** | P0 | `open` | ingestion-canonical: słownik wiersza i GroupKey | K4 | K6, K8, K11, S19, T10 |
 | **K6** | P0 | `open` | ingestion-intake: parser CSV bez Springa | K5 | S4 |
 | **K7** | P0 | `open` | Protokół: StepCommand, StepReply, typy wartości | K4 | K8, K13, K14, M1, R1, S1 |
 | **K8** | P0 | `open` | Jedenaście komend i jedenaście gniazd handlerów | K5, K7 | K10, K11, L1, M3, M5, R2, S2, S12, Z1 |
@@ -100,7 +100,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **S1** | P0 | `open` | Encja sesji: jedna maszyna stanów z FAILED | K7 | S2, S4, T8, W6 |
 | **S2** | P0 | `open` | IngestionSaga jako czysta funkcja | K8, S1 | L4, S3, S6, S8, S13, W2 |
 | **S3** | P0 | `open` | StepDispatcher in-process i przełącznik transportu | S2 | S6, S12 |
-| **S4** | P0 | `open` | Start sesji: pre-flight, parsowanie, idempotencja po sha256 | K6, S1 | S5, S7 |
+| **S4** | P0 | `open` | Start sesji: pre-flight, parsowanie, idempotencja po sha256 | K6, S1 | S5, S7, S17 |
 | **S5** | P0 | `open` | REST v2: start, widok sesji, lista | S4 | S9, S11, S15, T11, U1, U2, W5 |
 | **S6** | P0 | `open` | Odbiór odpowiedzi kroków i idempotencja | S2, S3 | S12, W1 |
 | **S7** | P0 | `open` | Jedna aktywna sesja na cash flow w fazie SETUP | S4 | U1 |
@@ -112,6 +112,9 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **S13** | P0 | `open` | Tabela przejść sagi jako dokument, nie tylko nazwy testów | S2 | — |
 | **S15** | P1 | `open` | Endpoint przerwania sesji | S5 | U7 |
 | **S16** | P1 | `open` | Jaki procent wartości pokryły zadane pytania | S8 | U4 |
+| **S17** | P1 | `open` | Tryb sesji: backfill czy dowgranie | S4 | S18, U8, X8 |
+| **S18** | P1 | `open` | Wyrównanie salda na koniec każdego wgrania | S17 | U9 |
+| **S19** | P2 | `open` | Osiemnasta kolumna: saldo po operacji | K5 | — |
 
 ### M — Magazyn wierszy
 
@@ -125,7 +128,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **M6** | P1 | `open` | Chunkowanie komendy walidacji | M3 | T9 |
 | **M7** | P0 | `open` | Waluta wiersza wobec waluty cash flow | K9, M3, X7 | — |
 | **M8** | P0 | `open` | Wyciąg musi należeć do tego cash flow | M3, X7 | — |
-| **M9** | P1 | `open` | Która data rządzi miesiącem transakcji | M3 | — |
+| **M9** | P2 | `open` | Która data rządzi miesiącem transakcji | M3 | — |
 
 ### Z — Zapis do cash flow
 
@@ -196,21 +199,24 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **U2** | P1 | `open` | Warstwa pollingu i jedno źródło stanu | S5 | U3, U4, U5, U6, U7 |
 | **U3** | P1 | `open` | Ekran przetwarzania z krokami i odrzutami | M3, U2 | — |
 | **U4** | P1 | `open` | Ekran decyzji: jeden ekran, jedno żądanie | S9, S16, U2 | — |
-| **U5** | P1 | `open` | Ekran importu, sukcesu i atestacji | U2, Z2 | — |
+| **U5** | P1 | `open` | Ekran importu, sukcesu i atestacji | U2, Z2 | U8, U9 |
 | **U6** | P2 | `open` | Ekrany porażki, importu częściowego i kompensacji | U2, W2, W5 | — |
 | **U7** | P2 | `open` | Sesja zamknięta: TTL, przerwanie, wygaśnięcie | S10, S15, U2 | — |
+| **U8** | P2 | `open` | Ekrany trybu ciągłego | S17, U5 | — |
+| **U9** | P1 | `open` | Ekran potwierdzenia salda i wyrównania | S18, U5 | — |
 
 ### X — Wygaszenie v1 i obserwacja
 
 | # | prio | status | zadanie | zależy od | odblokowuje |
 |---|---|---|---|---|---|
-| **X1** | P3 | `open` | recategorize w cashflow-api → AUTOPILOT domyślnie | T3 | — |
-| **X2** | P3 | `open` | deleteImported w cashflow-api → kompensacja selektywna | W2 | — |
+| **X1** | P1 | `open` | recategorize: dziś NIE MA jak poprawić kategorii importu | T3 | — |
+| **X2** | P1 | `open` | deleteImported w cashflow-api → kompensacja selektywna | W2 | — |
 | **X3** | P3 | `open` | Topic faktów i pierwszy konsument w reaktorze | W4 | — |
 | **X4** | P3 | `open` | Parytet z v1 i wyłączenie bank-data-ingestion | T3, T4, T5, T6 | X5 |
 | **X5** | P3 | `open` | Dokumentacja: CLAUDE.md i przewodnik manualny | X4 | — |
 | **X6** | P3 | `open` | Lista kontrolna parytetu v1 do v2 | T5 | — |
 | **X7** | P0 | **finished** | Rachunek bankowy w kontrakcie cashflow | K3 | M7, M8 |
+| **X8** | P3 | `open` | Endpoint atestacji miesiąca — opcjonalny po S18 | S17 | — |
 
 ## Opisy zadań
 
@@ -276,7 +282,7 @@ Pom-packaged agregator obok market/ i wealth/, z opisem mówiącym, co trzyma ro
 ### K5 · ingestion-canonical: słownik wiersza i GroupKey
 
 **PR:** `feat(ingestion): słownik wiersza kanonicznego jako osobny artefakt`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K4 · **Odblokowuje:** K6, K8, K11, T10
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K4 · **Odblokowuje:** K6, K8, K11, S19, T10
 
 CanonicalRow z 17 polami i metodami effective*, TransactionClassification, PaymentMethod, CanonicalColumns oraz GroupKey — jednostka pracy całego pipeline'u. Bez Springa, bez storage, dwie zależności.
 
@@ -483,7 +489,7 @@ vidulum.ingestion.step.transport = kafka | in-process, domyślnie in-process —
 ### S4 · Start sesji: pre-flight, parsowanie, idempotencja po sha256
 
 **PR:** `feat(ingestion): start sesji z pre-flightem cash flow i idempotencją pliku`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K6, S1 · **Odblokowuje:** S5, S7
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K6, S1 · **Odblokowuje:** S5, S7, S17
 
 exists + skeletonOf przed założeniem sesji (404/409 natychmiast), parsowanie przez intake, sha256 pliku jako klucz idempotencji startu, zapis sesji w fazie PARSED i wysłanie ValidateRowsCommand.
 
@@ -654,6 +660,54 @@ Na wyciągu przelewowym 4 pytania to 90 % wartości, na kartowym 7 pytań to zna
 **Pliki:** `vidulum-app-ingestion/ingestion-conductor/`
 **Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
 
+### S17 · Tryb sesji: backfill czy dowgranie
+
+**PR:** `feat(ingestion): IngestionMode wyprowadzony z fazy cash flow`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S4 · **Odblokowuje:** S18, U8, X8
+
+Cały projekt opisuje backfill, a po atestacji cash flow jest OPEN i kolejne wyciągi wgrywa się w innym reżimie: duplikaty są normą, pytań zwykle nie ma, kompensacja nie działa, a domknięciem jest atestacja miesiąca. Tryb jest FAKTEM o cash flow, nie preferencją — SETUP daje BACKFILL, OPEN daje ONGOING, CLOSED odmowę.
+
+**Definicja ukończenia:**
+- tryb w sesji i w jej widoku, wyprowadzony przy starcie, nie wybierany
+- polityka, dostępne akcje i domknięcie zależą od trybu
+- test: ta sama sesja w SETUP i w OPEN daje różne zestawy akcji
+
+**Pliki:** `vidulum-app-ingestion/ingestion-conductor/`
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
+
+### S18 · Wyrównanie salda na koniec każdego wgrania
+
+**PR:** `feat(ingestion): potwierdzenie salda po wgraniu i korekta wyrównująca`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S17 · **Odblokowuje:** U9
+
+Uogólnienie mechanizmu, który już istnieje dla importu historycznego: AttestHistoricalImportCommand ma createAdjustment, agregat tworzy cash change Balance Adjustment (CONFIRMED, Uncategorized, bankTransactionId=null), a projekcja dokłada go do miesiąca ACTIVE. Tutaj to samo, ale po KAŻDYM wgraniu — i to zastępuje atestację miesiąca jako mechanizm kontroli.
+
+**Definicja ukończenia:**
+- gdy wyciąg nosi saldo (kolumna z S19) — sprawdzenie automatyczne, bez pytania ownera
+- gdy nie nosi — pytanie o saldo NA DZIEŃ OSTATNIEJ OPERACJI W PLIKU, nigdy o saldo dziś: inaczej korekta pochłania transakcje, które przyjdą w następnym pliku, i policzy je dwa razy
+- korekta nazwana okresem, nie Balance Adjustment: Wyrównanie salda za XII 2025 – II 2026
+- ekran różnicy pokazuje kandydatów na przyczynę: wiersze w obcej walucie, odrzucone, prowizoryczne
+- działa dla ownera logującego się raz na kwartał: jedna korekta na wgranie, w miesiącu bieżącym
+
+**Pliki:** `vidulum-app-ingestion/ingestion-conductor/`, `vidulum-app-cashflow/cashflow/`
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
+
+### S19 · Osiemnasta kolumna: saldo po operacji
+
+**PR:** `feat(ingestion): balanceAfter w formacie kanonicznym`  
+**Priorytet:** P2 · **Status:** `open` · **Zależy od:** K5 · **Odblokowuje:** —
+
+Wyciąg Nest nosi kolumnę Saldo po operacji, a jej ostatnia wartość to 76 047,25 — dokładnie ta liczba, którą przewodnik manualnego testu każe przepisywać RĘCZNIE jako confirmedBalance. Transformacja ją wyrzuca: format kanoniczny ma 17 kolumn i żadna nie nosi salda. Pekao tej kolumny nie ma, więc pole jest opcjonalne.
+
+**Definicja ukończenia:**
+- kolumna opcjonalna, wypełniana gdy bank ją daje
+- wymaga jednej zmiany w adapterze, który już dokleja trzy kolumny przy enrichmencie
+- gdy wypełniona, kontrola salda nie wymaga ani jednego kliknięcia ownera
+- fixture kanoniczny Nest dostaje tę kolumnę, Pekao zostaje bez niej — i test to pinuje
+
+**Pliki:** `vidulum-app-ingestion/ingestion-canonical/`, `vidulum-cashflow-tests/src/test/resources/canonical/`
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
+
 ### M1 · Kontrakt magazynu wierszy, tylko do czytania
 
 **PR:** `feat(ingestion): ingestion-staging-api jako kontrakt tylko do czytania`  
@@ -776,7 +830,7 @@ Okresy obu wyciągów nachodzą się na cały 2025 rok, więc import Pekao do ca
 ### M9 · Która data rządzi miesiącem transakcji
 
 **PR:** `feat(ingestion): wybór daty decydującej o miesiącu, z regułą dla miesiąca zaatestowanego`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M3 · **Odblokowuje:** —
+**Priorytet:** P2 · **Status:** `open` · **Zależy od:** M3 · **Odblokowuje:** —
 
 W Pekao operationDate różni się od bookingDate w 292 z 791 wierszy, a w 24 te daty są w RÓŻNYCH miesiącach (operacja 2025-12-31, księgowanie 2026-01-07). W Nest taki wiersz jest jeden, dlatego problem nie wyszedł wcześniej. Projekt nigdy tego nie wybrał, a wybór przesuwa 24 transakcje między miesiącami — i decyduje, czy wpadną w miesiąc read-only.
 
@@ -784,6 +838,8 @@ W Pekao operationDate różni się od bookingDate w 292 z 791 wierszy, a w 24 te
 - reguła zapisana: operationDate rządzi, bookingDate zostaje jako dana
 - wyjątek: gdy miesiąc operacji jest ATTESTED a miesiąc księgowania otwarty, wiersz idzie do miesiąca księgowania z zapisanym powodem
 - test na 24 wierszach Pekao przechodzących granicę miesiąca
+- w trybie ciągłym (specyfikacja 13 §5) to ŚCIEŻKA GŁÓWNA, nie przypadek brzegowy: każdy wyciąg z początku miesiąca nosi operacje poprzedniego, zaksięgowane po jego zamknięciu
+- argument arytmetyczny, nie wygoda: bez wyjątku dla miesiąca zaatestowanego dwa wiersze 21,99 PLN z wyciągu Pekao albo przepadają, albo psują już potwierdzone saldo grudnia
 
 **Pliki:** `vidulum-app-ingestion/ingestion-staging/`
 **Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
@@ -1370,7 +1426,7 @@ Do siedmiu pytań per grupa, każde z licznikiem, sumą, trzema próbkami, rekom
 ### U5 · Ekran importu, sukcesu i atestacji
 
 **PR:** `feat(ui): postęp importu i podsumowanie z oknem wycofania`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** U2, Z2 · **Odblokowuje:** —
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** U2, Z2 · **Odblokowuje:** U8, U9
 
 Postęp jako stan sesji, nie jako długie żądanie — kartę można zamknąć. Podsumowanie pokazuje, co weszło ORAZ co pominięte i dlaczego, plus listę prowizorycznych. Atestacja musi powiedzieć wprost, że kończy okno wycofania.
 
@@ -1412,30 +1468,65 @@ Decyzja rozstrzygnięta po 24 h nie jest utratą: ekran pokazuje, co wybrano za 
 **Pliki:** `frontend`
 **Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
 
-### X1 · recategorize w cashflow-api → AUTOPILOT domyślnie
+### U8 · Ekrany trybu ciągłego
 
-**PR:** `feat(cashflow-api): recategorize jako warunek trybu AUTOPILOT`  
-**Priorytet:** P3 · **Status:** `open` · **Zależy od:** T3 · **Odblokowuje:** —
+**PR:** `feat(ui): widoki dowgrywania kolejnych wyciągów`  
+**Priorytet:** P2 · **Status:** `open` · **Zależy od:** S17, U5 · **Odblokowuje:** —
 
-AUTOPILOT jest bezpieczny tylko wtedy, gdy user może poprawić kategorię PO imporcie. Domena to umie — CashChangeEditedEvent nosi categoryName, handler i projekcja istnieją — ale kontrakt nie ma metody. To jedna metoda w kontrakcie, nie projekt w agregacie.
+W trybie ONGOING ekrany mówią inne rzeczy: duplikaty to norma przy zachodzących wyciągach, ekran decyzji zwykle się nie pojawia, a zamiast Wycofaj jest Potwierdź saldo miesiąca. Przycisku wycofania NIE wolno pokazywać do czasu X2, bo rollbackImport odmawia poza SETUP.
 
 **Definicja ukończenia:**
-- metoda w CashFlowModuleApi z testem kontraktu
-- AUTOPILOT staje się domyślną polityką
+- brak przycisku Wycofaj w ONGOING, z wyjaśnieniem, co zamiast niego
+- duplikaty prezentowane jako normalny wynik, nie ostrzeżenie
+- ekran różnicy salda przy nieudanym potwierdzeniu
+
+**Pliki:** `frontend`
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
+
+### U9 · Ekran potwierdzenia salda i wyrównania
+
+**PR:** `feat(ui): krok potwierdzenia salda po wgraniu, w trzech stanach`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S18, U5 · **Odblokowuje:** —
+
+Wyciąg nosi saldo → sprawdzenie bezgłośne, zero kliknięć. Nie nosi → jedno pytanie, ale o saldo NA DZIEŃ OSTATNIEJ OPERACJI W PLIKU, nigdy o dzisiejsze. Jest różnica → kandydaci na przyczynę i trzy wyjścia, bo to trzy różne sytuacje: znam przyczynę i dopiszę, nie znam i chcę zgodne saldo, nie chcę teraz decydować.
+
+**Definicja ukończenia:**
+- wariant bezgłośny nie pokazuje ownerowi żadnego pytania, gdy różnica wynosi zero
+- pytanie nazywa DATĘ, nie dzisiejszy dzień, i wyjaśnia dlaczego
+- ekran różnicy pokazuje kandydatów, nie samą liczbę
+- wyrównanie tylko po wyraźnym kliknięciu
+- wariant po kwartale: jeden plik, kilka miesięcy, jedno pytanie, jedna korekta (mockup S10)
+
+**Pliki:** `frontend`
+**Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
+### X1 · recategorize: dziś NIE MA jak poprawić kategorii importu
+
+**PR:** `feat(cashflow-api): recategorize pojedynczo i zbiorczo, dla transakcji historycznych`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** T3 · **Odblokowuje:** —
+
+Zmierzone na kodzie: zaimportowanej transakcji nie da się przekategoryzować ŻADNĄ istniejącą drogą. /cash-flow/edit odmawia, bo validateDueDateRange wymaga dueDate w oknie activePeriod..+11, a import ustawia dueDate=paidDate (przeszłość); batch update cicho pomija, bo obsługuje tylko PENDING, a import jest CONFIRMED; reject cicho nic nie robi (onlyWhenIsPending); rollbackImport działa tylko w SETUP i kasuje cały import. Dwie z czterech prób kończą się CISZĄ, nie błędem.
+
+**Definicja ukończenia:**
+- metoda pojedyncza i zbiorcza w CashFlowModuleApi, z testem kontraktu
+- operacja pomija validateDueDateRange — ta reguła pilnuje planowania, nie historii, i to jest zapisane w javadocu
+- wariant zbiorczy obejmuje CONFIRMED, inaczej 147 wierszy to 147 zapisów całego dokumentu cash flow
+- PODNIESIONE z P3: to nie udogodnienie, a warunek — bez tego AUTOPILOT obiecuje poprawę, której nie da się wykonać
 
 **Pliki:** `vidulum-app-cashflow/cashflow-api/`, `vidulum-app-cashflow/cashflow/`
-**Specyfikacja:** [projekt](2026-10-24-data-ingestion-conductor-saga.md) §11
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
 
 ### X2 · deleteImported w cashflow-api → kompensacja selektywna
 
 **PR:** `feat(cashflow-api): wycofanie wybranych cash changes zamiast całego importu`  
-**Priorytet:** P3 · **Status:** `open` · **Zależy od:** W2 · **Odblokowuje:** —
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** W2 · **Odblokowuje:** —
 
 rollbackImport kasuje cały import cash flow, więc compensations.importedCashChangeIds nie ma dziś czym być wykorzystane, a dwie sesje w jednym SETUP znaczą, że kompensacja jednej zabiera dane drugiej. Potrzebne, gdy wejdzie import przyrostowy w fazie OPEN, gdzie rollbackImport jest zabroniony.
 
 **Definicja ukończenia:**
 - metoda po liście id, z testem
 - strażnik jednej sesji z S7 przestaje być konieczny
+- PODNIESIONE z P3: w trybie ciągłym (specyfikacja 13) to jedyna droga do kompensacji, bo rollbackImport odmawia poza SETUP
 
 **Pliki:** `vidulum-app-cashflow/cashflow-api/`, `vidulum-app-cashflow/cashflow/`
 **Specyfikacja:** [10](ingestion-conductor-design/10-granice-artefaktow.md) §4
@@ -1512,6 +1603,22 @@ CashFlow ma JEDEN bankAccount, więc Nest i Pekao to dwa osobne cash flow — al
 
 **Pliki:** `vidulum-app-cashflow/cashflow-api/`, `vidulum-app-cashflow/cashflow/`
 **Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
+
+### X8 · Endpoint atestacji miesiąca — opcjonalny po S18
+
+**PR:** `feat(cashflow): atestacja miesiąca jako kontrola salda wobec wyciągu`  
+**Priorytet:** P3 · **Status:** `open` · **Zależy od:** S17 · **Odblokowuje:** —
+
+MakeMonthlyAttestationCommand i MonthAttestedEvent są w kodzie od dawna, ale nadawcę mają TYLKO w trzech generatorach testowych — nie ma endpointu. A ATTESTED to jedyny status blokujący import, więc dziś w trybie OPEN żaden miesiąc nigdy nie zostaje zamknięty i NIC nie sprawdza, czy saldo po wgraniu zgadza się z wyciągiem. Blokada jest, klucza nikt nie przekręca.
+
+**Definicja ukończenia:**
+- endpoint przyjmuje period i saldo z ostatniego wiersza wyciągu
+- niezgodność zwraca RÓŻNICĘ i kandydatów na przyczynę: wiersze w obcej walucie, odrzucone, prowizoryczne
+- po zgodności miesiąc jest ATTESTED i przestaje przyjmować import
+- to ożywia komendę bez nadawcy — ta sama klasa zaległości co forget przed R7
+
+**Pliki:** `vidulum-app-cashflow/cashflow/`
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
 
 ## Dziennik
 
@@ -1682,6 +1789,61 @@ Zmiana rekordu wywaliła **6 miejsc konstrukcji w testach** — i to był cel, n
 kontraktem. Testy kontraktu: **44** (było 37), nowe siedem pokrywa cztery postacie numeru, kolizję
 dwóch krajów, odmowę waluty z kodem i komunikatem oraz wymagalność obu pól.
 
+### 2026-10-24 — import ciągły: przewidziany w cashflow, nieprzewidziany w ingestion (S17, X8, U8)
+
+Pytanie: *jak wgrywać kolejne wyciągi, gdy cash flow jest już OPEN?* Pomiar dał odpowiedź
+ciekawszą niż tak/nie i jest w [specyfikacji 13](ingestion-conductor-design/13-import-ciagly.md).
+
+**Cashflow to przewiduje w trzech miejscach:** `ImportWindow` w OPEN odrzuca tylko przyszłość;
+`MonthStatuses.acceptsImportAt` dopuszcza `ACTIVE` **i** `ROLLED_OVER`, a javadoc tego drugiego mówi
+wprost *„allows gap filling — importing missed transactions from bank statements"*; v1 ma komentarz
+*„ongoing sync/gap filling"* i odmawia tylko przy `isClosed()`.
+
+**Ale jedna blokada jest wyłączona przez przypadek.** `ATTESTED` to jedyny status, który odmawia
+importu, a jedyna komenda, która go ustawia — `MakeMonthlyAttestationCommand` — ma nadawcę
+**tylko w trzech generatorach testowych** i żadnego endpointu. Więc w trybie OPEN żaden miesiąc nigdy
+nie zostaje zamknięty, a wraz z tym **nie istnieje żadna kontrola, czy saldo po wgraniu zgadza się z
+wyciągiem**. Blokada jest, klucza nikt nie przekręca. To ta sama klasa zaległości co `forget` przed
+R7 → zadanie **X8**.
+
+**Czego nie ma w projekcie v2:** sesja nie zna trybu (**S17**), kompensacja nie działa poza SETUP
+(mockupy S4–S6 obiecują *Wycofaj*, którego backend odmówi → **X2 podniesione z P3 na P1**, a UI nie
+pokazuje przycisku do tego czasu → **U8**), brak domknięcia i kontroli salda (**X8**), a reguła daty
+**M9** przestaje być przypadkiem brzegowym: w backfillu to 24 wiersze na 791, w trybie ciągłym każdy
+wyciąg z początku miesiąca nosi operacje poprzedniego, zaksięgowane po jego zamknięciu.
+
+**Wniosek, który warto zapamiętać:** import ciągły jest dziś **możliwy, ale niekontrolowany** —
+przechodzi zawsze i nic nie weryfikuje wyniku wobec banku.
+
+### 2026-10-24 — wyrównanie salda przy wgraniu zdejmuje dwa zadania (S18, S19)
+
+Propozycja ownera: pytać na koniec wgrania o saldo konta i dopisywać różnicę jako korektę, bo owner
+może logować się raz na kwartał. **Jest trafna i mechanizm już istnieje — tylko odpala się raz.**
+`AttestHistoricalImportCommand` ma flagę `createAdjustment`, agregat tworzy cash change
+`Balance Adjustment` (CONFIRMED, Uncategorized, `bankTransactionId = null`), a projekcja dokłada go do
+miesiąca `ACTIVE`. Uogólnienie na każde wgranie to **S18**.
+
+**Znalezisko po drodze: bank często mówi nam saldo, a my je wyrzucamy.** Wyciąg Nest ma kolumnę
+`Saldo po operacji`, której ostatnia wartość to **76 047,25** — dokładnie ta liczba, którą przewodnik
+manualnego testu każe testerowi **przepisać ręcznie**. Format kanoniczny nie ma kolumny salda, więc
+kontrola, która mogła być darmowa i bezgłośna, wymaga pytania. Pekao tej kolumny nie ma → pole
+opcjonalne (**S19**).
+
+**Pułapka, którą trzeba nazwać w implementacji:** pytanie *„czy to aktualne saldo konta?"* dla pliku
+kończącego się dwa dni wcześniej **psuje dane**. Owner potwierdza saldo z dziś, system robi korektę na
+250 zł, a w następnym pliku te same transakcje wchodzą normalnie — **policzone dwa razy**. Pytanie
+musi brzmieć: *saldo na dzień ostatniej operacji w pliku*.
+
+**Owner logujący się raz na kwartał jest obsłużony bez żadnych dodatków:** `MonthlyRolloverScheduler`
+(cron `0 0 2 1 * *`, z nadrabianiem) przesuwa miesiące po stronie serwera, a `IMPORTED` i
+`ROLLED_OVER` przyjmują import, więc plik za trzy miesiące wchodzi bez przeszkód. Koszt: korekta
+trafia do miesiąca **wgrania**, nie błędu — suma jest poprawna, pojedynczy miesiąc nie, i korekta musi
+o tym mówić nazwą.
+
+**Co z tego schodzi:** **X8** (atestacja miesiąca) przestaje być wymogiem kontroli → P3, a **M9**
+traci powód dla wyjątku, bo nic nie staje się `ATTESTED` → P2. To rzadki przypadek, w którym
+propozycja **zdejmuje** zadania, a nie dokłada.
+
 ## Graf zależności
 
 ```mermaid
@@ -1719,7 +1881,7 @@ flowchart LR
     M6["M6 Chunkowanie komendy walidacji"]:::p1
     M7["M7 Waluta wiersza wobec waluty cash flow"]:::p0
     M8["M8 Wyciąg musi należeć do tego cash flow"]:::p0
-    M9["M9 Która data rządzi miesiącem transakcji"]:::p1
+    M9["M9 Która data rządzi miesiącem transakcji"]:::p2
     R1["R1 Moduł rozstrzygania i trwałe mapowania"]:::p1
     R2["R2 CategoryLadder: sześć priorytetów w j…"]:::p1
     R3["R3 Przebieg pierwszy: darmowa drabina be…"]:::p1
@@ -1745,6 +1907,9 @@ flowchart LR
     S13["S13 Tabela przejść sagi jako dokument, ni…"]:::p0
     S15["S15 Endpoint przerwania sesji"]:::p1
     S16["S16 Jaki procent wartości pokryły zadane…"]:::p1
+    S17["S17 Tryb sesji: backfill czy dowgranie"]:::p1
+    S18["S18 Wyrównanie salda na koniec każdego wg…"]:::p1
+    S19["S19 Osiemnasta kolumna: saldo po operacji"]:::p2
     T1["T1 Moduł testów integracyjnych i jego ba…"]:::p0
     T2["T2 Reguły architektoniczne rodziny, zero…"]:::p0
     T3["T3 Przepływ udany: AUTOPILOT na 402 wier…"]:::p0
@@ -1764,19 +1929,22 @@ flowchart LR
     U5["U5 Ekran importu, sukcesu i atestacji"]:::p1
     U6["U6 Ekrany porażki, importu częściowego i…"]:::p2
     U7["U7 Sesja zamknięta: TTL, przerwanie, wyg…"]:::p2
+    U8["U8 Ekrany trybu ciągłego"]:::p2
+    U9["U9 Ekran potwierdzenia salda i wyrównania"]:::p1
     W1["W1 Ponowienia, backoff i rozróżnienie FA…"]:::p2
     W2["W2 Łańcuch kompensacji per faza"]:::p2
     W3["W3 Odzysk po awarii: krok bez odpowiedzi"]:::p2
     W4["W4 DLQ dla komend i odpowiedzi"]:::p2
     W5["W5 Częściowy import i raport odrzutów"]:::p2
     W6["W6 Retencja: dane znikają, rekord proces…"]:::p2
-    X1["X1 recategorize w cashflow-api → AUTOPIL…"]:::p3
-    X2["X2 deleteImported w cashflow-api → kompe…"]:::p3
+    X1["X1 recategorize: dziś NIE MA jak poprawi…"]:::p1
+    X2["X2 deleteImported w cashflow-api → kompe…"]:::p1
     X3["X3 Topic faktów i pierwszy konsument w r…"]:::p3
     X4["X4 Parytet z v1 i wyłączenie bank-data-i…"]:::p3
     X5["X5 Dokumentacja: CLAUDE.md i przewodnik…"]:::p3
     X6["X6 Lista kontrolna parytetu v1 do v2"]:::p3
     X7["X7 Rachunek bankowy w kontrakcie cashflow"]:::done
+    X8["X8 Endpoint atestacji miesiąca — opcjona…"]:::p3
     Z1["Z1 Tworzenie kategorii jako osobny, niep…"]:::p0
     Z2["Z2 Import wierszy do cash flow z postępem"]:::p0
     Z3["Z3 Wycofanie importu z prawdziwymi liczb…"]:::p1
@@ -1856,6 +2024,9 @@ flowchart LR
     S2 --> S13
     S5 --> S15
     S8 --> S16
+    S4 --> S17
+    S17 --> S18
+    K5 --> S19
     K12 --> T1
     M3 --> T1
     S12 --> T1
@@ -1902,6 +2073,10 @@ flowchart LR
     S10 --> U7
     S15 --> U7
     U2 --> U7
+    S17 --> U8
+    U5 --> U8
+    S18 --> U9
+    U5 --> U9
     S6 --> W1
     M5 --> W2
     R7 --> W2
@@ -1923,6 +2098,7 @@ flowchart LR
     X4 --> X5
     T5 --> X6
     K3 --> X7
+    S17 --> X8
     K8 --> Z1
     M1 --> Z1
     M2 --> Z2

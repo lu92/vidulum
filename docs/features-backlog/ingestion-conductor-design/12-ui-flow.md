@@ -76,6 +76,7 @@ Trzy rzeczy czynią to trudnym nie przez liczbę, a przez **kształt**:
 | **`AWAITING_DECISION`** | **S2 Decyzje** | ≤7 pytań, każde z licznikiem, sumą, próbkami i rekomendacją | *Zatwierdź wszystkie*, *Zmień pojedyncze*, *Przerwij* |
 | `PROVISIONING_CATEGORIES`, `IMPORTING` | **S3 Import** | pasek postępu (co 50 wierszy), „381 z 381" | — (import nie jest przerywalny) |
 | `IMPORTED` | **S4 Sukces** | co weszło, co pominięte i **dlaczego**, rozbicie po miesiącach | *Atestuj*, *Wycofaj*, *Przejrzyj prowizoryczne* |
+| `IMPORTED` | **S4a Potwierdzenie salda** | trzy stany: wyciąg nosi saldo → sprawdzone **bez pytania**; nie nosi → jedno pytanie o dzień ostatniej operacji; jest różnica → kandydaci na przyczynę | *Utwórz wyrównanie*, *Dopiszę transakcję*, *Zostaw* |
 | `PARTIALLY_IMPORTED` | **S5 Częściowy** | to samo + wyróżniona lista wierszy, które nie weszły | *Ponów nieudane*, *Atestuj resztę*, *Wycofaj* |
 | `FAILED` | **S6 Porażka** | przyczyna z `failure`, krok, na którym padło, i co jest w cash flow | *Wycofaj*, *Zacznij od nowa* |
 | `COMPENSATED` | S6 | „cash flow wrócił do stanu przed importem" | *Zacznij od nowa* |
@@ -99,7 +100,8 @@ pytaniu — a „pomiń" to po prostu *Zatwierdź wszystkie* bez zmieniania nicz
 | `POST /api/v2/ingestion/{id}/decisions` | **tylko `AWAITING_DECISION`** | user (jedno kliknięcie) | renderuje **zwrócony** stan, bez dodatkowego GET |
 | `POST /api/v2/ingestion/{id}/abandon` | każda faza **przed** `IMPORTING` | user (*Przerwij*) | przechodzi na S7 |
 | `POST /api/v2/ingestion/{id}/compensate` | `IMPORTED`, `PARTIALLY_IMPORTED`, `FAILED` — i tylko gdy cash flow jest w SETUP oraz okno 1 h nie minęło | user (*Wycofaj*, z potwierdzeniem) | przechodzi na S6 |
-| `POST /cash-flow/cf={id}/attest-historical-import` | po `IMPORTED` | user (*Atestuj*) | **kończy okno wycofania** — UI musi to powiedzieć wprost przed kliknięciem |
+| `POST /api/v2/ingestion/{id}/balance` | po `IMPORTED` | **UI automatycznie**, gdy wyciąg nosi saldo; **user**, gdy nie nosi | różnica + kandydaci; wyrównanie tylko na wyraźną zgodę |
+| `POST /cash-flow/cf={id}/attest-historical-import` | po `IMPORTED`, tylko w trybie `BACKFILL` | user (*Atestuj*) | **kończy okno wycofania** — UI musi to powiedzieć wprost przed kliknięciem |
 
 ### Polling, bo websocketa jeszcze nie ma
 
@@ -139,7 +141,10 @@ Pięć rzeczy, których v1 nie wystawia, a które w v2 są w jednej odpowiedzi:
    7 pytań to **znacznie mniej**, bo 90 % wymagałoby 35. Ekran decyzji musi to powiedzieć liczbą
    („zadane pytania obejmują 61 % wartości wyciągu"), inaczej user myśli, że rozstrzygnął wszystko.
    Wymaga pola `valueCovered` — zadanie **S16**.
-5. **Co zostało w cash flow po porażce.** `failure` + `compensations.importedCashChangeIds.size()`,
+5. **Czy dane zgadzają się z bankiem — i czym się różnią.** Nie samą liczbą: różnica obok listy
+   kandydatów (wiersze w obcej walucie, odrzucone, prowizoryczne). Dla wyciągów, które niosą saldo,
+   to sprawdzenie jest **bezgłośne** i nie zajmuje ownerowi ani jednego kliknięcia.
+6. **Co zostało w cash flow po porażce.** `failure` + `compensations.importedCashChangeIds.size()`,
    żeby ekran porażki mówił „w cash flow jest 299 z 381 transakcji", a nie „coś się nie udało".
 
 ---
@@ -166,6 +171,8 @@ wszystko.
 | nie wolno | dlaczego |
 |---|---|
 | liczyć salda ani różnicy do atestacji | saldo jest sprawą cashflow; UI, które je liczy, zacznie „poprawiać" różnicę — a to utrwala błąd waluty z §25.2a nieodwracalnie |
+| pytać o **saldo dzisiejsze** | gdy plik kończy się wcześniej, różnica obejmie transakcje, których w nim nie ma — przyjdą w następnym wyciągu i zostaną policzone **dwa razy**. Pytanie zawsze dotyczy **dnia ostatniej operacji w pliku** |
+| tworzyć wyrównanie bez zgody ownera | to zwykła transakcja w jego cash flow, bez odpowiednika w banku; automat, który ją dopisuje sam, ukrywa problem zamiast go pokazać |
 | zgadywać waluty wiersza ani przeliczać kursem | wyciąg Pekao **nie zawiera** kwoty w PLN dla wierszy EUR; nie ma czego przeliczyć |
 | pokazywać `Inne` jako kategorię rozstrzygniętą | to kategoria generyczna banku; po **R9** takie wiersze idą do wzorców i AI, a nie do kosza, który udaje kategorię |
 | trzymać fazę w stanie lokalnym i renderować z niej | źródłem jest odpowiedź; faza zmienia się też **bez** udziału usera (TTL, harmonogram odzysku) |
@@ -186,6 +193,8 @@ wszystko.
 | brak odpowiedzi 24 h | **upload stracony**, transformacja AI do powtórzenia | rekomendacja zastosowana, sesja czytelna |
 | przyczyna porażki | sesja gubi `importJobId`, UI nie ma czego pokazać | `failure` + krok + co zostało w cash flow |
 | logika procesu | w przeglądarce (która droga, w jakiej kolejności) | w conductorze; UI renderuje `phase` |
+| kontrola zgodności z bankiem | **raz w życiu cash flow** (atestacja wdrożenia) | **przy każdym wgraniu**, a dla części banków bez pytania |
+| owner logujący się raz na kwartał | nieprzewidziany | obsłużony: jeden plik, trzy miesiące, **jedno pytanie**, jedna korekta |
 
 Największa zmiana nie jest w liczbie żądań, a w tym, **o co user jest pytany**: w v1 odpowiada na
 pytania, które odblokowują maszynę, w v2 — tylko na te, które poprawiają wynik.

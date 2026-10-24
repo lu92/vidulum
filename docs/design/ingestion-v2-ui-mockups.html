@@ -92,6 +92,12 @@ td.t{font-family:inherit}
 .why{background:var(--g50);border-left:3px solid var(--primary);padding:12px 16px;margin-top:12px;font-size:13.5px;border-radius:0 8px 8px 0}
 .why b{color:var(--primary-dark)}
 .why ul{margin:6px 0 0 18px} .why li{margin:3px 0}
+.inp{font-family:var(--mono);font-size:15px;padding:9px 12px;border:1px solid var(--g300);border-radius:8px;width:190px}
+.inp.big{font-size:19px;font-weight:650;width:220px}
+.bal{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--g200);font-size:14px}
+.bal b{font-family:var(--mono);font-size:15px}
+.bal.diff b{color:var(--error)}
+.bal.ok b{color:var(--success)}
 .flow{font-family:var(--mono);font-size:12.5px;background:var(--g900);color:#E8EAF6;padding:18px 20px;border-radius:10px;overflow-x:auto;white-space:pre}
 </style>
 </head>
@@ -121,11 +127,13 @@ dane w mockupach pochodzą z prawdziwych fixture'ów (Nest 402 wiersze, Pekao 79
     <a href="#s2">S2 · Decyzje (≤7 pytań)</a>
     <a href="#s3">S3 · Import w toku</a>
     <a href="#s4">S4 · Sukces</a>
+    <a href="#s4a">S4a · Potwierdzenie salda</a>
     <a href="#s5">S5 · Import częściowy</a>
     <a href="#s6">S6 · Porażka i wycofanie</a>
     <a href="#s7">S7 · Odmowy wejściowe</a>
     <a href="#s8">S8 · Decyzje po TTL</a>
     <a href="#s9">S9 · Ścieżka drugiego wyciągu</a>
+    <a href="#s10">S10 · Logowanie raz na kwartał</a>
   </div>
 </div>
 
@@ -470,14 +478,127 @@ dane w mockupach pochodzą z prawdziwych fixture'ów (Nest 402 wiersze, Pekao 79
     z klasyfikacją i ekranem sugestii włącznie.</div>
 </section>
 
+<!-- ───────────────────────────────── S4a -->
+<section id="s4a">
+  <div class="shead"><h2>S4a · Potwierdzenie salda — trzy stany tego samego kroku</h2></div>
+  <div class="chips"><span class="chip phase">IMPORTED</span>
+    <span class="chip get">GET /api/v2/ingestion/{id}</span>
+    <span class="chip post">POST …/{id}/balance</span></div>
+
+  <h3 style="font-size:15px;font-weight:650;margin:18px 0 8px;color:var(--g700)">① Wyciąg nosi saldo — nie pytamy o nic</h3>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-7f3a9c21</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Saldo zgadza się z wyciągiem</div><div class="meta">Nest Bank · sprawdzone automatycznie</div></div>
+      <div class="bal"><span>Saldo po ostatniej operacji w wyciągu <span class="meta">(31.12.2025)</span></span><b>76 047,25 PLN</b></div>
+      <div class="bal ok"><span>Saldo policzone przez Vidulum</span><b>76 047,25 PLN</b></div>
+      <div class="bal ok"><span><b style="font-family:inherit">Różnica</b></span><b>0,00 PLN</b></div>
+      <div class="note s">Ten wyciąg zawiera kolumnę „Saldo po operacji", więc sprawdziliśmy to sami —
+        <b>bez pytania Cię o cokolwiek</b>. Dane zgadzają się z bankiem co do grosza.</div>
+      <div class="actions"><button class="btn ok">Zakończ</button><button class="btn s">Pokaż wszystkie 402 wiersze</button></div>
+    </div>
+  </div>
+  <div class="why"><b>Dlaczego to w ogóle jest możliwe:</b> bank podaje saldo bieżące przy każdej
+    operacji, a liczba z ostatniego wiersza — 76 047,25 — to dokładnie ta, którą dzisiejszy przewodnik
+    manualnego testu każe <b>przepisywać ręcznie</b>. Wystarczy przestać ją wyrzucać przy transformacji.</div>
+
+  <h3 style="font-size:15px;font-weight:650;margin:26px 0 8px;color:var(--g700)">② Wyciąg nie nosi salda — pytamy, i to precyzyjnie</h3>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-2c81b4de</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Potwierdź saldo konta</div><div class="meta">Pekao SA · wyciąg nie zawiera salda</div></div>
+      <div class="note i">Ten wyciąg nie podaje salda, więc potrzebujemy jednej liczby od Ciebie.
+        <b>Nie pytamy o saldo dzisiejsze</b> — pytamy o saldo na dzień ostatniej operacji z tego pliku.</div>
+      <div style="background:var(--g50);border:1px solid var(--g200);border-radius:9px;padding:16px;margin:14px 0">
+        <div style="font-size:14.5px;font-weight:650;margin-bottom:4px">Jakie saldo miało konto po operacjach z 9 stycznia 2026?</div>
+        <div class="meta" style="margin-bottom:12px">Zajrzyj w historię rachunku na ten dzień — to ostatnia operacja w pliku.</div>
+        <input class="inp big" value="" placeholder="0,00"> <span class="meta">PLN</span>
+      </div>
+      <div class="actions"><button class="btn p">Potwierdź</button><button class="btn s">Nie teraz</button></div>
+      <div class="note w"><b>Dlaczego nie „saldo dziś":</b> gdybyś podał dzisiejsze, różnica objęłaby
+        transakcje z 10–11 stycznia, których w tym pliku jeszcze nie ma. Przyszłyby w następnym wyciągu
+        i policzylibyśmy je <b>dwa razy</b>.</div>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px;font-weight:650;margin:26px 0 8px;color:var(--g700)">③ Jest różnica — pokazujemy kandydatów, nie samą liczbę</h3>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-2c81b4de/balance</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Saldo różni się o 95,20 PLN</div><div class="meta">Pekao SA · grudzień 2025</div></div>
+      <div class="bal"><span>Saldo podane przez Ciebie <span class="meta">(stan na 31.12.2025)</span></span><b>12 480,15 PLN</b></div>
+      <div class="bal"><span>Saldo policzone przez Vidulum</span><b>12 575,35 PLN</b></div>
+      <div class="bal diff"><span><b style="font-family:inherit">Różnica</b></span><b>−95,20 PLN</b></div>
+      <table>
+        <tr><th>możliwa przyczyna</th><th>kwota</th><th>co z tym</th></tr>
+        <tr><td class="t">CLAUDE.AI SUBSCRIPTION, 07.12 — wiersz w <b>EUR</b>, nie zapisany</td><td>22,14 EUR</td><td class="t">dopisz ręcznie w PLN</td></tr>
+        <tr><td class="t">2 wiersze odrzucone — data przed początkiem cash flow</td><td>—</td><td class="t">pokaż</td></tr>
+        <tr><td class="t">3 grupy prowizoryczne — kategoria z fallbacku</td><td>—</td><td class="t">nie wpływa na saldo</td></tr>
+      </table>
+      <div class="actions">
+        <button class="btn p">Utwórz wyrównanie 95,20 PLN</button>
+        <button class="btn s">Najpierw dopiszę transakcję</button>
+        <button class="btn s">Zostaw bez zmian</button>
+      </div>
+      <div class="note w"><b>Wyrównanie to zwykła transakcja</b> o nazwie
+        „Wyrównanie salda za XII 2025", bez identyfikatora bankowego, w kategorii nieskategoryzowanej.
+        Wejdzie do <b>bieżącego miesiąca</b>, więc suma będzie poprawna, a grudzień pozostanie zaniżony
+        o te 95,20 — dlatego lepiej najpierw dopisać brakującą transakcję, jeśli znasz jej kwotę.</div>
+    </div>
+  </div>
+  <div class="why"><b>Trzy przyciski, bo to trzy różne sytuacje:</b> znam przyczynę i mogę ją dopisać
+    (najlepsze), nie znam i chcę mieć zgodne saldo (wyrównanie), albo nie chcę teraz decydować
+    (zostaw — różnica zostaje widoczna w sesji i wróci przy następnym wgraniu).</div>
+</section>
+
+<!-- ───────────────────────────────── S10 -->
+<section id="s10">
+  <div class="shead"><h2>S10 · Logowanie raz na kwartał</h2></div>
+  <div class="chips"><span class="chip phase">IMPORTED</span><span class="chip">plik za 3 miesiące</span>
+    <span class="chip post">POST …/{id}/balance</span></div>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><div class="url">app.widlum.com/ingestion/ING-71fe0a23</div></div>
+    <div class="app">
+      <div class="apphead"><div class="apptitle">Zaimportowano 3 miesiące</div><div class="meta">grudzień 2025 – luty 2026 · 187 transakcji</div></div>
+      <div class="note i">Ostatnie logowanie: 2 grudnia. Przez ten czas <b>nic nie trzeba było robić</b> —
+        miesiące przesunęły się same, a wszystkie trzy wciąż przyjmowały dane.</div>
+      <div class="tiles">
+        <div class="tile ok"><b>187</b><span>w cash flow</span></div>
+        <div class="tile"><b>3</b><span>miesiące</span></div>
+        <div class="tile warn"><b>12</b><span>duplikaty</span></div>
+        <div class="tile warn"><b>1</b><span>obca waluta</span></div>
+      </div>
+      <table>
+        <tr><th>miesiąc</th><th>transakcji</th><th>wpływy</th><th>wydatki</th></tr>
+        <tr><td class="t">grudzień 2025</td><td>61</td><td>+6 109,95</td><td>−4 502,16</td></tr>
+        <tr><td class="t">styczeń 2026</td><td>68</td><td>+6 240,00</td><td>−5 118,42</td></tr>
+        <tr><td class="t">luty 2026</td><td>58</td><td>+6 240,00</td><td>−4 871,09</td></tr>
+      </table>
+      <div class="bal diff"><span>Różnica wobec salda, które podałeś</span><b>−95,20 PLN</b></div>
+      <div class="note w">Jedna korekta na całe trzy miesiące, w miesiącu bieżącym. Suma będzie zgodna
+        z bankiem; rozbicie na miesiące — nie do końca, bo nie wiemy, w którym z nich powstała różnica.
+        <b>Dlatego pokazujemy jedynego kandydata:</b> wiersz w EUR z 7 grudnia.</div>
+      <div class="actions"><button class="btn p">Utwórz wyrównanie</button><button class="btn s">Pokaż kandydata</button></div>
+    </div>
+  </div>
+  <div class="why"><b>To jest ekran, który decyduje, czy Vidulum da się używać rzadko.</b> Nic nie
+    wymagało logowania: przejścia miesięcy robi harmonogram po stronie serwera (z nadrabianiem, gdy
+    zaległość jest większa niż miesiąc), a miesiące „zaimportowany" i „przetoczony" przyjmują dane bez
+    ograniczeń. Jedyne, o co pytamy po kwartale, to <b>jedna liczba</b>.</div>
+</section>
+
 <!-- ───────────────────────────────── ścieżki -->
 <section id="paths">
   <div class="shead"><h2>Wszystkie ścieżki na jednym rysunku</h2></div>
-  <div class="flow">S0 start ──▶ S1 przetwarzanie ──┬─▶ S2 decyzje ──▶ S3 import ──┬─▶ S4 sukces ──▶ atestacja (koniec)
-                              │                                │
-                              │   (nic do pytania)             ├─▶ S5 częściowy ──▶ ponów | atestuj | wycofaj
+  <div class="flow">S0 start ──▶ S1 przetwarzanie ──┬─▶ S2 decyzje ──▶ S3 import ──┬─▶ S4 sukces ──▶ S4a saldo ──┬─▶ zgodne: koniec
+                              │                                │                            ├─▶ roznica: wyrownanie
+                              │   (nic do pytania)             │                            └─▶ odloz: wroci przy nastepnym
                               └────────────────────────────────┤
-                                                               └─▶ S6 porażka ──▶ wycofaj ──▶ COMPENSATED
+                                                               ├─▶ S5 czesciowy ──▶ ponow | atestuj | wycofaj
+                                                               └─▶ S6 porazka ──▶ wycofaj ──▶ COMPENSATED
+
+  S4a ma trzy warianty: wyciag nosi saldo (sprawdzamy sami) · nie nosi (pytamy o dzien ostatniej operacji) · jest roznica (kandydaci)
+  S10 to ten sam S4a po kwartale: jeden plik, trzy miesiace, jedno pytanie, jedna korekta
 
   S1/S2 ──(Przerwij)──▶ S7 zamknięta            S2 ──(brak odpowiedzi 24 h)──▶ S8 rozstrzygnięte po TTL ──▶ S4
   S0 ──(404 | 409 | 400)──▶ S7 odmowa wejściowa  S1..S3 ──(awaria serwera)──▶ wznowienie samo, user widzi postęp dalej</div>
