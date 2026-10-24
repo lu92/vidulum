@@ -116,6 +116,7 @@ którą dzisiejszy `StageTransactionsCommandHandler` ma i którą trzeba przenie
 | `shouldIgnoreBlankCounterparty` | oba konta puste → `false`, zero wywołań do profilu per wiersz |
 | `shouldDetectSelfTransferWhenAiSwappedColumns` | OUTFLOW z kontem własnym w `sourceAccountNumber` → wykryty (fallback `counterpartyAccount()`) |
 | `shouldAskUserProfileOncePerSession` | 402 wiersze → **1** wywołanie `UserFinancialProfileApi` |
+| `shouldTakeOwnerFromTheCommandNotFromTheSkeleton` | `ValidateRowsCommand.owner` ustawione → `skeleton.owner()` **nie** wołane (conductor zna ownera z JWT; pomiar w [pliku 10, §5](10-granice-artefaktow.md)) |
 
 ### C. Grupowanie — unit
 

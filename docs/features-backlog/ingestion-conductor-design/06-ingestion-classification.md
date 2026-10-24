@@ -10,6 +10,7 @@ pipeline'u** — nikt w rodzinie od niego nie zależy, co jest warunkiem wymieni
 ```xml
 <dependency>vidulum-ingestion-conductor-api</dependency>
 <dependency>vidulum-ingestion-canonical</dependency>
+<dependency>vidulum-ingestion-staging-api</dependency>             <!-- TYLKO czytanie wierszy, patrz niżej -->
 <dependency>vidulum-bank-data-ai-categorization-api</dependency>   <!-- kontrakt z F66, bez zmian -->
 <dependency>spring-boot-starter-data-mongodb</dependency>          <!-- cache -->
 <dependency>spring-kafka</dependency>
@@ -22,6 +23,24 @@ kontrakt. Warto to powiedzieć wprost, bo dzisiejszy `bank-data-ingestion/pom.xm
 zależność została po przeprowadzce. Nowy moduł nie ma prawa jej odziedziczyć.
 
 **Bez `webmvc`:** zero endpointów.
+
+## Dlaczego ten moduł czyta wiersze, choć pracujemy na grupach
+
+**Poprawka z audytu granic** ([plik 10, §4](10-granice-artefaktow.md)). W dokumencie nadrzędnym
+napisałem, że `ClassifyGroupsCommand` nosi 29 grup zamiast 402 wierszy. Kontrakt F66 tego nie
+przyjmie: `CategorizationRequest` bierze `List<TransactionToCategorize>` — **transakcje** — a silnik
+grupuje je sam po `effectiveMerchant()`. Wysłanie syntetycznych reprezentantów grup zrobiłoby z jego
+grupowania operację jałową i dałoby `transactionCount == 1` w sugestiach: pola wypełnione nieprawdą,
+czyli ten sam kształt defektu, który F67 usunęło razem z `aiTokensUsed`.
+
+Dlatego komenda nosi **klucze grup**, a ten moduł czyta ich wiersze przez
+`IngestionRowsApi.rowsOfGroup(...)` — tylko do czytania, nigdy nie pisząc. Odwzorowanie odpowiedzi
+wraca na grupy naturalnie, bo silnik **już** odpowiada per grupa: `ContextMapping` po
+(pattern, bankCategory), `AutoCategorizableSuggestion` po słowie klasyfikacji,
+`BankCategoryFallback` po bankCategory.
+
+Alternatywa — metoda grupowa w kontrakcie F66 (`suggestForGroups`) — jest odłożona do momentu, gdy
+rozmiar żądania zacznie przeszkadzać; wtedy to pomiar, nie przewidywanie.
 
 ## Kontrakt — jedno gniazdo
 
@@ -80,7 +99,11 @@ należy do modułu, który rozmawia z dostawcą, i znika razem z nim.
 | test | given → then |
 |---|---|
 | `shouldCallTheContractOnceForTheWholeBatch` | 29 grup → **1** wywołanie `suggestFor`, zero per grupa |
-| `shouldSendOnlyOpenGroups` | komenda z 29 z 38 → żądanie nosi 29, a nie 38 |
+| `shouldSendOnlyRowsOfOpenGroups` | komenda z 29 kluczy z 38 → `rowsOfGroup` wołane 29×, żądanie do silnika nosi wiersze tych grup i **żadnego** wiersza grupy rozstrzygniętej |
+| `shouldMapContextMappingBackToItsGroup` | `ContextMapping(pattern="ŻABKA", bankCategory="Zakupy kartą")` → `Suggestion` o `GroupKey` `MERCHANT\|ŻABKA\|Zakupy kartą\|OUTFLOW` |
+| `shouldMapAutoCategorizableSuggestionToClassificationGroup` | `AutoCategorizableSuggestion(classification="BANK_FEE")` → `GroupKey` `CLASS\|BANK_FEE` |
+| `shouldFallBackToBankCategorySuggestionWhenMerchantIsWeak` | grupa bez merchanta + `BankCategoryFallback` → sugestia z fallbacku, `reason` to mówi |
+| `shouldNeverWriteToRows` | atrapa `IngestionRowsApi` → zero wywołań zapisujących (kontrakt jest tylko do czytania) |
 | `shouldStoreTheAnswer` | → jeden dokument cache z `suggestions`, `tokensUsed`, `estimatedCost` |
 | `shouldAnswerFromCacheWithoutCallingTheContract` | ta sama komenda drugi raz (ponowienie po awarii) → **zero** wywołań kontraktu, odpowiedź identyczna |
 | `shouldReportCostInReplyNotInSession` | → `GroupsClassified.cost` wypełniony; w odpowiedzi nie ma żadnego pola stanu sesji |

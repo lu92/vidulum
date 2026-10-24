@@ -37,6 +37,11 @@ poziomie całej drabiny.
 | `LearnDecisionsHandler` | po decyzjach człowieka | `ingestion_category_mappings` + `categorizationApi.learn` |
 | `ForgetLearnedHandler` | kompensacja | usuwa mapowania + `categorizationApi.forget` |
 
+`forget` jest dziś **metodą kontraktu bez konsumenta** — zero wywołań produkcyjnych w całym repo
+(pomiar w [pliku 10, §2](10-granice-artefaktow.md)). Krok `UNLEARN` jest jej pierwszym: skoro
+transakcje, które skategoryzowała, są wycofywane, wzorce wyuczone z akceptacji człowieka są tą samą
+decyzją i idą razem z nimi.
+
 ```java
 public final class CategoryLadder {
 

@@ -174,7 +174,8 @@ nie ma długu do zmierzenia.
 | `theConductorDoesNotKnowWhoClassifies` | nic z `ingestion_conductor` nie zależy od `bank_data_ai_categorization` ani od `org.springframework.ai` |
 | `onlyTheWriterWritesToCashFlow` | wywołania `createCategory`, `importHistorical`, `rollbackImport` występują **wyłącznie** w `ingestion_cashflow_writer` |
 | `theConductorOnlyReadsCashFlow` | w `ingestion_conductor` z `CashFlowModuleApi` używane są tylko `exists` i `skeletonOf` |
-| `noWorkerDependsOnAnotherWorker` | cztery slice'y workerów parami rozłączne; jedyny dozwolony wyjątek: `cashflow_writer` → `staging-api` (tylko czytanie) |
+| `noWorkerDependsOnAnotherWorkersImplementation` | cztery slice'y workerów parami rozłączne **co do implementacji**; dozwolona jest zależność od `ingestion-staging-api` (tylko czytanie) i mają ją dokładnie dwa workery: `cashflow_writer` i `classification` — uzasadnienie w [pliku 10, §4](10-granice-artefaktow.md) |
+| `onlyStagingWritesRows` | `save`/`delete` na repozytorium wierszy wyłącznie w `ingestion_staging`; `staging-api` nie wystawia metody zapisującej |
 | `nothingDependsOnClassification` | klasyfikator jest liściem — warunek jego wymienialności |
 | `everyKafkaListenerImplementsAModuleEventHandler` | żadnego topicu jako goły string |
 | `everyStepCommandAndReplyIsARecordImplementingIntegrationEvent` | zero klas-kopert z `Map<String,String>` |

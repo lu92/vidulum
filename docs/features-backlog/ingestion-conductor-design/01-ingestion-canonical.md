@@ -80,6 +80,16 @@ public record GroupKey(String value) {
 }
 ```
 
+### `GroupKey` musi zgadzać się z tym, czym grupuje silnik kategoryzacji
+
+**To wymóg zgodności z obcym modułem, nie konwencja** (pomiar w [pliku 10, §4](10-granice-artefaktow.md)).
+`CategorizationSuggestions.ContextMapping` jest kluczowany parą **(pattern, bankCategory)**, a silnik
+wyprowadza `pattern` z `TransactionToCategorize.effectiveMerchant()` — czyli merchant, a gdy pusty,
+nazwa transakcji. Więc komponent merchanta w `GroupKey` **musi** być `effectiveMerchant()`; każda inna
+definicja czyni odwzorowanie odpowiedzi silnika na grupy stratnym. Analogicznie
+`AutoCategorizableSuggestion` jest kluczowany słowem klasyfikacji, co odpowiada kluczowi
+`CLASS|<WORD>`.
+
 ### Dwie zmiany wobec dzisiejszych typów, obie z powodu
 
 1. **`PaymentMethod.fromPolishBankType(String)` tu nie wchodzi.** To heurystyka po polskich nazwach
@@ -109,6 +119,7 @@ public record GroupKey(String value) {
 | `shouldGroupMerchantRowsByMerchantAndBankCategory` | ŻABKA + „Zakupy kartą" vs ŻABKA + „Przelewy" → **dwa różne** klucze |
 | `shouldGroupByNameWhenMerchantMissing` | `merchant == null` → klucz zawiera `name` |
 | `shouldSeparateDirectionsInGroupKey` | ten sam merchant i bankCategory, INFLOW vs OUTFLOW → dwa klucze (cash flow może mieć „Transfer" po obu stronach) |
+| `shouldKeyMerchantGroupsByEffectiveMerchant` | wiersz z `merchant="ŻABKA"` i wiersz z `merchant=null, name="ŻABKA POLSKA 4521"` → klucze **różne**, a komponent merchanta każdego z nich równy jego `effectiveMerchant()` — zgodność z `ContextMapping.pattern` silnika |
 | `shouldListSeventeenHeadersInOrder` | `CanonicalColumns.HEADERS` → dokładnie 17 nazw w kolejności, którą produkuje adapter |
 
 Pętle po `values()` w trzech testach są celowe: nowa stała w enumie **musi** zmusić do decyzji, po

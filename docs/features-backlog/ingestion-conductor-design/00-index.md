@@ -18,6 +18,11 @@ nie ma i gdzie to jest**.
 | 07 | [`07-ingestion-category-resolution.md`](07-ingestion-category-resolution.md) | `vidulum-ingestion-category-resolution` | **`ingestion_category_mappings`** | unit + component |
 | 08 | [`08-ingestion-cashflow-writer.md`](08-ingestion-cashflow-writer.md) | `vidulum-ingestion-cashflow-writer` | **nie** | unit + component |
 | 09 | [`09-ingestion-tests.md`](09-ingestion-tests.md) | `vidulum-ingestion-tests` | nie (bez `src/main`) | integration + ArchUnit |
+| 10 | [`10-granice-artefaktow.md`](10-granice-artefaktow.md) | — | **audyt granic** zmierzony na dzisiejszym kodzie + potwierdzenie `/api/v2` | — |
+
+> **Plik 10 jest nadrzędny wobec pozostałych tam, gdzie się różnią.** Powstał z pomiaru
+> dzisiejszego `bank-data-ingestion` i poprawił sześć rzeczy w specyfikacjach 01, 05, 06, 07 i 09 —
+> każda poprawka jest w nich naniesiona i oznaczona.
 
 ## Zasady wspólne dla wszystkich plików
 
@@ -44,7 +49,11 @@ kontraktów. Tak samo jak `vidulum-cashflow-tests` i `vidulum-wealth-tests` dzi�
 3. **`lombok` i startery testowe przychodzą z roota** — pom modułu wymienia tylko to, co o nim coś
    mówi: `-data-mongodb` = „persystuje", `-webmvc` = „ma endpointy", `spring-kafka` = „mówi
    zdarzeniami". `*-api` nie deklaruje żadnego z nich.
-4. **Każda encja `@Document` ląduje w `DataCleaner`** swojej subdomeny, i to przez
+4. **Osiem nowych `ErrorCode` jednym commitem na początku P0.** `ErrorHttpHandler` siedzi w
+   `vidulum-shared-kernel`, więc każdy nowy kod to zmiana shared-kernela, a to z reguł CLAUDE.md
+   znaczy **pełne `./mvnw clean test`** (~7 min, 21 modułów). Osiem kodów po jednym na moduł to
+   osiem pełnych przebiegów zamiast jednego. Lista w [pliku 10, §6](10-granice-artefaktow.md).
+5. **Każda encja `@Document` ląduje w `DataCleaner`** swojej subdomeny, i to przez
    `mongoTemplate.remove(new Query(), X.class)` — **nigdy** `dropCollection`.
 
 **Zakres budowania** — proponowany wiersz do tabeli „Deciding the scope" w CLAUDE.md:

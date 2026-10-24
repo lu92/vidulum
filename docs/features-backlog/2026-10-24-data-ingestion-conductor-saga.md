@@ -175,6 +175,12 @@ Pięć zasad, każda z powodu wziętego z pomiaru powyżej:
 > [`ingestion-conductor-design/`](ingestion-conductor-design/00-index.md). Jeden plik na artefakt,
 > plus [`09-ingestion-tests.md`](ingestion-conductor-design/09-ingestion-tests.md) z testami
 > integracyjnymi całego przepływu.
+>
+> **Granice z tej tabeli zostały zmierzone na dzisiejszym kodzie:**
+> [`10-granice-artefaktow.md`](ingestion-conductor-design/10-granice-artefaktow.md). Audyt poprawił
+> jedną granicę z tego dokumentu — **klasyfikacja nie może dostawać samych grup**, bo kontrakt F66
+> bierze transakcje i grupuje je sam; czyta więc wiersze grup przez `ingestion-staging-api` (§4
+> tamtego pliku). Tam też jest potwierdzenie prefiksu `/api/v2`.
 
 ```
 vidulum-app-ingestion/                      AGREGATOR (pom), jak market/ i wealth/
