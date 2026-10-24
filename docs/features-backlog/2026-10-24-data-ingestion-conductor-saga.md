@@ -1084,6 +1084,252 @@ odpowiednio `AUTOPILOT` i kompensacja selektywna. Obie mają już pokrycie w dom
 (`CashChangeEditedEvent` nosi `categoryName`, `ImportRolledBackEvent` istnieje) — więc to
 rozszerzenie kontraktu, nie projekt w agregacie.
 
+### 26. Diagramy sekwencji
+
+Konwencja na wszystkich trzech diagramach: **strzałka z nazwą topicu** = wiadomość Kafki
+(asynchroniczna, z DLQ, wznawialna), **strzałka bez nazwy topicu** = wywołanie kontraktu w procesie,
+**strzałka kropkowana** = wartość zwrócona. Notatki po prawej mówią, **co i do której encji zostaje
+zapisane**.
+
+#### 26.1 Przebieg udany — od pliku do atestacji
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as user / UI
+  participant C as conductor
+  participant IN as intake
+  participant ST as staging
+  participant CR as category-resolution
+  participant CL as classification
+  participant WR as cashflow-writer
+  participant CF as cashflow i prognoza
+  participant AI as ai-categorization
+  participant UP as user-financial-profile
+
+  Note over U,UP: nazwa topicu na strzałce = Kafka · bez nazwy = kontrakt w procesie · kropkowana = odpowiedź
+
+  rect rgb(235,243,255)
+  Note over U,C: T2 START — pierwsze z dwóch żądań usera
+  U->>C: POST /api/v2/ingestion — plik kanoniczny, CF10000001
+  C->>CF: exists + skeletonOf
+  CF-->>C: faza SETUP, drzewo kategorii, okno importu
+  C->>IN: parse(bytes)
+  IN-->>C: 402 CanonicalRow, 0 bledow
+  Note right of C: ingestion_sessions ← 1 dok.<br/>phase=PARSED, total=402, sha256, policy
+  C-->>U: 202 sessionId=ING-7f3a9c21
+  end
+
+  rect rgb(235,255,240)
+  Note over C,UP: T3 VALIDATE — jedyna komenda z danymi wierszowymi
+  C->>ST: ingestion.cmd.validate — ValidateRowsCommand(402 wiersze, 160 KB)
+  ST->>CF: skeletonOf + monthStatusesOf + alreadyImported
+  CF-->>ST: okno importu, statusy miesiecy, 15 juz zaimportowanych
+  ST->>UP: konta wlasne ownera
+  UP-->>ST: 3 IBAN-y
+  Note right of ST: ingestion_rows ← 402 dok.<br/>original + validation + groupKey, TTL 24h
+  ST->>C: ingestion.reply — RowsValidated(valid=381, dup=15, rejected=6, groups=38)
+  Note right of C: sesja: counters, groups[38], phase=VALIDATED
+  end
+
+  rect rgb(255,250,235)
+  Note over C,AI: T4 RESOLVE pass 1 — darmowa drabina, bez modelu
+  C->>CR: ingestion.cmd.resolve — ResolveCategoriesCommand(groups=38, pass=1)
+  CR->>AI: matchLearned(38 grup)
+  AI-->>CR: 0 trafien (pierwszy upload tego cash flow)
+  Note right of CR: zapisu brak — rozstrzygniecie jest odpowiedzia
+  CR->>C: ingestion.reply — CategoriesResolved(resolved=9, open=29, plan)
+  Note right of C: sesja: groups[].resolution dla 9<br/>source = SELF_TRANSFER / CLASSIFICATION / DIRECT
+  end
+
+  alt open niepuste — tylko wtedy placimy modelowi
+    rect rgb(255,240,245)
+    Note over C,AI: T5 CLASSIFY — 29 grup, nie 402 wiersze
+    C->>CL: ingestion.cmd.classify — ClassifyGroupsCommand(openGroups=29, jezyk=pl)
+    CL->>AI: suggestFor(CategorizationRequest)
+    AI-->>CL: 29 sugestii — 18 conf>=90, 8 w 50..90, 3 <50
+    Note right of CL: ingestion_classifications ← 1 dok.<br/>cache odpowiedzi za pieniadze
+    CL->>C: ingestion.reply — GroupsClassified(29, cost=0.04 USD)
+    Note right of C: sesja: groups[].suggestion, phase=CLASSIFIED
+    end
+
+    Note over C,CR: T6 RESOLVE pass 2 — drabina + progi pewnosci
+    C->>CR: ingestion.cmd.resolve — ResolveCategoriesCommand(pass=2, suggestions=29)
+    CR->>C: ingestion.reply — CategoriesResolved(resolved=21, open=8, plan)
+    Note right of C: polityka autonomii w conductorze:<br/>8 kandydatow → 5 pytan + 3 IMMATERIAL<br/>phase=AWAITING_DECISION
+  end
+
+  opt sa pytania — drugie i ostatnie zadanie usera
+    rect rgb(240,240,255)
+    U->>C: GET /api/v2/ingestion/ING-7f3a9c21
+    C-->>U: 5 pytan z licznikami, sumami, probkami i rekomendacja
+    U->>C: POST .../decisions — 5 odpowiedzi, jedna tworzy kategorie wlasna
+    Note right of C: sesja: decisions[].answer, groups[].resolution source=USER<br/>phase=RESOLVED
+    C-->>U: nowy stan sesji w tej samej odpowiedzi HTTP
+    C->>CR: ingestion.cmd.learn — LearnDecisionsCommand(5)
+    CR->>AI: learn(5 wzorcow, PatternSource.USER)
+    AI-->>CR: 5 zapamietanych
+    Note right of CR: ingestion_category_mappings ← 5 dok.
+    CR->>C: ingestion.reply — DecisionsLearned(mappingIds, patternIds)
+    Note right of C: sesja: compensations.createdMappingIds + learnedPatternIds
+    end
+  end
+
+  rect rgb(235,255,240)
+  Note over C,ST: T10 APPLY_RESOLUTION — grupa staje sie 381 zapisami
+  C->>ST: ingestion.cmd.apply-resolution — ApplyResolutionCommand(groupMappings=38, 8 KB)
+  Note right of ST: ingestion_rows: 381 dok. ← resolution
+  ST->>C: ingestion.reply — ResolutionApplied(381)
+  end
+
+  rect rgb(255,245,235)
+  Note over C,CF: T11 PROVISION_CATEGORIES — rodzice przed dziecmi
+  C->>WR: ingestion.cmd.provision — ProvisionCategoriesCommand(plan=11)
+  loop 11 kategorii
+    WR->>CF: createCategory(name, parent, type, isImport=true)
+  end
+  Note right of CF: CashFlowEntity.categories ← 9 nowych<br/>CategoryCreatedEvent → topic cash_flow → prognoza
+  WR->>C: ingestion.reply — CategoriesProvisioned(created=9, existed=2)
+  Note right of C: sesja: compensations.createdCategoryNames<br/>phase=IMPORTING
+  end
+
+  rect rgb(235,243,255)
+  Note over C,CF: T12 IMPORT — poza watkiem HTTP usera
+  C->>WR: ingestion.cmd.import — ImportRowsCommand(sessionId, bez wierszy)
+  WR->>ST: rowsOf(sessionId, VALID, strona) — staging-api, tylko czytanie
+  ST-->>WR: 381 wierszy stronicowo
+  loop 381 wierszy, postep co 50
+    WR->>CF: importHistorical(HistoricalCashChange + bankTransactionId)
+    CF-->>WR: CashChangeId
+    WR->>C: ingestion.reply — StepReply(PARTIAL, ImportProgress)
+  end
+  Note right of CF: CashChangeEntity x381 w CashFlowEntity<br/>HistoricalCashChangeImportedEvent → prognoza
+  WR->>C: ingestion.reply — RowsImported(pairs=381, failed=0)
+  Note right of C: sesja: compensations.importedCashChangeIds<br/>rollbackDeadline=+1h, phase=IMPORTED
+  C->>ST: ingestion.cmd.mark-imported — MarkImportedCommand(381 par)
+  Note right of ST: ingestion_rows: importResult.cashChangeId
+  end
+
+  rect rgb(245,245,245)
+  Note over U,CF: T13 ATESTACJA — poza ingestion
+  U->>CF: POST /cash-flow/cf=CF10000001/attest-historical-import — 76047.25 PLN
+  Note right of CF: HistoricalImportAttestedEvent<br/>SETUP → OPEN, kompensacja przestaje byc mozliwa
+  end
+```
+
+Co ten diagram pokazuje, a czego nie widać z tabel:
+
+- **Dwie strzałki od usera do conductora** na cały import — start i decyzje. Trzecia, atestacja, idzie
+  do cashflow, nie tutaj.
+- **`alt` wokół CLASSIFY** — model jest pytany tylko, gdy darmowa drabina czegoś nie rozstrzygnęła,
+  a przy drugim uploadzie z tego samego banku ta gałąź się nie wykonuje.
+- **`opt` wokół decyzji** — w trybie `AUTOPILOT` cały ten blok nie istnieje i przebieg jest w pełni
+  automatyczny.
+- **Jedna gruba strzałka i jedna cienka**: wiersze przechodzą przez topic dokładnie raz
+  (`ValidateRowsCommand`), a import czyta je referencją przez `staging-api`.
+
+#### 26.2 Zoom na jeden krok — trzy znaczenia słowa „command"
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as user
+  participant R as IngestionRestController<br/>(conductor)
+  participant G1 as CommandGateway<br/>(conductor)
+  participant H1 as StartIngestionCommandHandler
+  participant K as topic ingestion.cmd.validate
+  participant L as ValidateRowsListener<br/>implements ValidateRowsHandler
+  participant G2 as CommandGateway<br/>(staging)
+  participant H2 as ValidateRowsCommandHandler
+  participant RK as topic ingestion.reply
+  participant SL as StepReplyListener<br/>(conductor)
+
+  U->>R: HTTP POST /api/v2/ingestion
+  R->>G1: send(StartIngestionCommand) — CQRS, w procesie
+  G1->>H1: handle(...)
+  H1->>H1: zapis IngestionSessionEntity
+  H1->>K: ValidateRowsCommand — IntegrationEvent, record
+  H1-->>R: StartIngestionResult
+  R-->>U: 202 sessionId
+  K->>L: @KafkaListener(groupId=ingestion-staging, topics=TOPIC, containerFactory=CONTAINER_FACTORY)
+  L->>G2: send(ValidateRowsCqrsCommand) — znowu CQRS, lokalnie
+  G2->>H2: handle(...)
+  H2->>H2: zapis 402 x IngestionRowEntity
+  H2->>RK: StepReply(VALIDATE, SUCCEEDED, RowsValidated)
+  RK->>SL: @KafkaListener(groupId=ingestion-conductor)
+  SL->>G1: send(RecordStepReplyCommand) — saga idzie dalej
+```
+
+Trzy rzeczy, które ten diagram ustala:
+
+1. **Odpowiedź HTTP wychodzi przed wykonaniem pracy** — `202` wraca po zapisie sesji i wysłaniu
+   komendy, a nie po przetworzeniu 402 wierszy. Dziś cały import jedzie w wątku żądania.
+2. **Listener nie zawiera logiki** — tłumaczy wiadomość na komendę w procesie i oddaje sterowanie
+   gatewayowi. Dlatego `ValidateRowsCommandHandler` jest wywoływalny z testu komponentowego bez
+   Kafki i bez Dockera (`vidulum.ingestion.step.transport=in-process`), a to ten sam kształt co
+   dzisiejszy `TradeConfirmedToPortfolio`.
+3. **`groupId` per moduł** — `ingestion-staging`, `ingestion-conductor`, `ingestion-classification`.
+   Lag konsumenta staje się czytelny per moduł, zamiast tonąć w jednym `group-id`.
+
+#### 26.3 Porażka importu i kompensacja
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as user
+  participant C as conductor
+  participant WR as cashflow-writer
+  participant CF as cashflow
+  participant CR as category-resolution
+  participant ST as staging
+  participant AI as ai-categorization
+  participant RS as RecoveryScheduler
+
+  C->>WR: ingestion.cmd.import — ImportRowsCommand(attempt=1)
+  loop wiersze 1..299
+    WR->>CF: importHistorical(...)
+    CF-->>WR: CashChangeId
+  end
+  WR->>CF: importHistorical(wiersz 300)
+  CF--xWR: konflikt wersji CashFlowEntity.@Version
+  WR->>C: ingestion.reply — StepReply(IMPORT, FAILED, retryable=true)
+  Note right of C: sesja: steps[IMPORT].attempt=1<br/>failure=CASHFLOW_CONFLICT — ZAPISANE, nie zerowane
+
+  C->>WR: ingestion.cmd.import — ImportRowsCommand(attempt=2, ten sam commandId)
+  Note right of WR: wiersze 1..299 idempotentne po bankTransactionId<br/>CashFlow.findImported oddaje te same id
+  WR->>C: ingestion.reply — StepReply(IMPORT, FAILED, attempt=2)
+  Note right of C: po maxAttempts: phase=PARTIALLY_IMPORTED<br/>compensations.importedCashChangeIds=299
+
+  alt crash JVM zamiast odpowiedzi
+    RS->>C: krok bez odpowiedzi po deadline
+    C->>WR: wznowienie tego samego commandId
+  end
+
+  U->>C: POST /api/v2/ingestion/ING-7f3a9c21/compensate
+  C->>WR: ingestion.cmd.unimport — CompensateImportCommand
+  WR->>CF: skeletonOf — czy nadal SETUP?
+  CF-->>WR: SETUP — wolno
+  WR->>CF: rollbackImport(cashFlowId, deleteCategories=true)
+  CF-->>WR: RollbackResult(299 cash changes, 9 kategorii)
+  WR->>C: ingestion.reply — ImportCompensated(299, 9)
+  C->>CR: ingestion.cmd.unlearn — ForgetLearnedCommand
+  CR->>AI: forget(cashFlowId)
+  AI-->>CR: 5 wzorcow zapomnianych
+  CR->>C: ingestion.reply — LearnedForgotten(5)
+  C->>ST: ingestion.cmd.discard-rows — DiscardRowsCommand
+  ST->>C: ingestion.reply — RowsDiscarded(402)
+  Note right of C: phase=COMPENSATED<br/>compensations wyzerowane PO potwierdzeniu<br/>failure zostaje — to jest slad przyczyny
+  C-->>U: stan sesji: COMPENSATED, z przyczyna
+```
+
+Dla porównania ten sam scenariusz dziś: zadanie zostaje `PROCESSING` na zawsze, sesja `IMPORTING`,
+`failImport()` zeruje `importJobId`, nikt nie wznawia, po 24 h sesja znika, a rollback — gdy ktoś go
+ręcznie wywoła — **nie dotyka sesji ani razu**, więc zostaje ona na `COMPLETED` nad pustym cash flow.
+
+**Co w diagramie 26.3 jest jednocześnie luką z §25:** `rollbackImport` kasuje *cały* import tego cash
+flow, nie te 299 cash changes z tej sesji. Dopóki conductor nie wymusi jednej aktywnej sesji na cash
+flow w fazie SETUP, ta strzałka potrafi zabrać dane innej sesji.
+
 ---
 
 ## Powiązane
