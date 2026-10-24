@@ -466,6 +466,9 @@ record CategoriesResolved(
 ) implements StepOutcome {}
 ```
 
+- **Kategoria generyczna banku nie jest dopasowaniem.** `Inne`, `Bez kategorii` i puste nie wchodzą
+  w priorytet 0, bo inaczej jedna nazwa zbiera trzecią część wyciągu kartowego i mija wzorce oraz AI
+  (§25.2d, zadanie **R9**). Lista generycznych żyje w tym module, obok drabiny.
 - **Kategorie własne** to `CategoryPlan`, wykonywany osobnym krokiem `PROVISION_CATEGORIES`, z
   własną odpowiedzią. Dziś tworzenie kategorii jest fazą wewnątrz `start_import`, której porażka
   jest łykana przez `catch (Exception) { log.warn; processed++; }` — i wtedy wszystkie wiersze tej
@@ -933,7 +936,8 @@ Nest Bank, 402 wiersze, PLN, 2023-01-13 … 2025-12-31, `startPeriod = 2023-01`,
 | odpala | **conductor** (komenda na topicu) |
 | kod | `ingestion-staging` → `ValidateRowsListener implements ValidateRowsHandler` → `ValidateRowsCommandHandler` |
 | woła | `cashFlowApi.skeletonOf` (okno importu + drzewo kategorii) · `cashFlowForecastApi.monthStatusesOf` · `cashFlowApi.alreadyImported` · `userFinancialProfileApi` (konta własne dla **ownera z komendy**, nie ze skeletonu — conductor zna go z JWT) — **4 pytania na 402 wiersze**, nie 1 608 |
-| praca per wiersz | 1) duplikat? `alreadyImported.find(bankTransactionId)` → `DUPLICATE` + id kolidującego cash change · 2) `skeleton.importWindow().refusalFor(paidDate, now)` → `REJECTED` z `ErrorCode` cashflow · 3) **tylko jeśli przeszło** `monthStatuses.acceptsImportAt(period)` → `REJECTED` (np. miesiąc `ATTESTED`) · 4) IBAN kontrahenta ∈ konta własne → `selfTransfer=true` · 5) nadaje `groupKey` |
+| praca per sesja | **0a)** rachunek z wiersza == `skeleton.bankAccount()` → inaczej cała sesja odrzucona przed zapisem wierszy (§25.2b) |
+| praca per wiersz | **0b)** waluta wiersza == waluta cash flow → `REJECTED` z `INGESTION_CURRENCY_MISMATCH` (§25.2a) · 1) duplikat? `alreadyImported.find(bankTransactionId)` → `DUPLICATE` + id kolidującego cash change · 2) `skeleton.importWindow().refusalFor(paidDate, now)` → `REJECTED` z `ErrorCode` cashflow · 3) **tylko jeśli przeszło** `monthStatuses.acceptsImportAt(period)` → `REJECTED` (np. miesiąc `ATTESTED`) · 4) IBAN kontrahenta ∈ konta własne → `selfTransfer=true` · 5) nadaje `groupKey` (datą rządzącą miesiącem wg reguły z §25.2c) |
 | zapis | `ingestion_rows`: **402 dokumenty**, każdy z `original` + `validation` + `groupKey`, TTL 24 h |
 | wynik liczbowy | `valid=381`, `duplicate=15`, `rejected=6` (4× data przed `startPeriod`, 2× miesiąc `ATTESTED`), `selfTransfer=4` wierszy, **grup = 38** |
 | odpowiedź | `StepReply(VALIDATE, SUCCEEDED, RowsValidated(381, 15, 6, groups[38]))` → topic `ingestion.reply` |
@@ -1172,7 +1176,13 @@ Porównanie z dziś, dla tego samego scenariusza: job zostaje `PROCESSING` **na 
 `IMPORTING`, nikt nie wznawia, po 24 h sesja znika, a jedynym świadkiem jest `rollbackData` zadania,
 którego nikt automatycznie nie czyta.
 
-### 25. Luka, która wyszła dopiero przy rozpisaniu tego pipeline'u
+### 25. Luki, które wyszły dopiero z danych — a nie z rozumowania
+
+Trzy rundy: rozpisanie pipeline'u, audyt granic, i na końcu **drugi wyciąg bankowy**. Każda
+znalazła coś, czego poprzednia nie mogła. Zadania w
+[tablicy](ingestion-v2-tasks.md); tu jest to, co trzeba wiedzieć, czytając sam projekt.
+
+#### 25.1 Kompensacja selektywna — z rozpisania pipeline'u
 
 **`cashflow-api` nie umie wycofać wybranych cash changes — tylko cały import.**
 `rollbackImport(cashFlowId, deleteCategories)` kasuje wszystko, co import wniósł do cash flow, więc
@@ -1194,6 +1204,48 @@ Razem z `recategorize` z §11 to są **dwie metody w kontrakcie cashflow**, od k
 odpowiednio `AUTOPILOT` i kompensacja selektywna. Obie mają już pokrycie w domenie
 (`CashChangeEditedEvent` nosi `categoryName`, `ImportRolledBackEvent` istnieje) — więc to
 rozszerzenie kontraktu, nie projekt w agregacie.
+
+#### 25.2 Cztery luki z drugiego wyciągu — Pekao, 791 wierszy, kartowy
+
+Wszystko wyżej było mierzone na Nest: 402 wiersze, przelewowy, jedna waluta, cztery wartości
+kategorii banku. Pekao jest innym kształtem danych i pokazał cztery rzeczy, których jeden bank
+pokazać nie mógł. Poniżej wnioski; **mechanizmy, dowody i scenariusze są w
+[`11-znaleziska-z-danych.md`](ingestion-conductor-design/11-znaleziska-z-danych.md)**, a pomiary w
+[README fixture'u](../../vidulum-cashflow-tests/src/test/resources/canonical/README.md).
+
+**(a) Wiersz w obcej walucie cicho psuje saldo, i to nie jest wina ingestion.** `Money.plus` to
+`new Money(amount.add(other.amount), currency)` — kwota z drugiej strony, waluta z tej, **zero
+kontroli** — a ścieżka importu w cashflow nie patrzy na walutę ani razu. Dwa wiersze EUR w Pekao
+wejdą do złotówkowego cash flow jako **+34,32 PLN**, a owner dowie się przy atestacji, jako
+`CASHFLOW_BALANCE_MISMATCH` bez wyjaśnienia. **`Money.plus` liczy też wyceny portfela i pnl**, więc
+defekt jest szerszy niż ta rodzina. Zadania: **K15** (shared-kernel, razem z K9, bo i tak pełny
+reaktor) i **M7** (odrzucenie wiersza przy walidacji, bo tam owner to zobaczy).
+
+**(b) Drugi wyciąg to drugi cash flow, a nic tego nie pilnuje.** `CashFlow` ma **jeden**
+`bankAccount`, a okresy obu wyciągów nachodzą się na cały 2025 rok — więc import Pekao do cash flow
+Nest przechodzi po cichu: daty się zgadzają, kategorie powstają, 791 cash changes wchodzi. **I nie
+da się tego dziś sprawdzić przez kontrakt**, bo `CashFlowSkeletonView` nie wystawia rachunku — co
+czyni z tego **trzecią** brakującą rzecz w `cashflow-api`, obok `recategorize` i `deleteImported`.
+Zadania: **X7** (pole w widoku) i **M8** (walidacja całej sesji, nie wiersza).
+
+**(c) 24 wiersze przechodzą przez granicę miesiąca.** `operationDate` różni się od `bookingDate` w
+292 z 791 wierszy, a w **24** te daty są w różnych miesiącach (operacja 2025-12-31, księgowanie
+2026-01-07). W Nest taki wiersz jest **jeden**, dlatego pytanie nigdy nie wypłynęło. Projekt nie
+wybrał, która data rządzi miesiącem — a wybór przesuwa 24 transakcje i decyduje, czy wpadną w
+miesiąc read-only. Zadanie **M9**, razem z regułą dla miesiąca zaatestowanego: bez niej wyciąg
+ściągnięty w styczniu traci grudniowe operacje zaksięgowane po atestacji.
+
+**(d) Co trzecia kategoria Pekao jest generyczna** — `Inne` (173) i `Bez kategorii` (92) na 791
+wierszy. Priorytet 0 drabiny (§12) dopasowuje `bankCategory` bezpośrednio do kategorii ownera, więc
+gdy w cash flow istnieje kategoria `Inne`, **173 wiersze wpadają do kosza**, mijając wzorce i AI.
+Kontrakt silnika już zna to pojęcie (`BankCategoryFallback` pomija generyczne), projekt nie znał.
+Zadanie **R9** — plus **R10**, bo plan kategorii rośnie z 4 pozycji (Nest) do 38 (Pekao), z czego 11
+to grupy po 1–2 wiersze, a kategorie zostają nawet po wycofaniu importu.
+
+**Wniosek metodyczny:** cztery z siedmiu zadań z tej rundy to rzeczy, których **nie dało się
+zobaczyć na jednym banku** — defekt w shared-kernelu, brakujące pole w kontrakcie cashflow i dwie
+reguły walidacji. Trzeci bank (inny kraj, inna waluta główna) jest jedynym obszarem, w którym nadal
+nie ma żadnych danych pomiarowych.
 
 ### 26. Diagramy sekwencji
 

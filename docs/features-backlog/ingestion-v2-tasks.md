@@ -69,7 +69,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 |---|---|---|---|
 | **K4** | P0 | Agregator vidulum-app-ingestion i miejsce w reaktorze | K5, K7 |
 | **K9** | P0 | Osiem ErrorCode w shared-kernel jednym commitem | K15, M7 |
-| **X7** | P0 | Rachunek bankowy w kontrakcie cashflow | M8 |
+| **X7** | P0 | Rachunek bankowy w kontrakcie cashflow | M7, M8 |
 
 ## Zadania według ścieżek
 
@@ -121,7 +121,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **M4** | P0 | `open` | Grupowanie wierszy i udział w wartości | K11, M3 | Z4 |
 | **M5** | P0 | `open` | Zastosowanie rozstrzygnięcia, oznaczenie importu, kasowanie | K8, M2 | W2 |
 | **M6** | P1 | `open` | Chunkowanie komendy walidacji | M3 | T9 |
-| **M7** | P0 | `open` | Waluta wiersza wobec waluty cash flow | K9, M3 | — |
+| **M7** | P0 | `open` | Waluta wiersza wobec waluty cash flow | K9, M3, X7 | — |
 | **M8** | P0 | `open` | Wyciąg musi należeć do tego cash flow | M3, X7 | — |
 | **M9** | P1 | `open` | Która data rządzi miesiącem transakcji | M3 | — |
 
@@ -196,7 +196,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **X4** | P3 | `open` | Parytet z v1 i wyłączenie bank-data-ingestion | T3, T4, T5, T6 | X5 |
 | **X5** | P3 | `open` | Dokumentacja: CLAUDE.md i przewodnik manualny | X4 | — |
 | **X6** | P3 | `open` | Lista kontrolna parytetu v1 do v2 | T5 | — |
-| **X7** | P0 | `open` | Rachunek bankowy w kontrakcie cashflow | K3 | M8 |
+| **X7** | P0 | `open` | Rachunek bankowy w kontrakcie cashflow | K3 | M7, M8 |
 
 ## Opisy zadań
 
@@ -420,7 +420,7 @@ new Money(amount.add(other.amount), currency) — kwota z drugiej strony, waluta
 - pełne ./mvnw clean test zielone
 
 **Pliki:** `vidulum-shared-kernel/src/main/java/com/multi/vidulum/common/Money.java`
-**Specyfikacja:** —
+**Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
 
 ### S1 · Encja sesji: jedna maszyna stanów z FAILED
 
@@ -700,18 +700,19 @@ Jedyna komenda z danymi wierszowymi: 402 wiersze to ~160 KB i mieści się w dom
 ### M7 · Waluta wiersza wobec waluty cash flow
 
 **PR:** `feat(ingestion): odrzucenie wiersza w obcej walucie na etapie walidacji`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K9, M3 · **Odblokowuje:** —
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K9, M3, X7 · **Odblokowuje:** —
 
 Pekao ma 2 wiersze EUR w 789 PLN, a cash flow jest jednowalutowy. Money.plus bierze kwotę drugiej strony i SWOJĄ walutę bez żadnej kontroli, a ścieżka importu w cashflow nie patrzy na walutę ani razu — więc 22,14 EUR wchodzi jako 22,14 PLN i wychodzi dopiero jako CASHFLOW_BALANCE_MISMATCH przy atestacji, bez wyjaśnienia.
 
 **Definicja ukończenia:**
 - wiersz w walucie innej niż cash flow → REJECTED z INGESTION_CURRENCY_MISMATCH, nie import
+- UWAGA: waluta cash flow jest dziś NIEOSIĄGALNA przez kontrakt — CashFlowSkeletonView ma 7 pól i nie ma wśród nich ani rachunku, ani waluty; dlatego to zadanie zależy od X7
 - komunikat nazywa obie waluty
 - reszta wyciągu wchodzi normalnie (odrzut nie blokuje)
 - test na fixture Pekao: dokładnie 2 wiersze odrzucone z tego powodu
 
 **Pliki:** `vidulum-app-ingestion/ingestion-staging/`
-**Specyfikacja:** [05](ingestion-conductor-design/05-ingestion-staging.md)
+**Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
 
 ### M8 · Wyciąg musi należeć do tego cash flow
 
@@ -726,7 +727,7 @@ Okresy obu wyciągów nachodzą się na cały 2025 rok, więc import Pekao do ca
 - test: fixture Pekao do cash flow Nest = odmowa
 
 **Pliki:** `vidulum-app-ingestion/ingestion-staging/`
-**Specyfikacja:** [05](ingestion-conductor-design/05-ingestion-staging.md)
+**Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
 
 ### M9 · Która data rządzi miesiącem transakcji
 
@@ -741,7 +742,7 @@ W Pekao operationDate różni się od bookingDate w 292 z 791 wierszy, a w 24 te
 - test na 24 wierszach Pekao przechodzących granicę miesiąca
 
 **Pliki:** `vidulum-app-ingestion/ingestion-staging/`
-**Specyfikacja:** [05](ingestion-conductor-design/05-ingestion-staging.md)
+**Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
 
 ### Z1 · Tworzenie kategorii jako osobny, nieprzemilczany krok
 
@@ -986,7 +987,7 @@ Po pierwszym imporcie drugi plik tego samego banku rozstrzyga się na prioryteta
 - test: 265 wierszy Pekao nie rozstrzyga się priorytetem 0
 
 **Pliki:** `vidulum-app-ingestion/ingestion-category-resolution/`
-**Specyfikacja:** [07](ingestion-conductor-design/07-ingestion-category-resolution.md)
+**Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
 
 ### R10 · Próg tworzenia nowej kategorii dla ogona
 
@@ -1001,7 +1002,7 @@ Plan kategorii dla Nest to 4 pozycje, dla Pekao 38 — z czego 11 dotyczy grup p
 - test: plan Pekao schodzi z 38 do liczby zmierzonej po zastosowaniu progu
 
 **Pliki:** `vidulum-app-ingestion/ingestion-category-resolution/`
-**Specyfikacja:** [07](ingestion-conductor-design/07-ingestion-category-resolution.md)
+**Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
 
 ### W1 · Ponowienia, backoff i rozróżnienie FAILED/REJECTED
 
@@ -1348,7 +1349,7 @@ X4 mówi wyłączyć v1 po parytecie, ale nie wylicza, co to parytet. Dwadzieśc
 ### X7 · Rachunek bankowy w kontrakcie cashflow
 
 **PR:** `feat(cashflow-api): CashFlowSkeletonView wystawia rachunek cash flow`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K3 · **Odblokowuje:** M8
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K3 · **Odblokowuje:** M7, M8
 
 CashFlow ma JEDEN bankAccount, więc Nest i Pekao to dwa osobne cash flow — ale skeleton nie wystawia rachunku, więc ingestion nie ma czym sprawdzić, czy wyciąg należy do tego cash flow. Jedno pole w widoku, bez którego walidacja z M8 jest niewykonalna.
 
@@ -1357,7 +1358,7 @@ CashFlow ma JEDEN bankAccount, więc Nest i Pekao to dwa osobne cash flow — al
 - test kontraktu i widoku zaktualizowane
 
 **Pliki:** `vidulum-app-cashflow/cashflow-api/`, `vidulum-app-cashflow/cashflow/`
-**Specyfikacja:** —
+**Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
 
 ## Dziennik
 
@@ -1617,6 +1618,7 @@ flowchart LR
     M3 --> M6
     K9 --> M7
     M3 --> M7
+    X7 --> M7
     M3 --> M8
     X7 --> M8
     M3 --> M9
