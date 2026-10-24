@@ -58,8 +58,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
 | `finished` | 3 | 0 | 0 | 0 | **3** |
-| `open` | 28 | 22 | 9 | 5 | **64** |
-| **razem** | 31 | 22 | 9 | 5 | **67** |
+| `open` | 32 | 23 | 9 | 6 | **70** |
+| **razem** | 35 | 23 | 9 | 6 | **73** |
 
 ## Gotowe do wzięcia
 
@@ -67,6 +67,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 
 | # | prio | zadanie | odblokowuje |
 |---|---|---|---|
+| **K12** | P0 | Fixture kanoniczny: skąd wziąć 402 wiersze | T1 |
 | **K4** | P0 | Agregator vidulum-app-ingestion i miejsce w reaktorze | K5, K7 |
 | **K9** | P0 | Osiem ErrorCode w shared-kernel jednym commitem | — |
 
@@ -78,22 +79,25 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 |---|---|---|---|---|---|
 | **K1** | P0 | **finished** | Analiza stanu obecnego i projekt sagi z conductorem | — | K2 |
 | **K2** | P0 | **finished** | Specyfikacje per moduł: kontrakty, metody, testy | K1 | K3 |
-| **K3** | P0 | **finished** | Audyt granic artefaktów i potwierdzenie /api/v2 | K2 | K4, K9 |
+| **K3** | P0 | **finished** | Audyt granic artefaktów i potwierdzenie /api/v2 | K2 | K4, K9, K12 |
 | **K4** | P0 | `open` | Agregator vidulum-app-ingestion i miejsce w reaktorze | K3 | K5, K7 |
 | **K5** | P0 | `open` | ingestion-canonical: słownik wiersza i GroupKey | K4 | K6, K8, K11, T10 |
 | **K6** | P0 | `open` | ingestion-intake: parser CSV bez Springa | K5 | S4 |
-| **K7** | P0 | `open` | Protokół: StepCommand, StepReply, typy wartości | K4 | K8, M1, R1, S1 |
+| **K7** | P0 | `open` | Protokół: StepCommand, StepReply, typy wartości | K4 | K8, K13, K14, M1, R1, S1 |
 | **K8** | P0 | `open` | Jedenaście komend i jedenaście gniazd handlerów | K5, K7 | K10, K11, L1, M3, M5, R2, S2, S12, Z1 |
 | **K9** | P0 | `open` | Osiem ErrorCode w shared-kernel jednym commitem | K3 | — |
 | **K10** | P0 | `open` | Testy kontraktowe protokołu | K8 | — |
 | **K11** | P0 | `open` | GroupKey zgodny z ContextMapping silnika | K5, K8 | L3, M4 |
+| **K12** | P0 | `open` | Fixture kanoniczny: skąd wziąć 402 wiersze | K3 | T1 |
+| **K13** | P0 | `open` | Katalog kluczy konfiguracyjnych z wartościami domyślnymi | K7 | — |
+| **K14** | P0 | `open` | Dopełnienie pól typów wyników kroków | K7 | — |
 
 ### S — Saga i sesja
 
 | # | prio | status | zadanie | zależy od | odblokowuje |
 |---|---|---|---|---|---|
 | **S1** | P0 | `open` | Encja sesji: jedna maszyna stanów z FAILED | K7 | S2, S4, T8, W6 |
-| **S2** | P0 | `open` | IngestionSaga jako czysta funkcja | K8, S1 | L4, S3, S6, S8, W2 |
+| **S2** | P0 | `open` | IngestionSaga jako czysta funkcja | K8, S1 | L4, S3, S6, S8, S13, W2 |
 | **S3** | P0 | `open` | StepDispatcher in-process i przełącznik transportu | S2 | S6, S12 |
 | **S4** | P0 | `open` | Start sesji: pre-flight, parsowanie, idempotencja po sha256 | K6, S1 | S5, S7 |
 | **S5** | P0 | `open` | REST v2: start, widok sesji, lista | S4 | S9, S11, T11, W5 |
@@ -104,6 +108,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **S10** | P1 | `open` | TTL decyzji: polityka zamiast utraty uploadu | S9 | — |
 | **S11** | P1 | `open` | Podgląd wierszy sesji przez staging-api | M2, S5 | — |
 | **S12** | P0 | `open` | Kafka: topici komend, topic odpowiedzi, dispatcher | K8, S3, S6 | T1, T9, W4, Z4 |
+| **S13** | P0 | `open` | Tabela przejść sagi jako dokument, nie tylko nazwy testów | S2 | — |
 
 ### M — Magazyn wierszy
 
@@ -162,17 +167,18 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 
 | # | prio | status | zadanie | zależy od | odblokowuje |
 |---|---|---|---|---|---|
-| **T1** | P0 | `open` | Moduł testów integracyjnych i jego baza | M3, S12, Z2 | T2, T3, T4, T5, T6, T7, T8, T9, T10, T11 |
+| **T1** | P0 | `open` | Moduł testów integracyjnych i jego baza | K12, M3, S12, Z2 | T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12 |
 | **T2** | P0 | `open` | Reguły architektoniczne rodziny, zero zwolnień | T1 | — |
 | **T3** | P0 | `open` | Przepływ udany: AUTOPILOT na 402 wierszach | T1, Z4 | X1, X4 |
 | **T4** | P1 | `open` | Przepływ z decyzjami: ≤7 pytań, jedno żądanie | R4, S9, T1 | X4 |
-| **T5** | P1 | `open` | Walidacja i odmowy na działającym serwerze | M3, T1 | X4 |
+| **T5** | P1 | `open` | Walidacja i odmowy na działającym serwerze | M3, T1 | X4, X6 |
 | **T6** | P2 | `open` | Porażki i kompensacja end-to-end | L4, T1, W2 | X4 |
 | **T7** | P2 | `open` | Odzysk po zgubionej odpowiedzi | T1, W3 | — |
 | **T8** | P1 | `open` | Storage: indeksy, wersje, cleanery | L2, M2, R1, S1, T1 | — |
 | **T9** | P1 | `open` | Kafka jako kontrakt i parytet transportów | M6, S12, T1 | — |
 | **T10** | P1 | `open` | Test słownika klasyfikacji wobec adaptera | K5, T1 | — |
 | **T11** | P0 | `open` | Bootstrap: wiring, zależności, cleanery | S5, T1 | — |
+| **T12** | P1 | `open` | Zegar testowy rodziny: stały i przesuwalny | T1 | — |
 
 ### X — Wygaszenie v1 i obserwacja
 
@@ -183,6 +189,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **X3** | P3 | `open` | Topic faktów i pierwszy konsument w reaktorze | W4 | — |
 | **X4** | P3 | `open` | Parytet z v1 i wyłączenie bank-data-ingestion | T3, T4, T5, T6 | X5 |
 | **X5** | P3 | `open` | Dokumentacja: CLAUDE.md i przewodnik manualny | X4 | — |
+| **X6** | P3 | `open` | Lista kontrolna parytetu v1 do v2 | T5 | — |
 
 ## Opisy zadań
 
@@ -220,7 +227,7 @@ Jeden plik na artefakt: co posiada, jaki ma kontrakt, jakie testy i na którym p
 ### K3 · Audyt granic artefaktów i potwierdzenie /api/v2
 
 **PR:** `docs: audyt granic rodziny ingestion zmierzony na kodzie`  
-**Priorytet:** P0 · **Status:** **finished** · **Zależy od:** K2 · **Odblokowuje:** K4, K9
+**Priorytet:** P0 · **Status:** **finished** · **Zależy od:** K2 · **Odblokowuje:** K4, K9, K12
 
 Dziesięć krawędzi między sekcjami policzonych plik po pliku, wywołania kontraktów zmapowane na nowych właścicieli. Unieważnił jedną granicę z projektu (klasyfikacja nie może dostawać samych grup, bo kontrakt F66 bierze transakcje) i potwierdził prefiks /api/v2 bez zmian w shared-kernelu.
 
@@ -278,7 +285,7 @@ CanonicalCsvParser.parse(byte[], Charset) zamiast MultipartFile, błąd wiersza 
 ### K7 · Protokół: StepCommand, StepReply, typy wartości
 
 **PR:** `feat(ingestion): protokół sagi — koperty i typy wartości`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K4 · **Odblokowuje:** K8, M1, R1, S1
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K4 · **Odblokowuje:** K8, K13, K14, M1, R1, S1
 
 StepCommand z commandId i attempt, jedna koperta StepReply dla wszystkich kroków, sealed StepOutcome, rozróżnienie FAILED/REJECTED oraz typy grup i kategorii: GroupSummary, Resolution, CategoryPlan, Option, CategorySnapshot.
 
@@ -346,6 +353,50 @@ Silnik kategoryzacji grupuje po effectiveMerchant() i odpowiada ContextMapping k
 **Pliki:** `vidulum-app-ingestion/ingestion-canonical/src/test/`
 **Specyfikacja:** [10](ingestion-conductor-design/10-granice-artefaktow.md) §4
 
+### K12 · Fixture kanoniczny: skąd wziąć 402 wiersze
+
+**PR:** `test(ingestion): fixture kanonicznego CSV i decyzja, jak go wytworzyć`  
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K3 · **Odblokowuje:** T1
+
+Plik 402-wierszowy w repo jest SUROWY (nestbank_lista_operacji_20260111.csv, 409 linii, kolumny banku), a jedyny fixture kanoniczny ma 23 wiersze i 11 kolumn — stary nagłówek bez merchant, paymentMethod, classification. Pliku kanonicznego 17-kolumnowego nie ma w repo wcale, a specyfikacje 02 i 09 na nim stoją.
+
+**Definicja ukończenia:**
+- decyzja zapisana: generowany adapterem raz i zacommitowany, czy pisany ręcznie
+- fixture 17-kolumnowy w zasobach, z liczbą wierszy podaną w pliku README obok
+- nazwa pliku poprawiona w dokumentach i w CLAUDE.md (jest nestbank_ prefix)
+
+**Pliki:** `vidulum-ingestion-tests/src/test/resources/`
+**Specyfikacja:** [02](ingestion-conductor-design/02-ingestion-intake.md)
+
+### K13 · Katalog kluczy konfiguracyjnych z wartościami domyślnymi
+
+**PR:** `docs(ingestion): wszystkie klucze konfiguracyjne rodziny w jednym miejscu`  
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K7 · **Odblokowuje:** —
+
+Na 247 KB projektu nazwany jest jeden klucz: vidulum.ingestion.step.transport. Brakuje nazw i domyślnych dla progów polityki, maxQuestions, TTL decyzji, maxAttempts, backoffu, deadline kroku, progressEvery, rozmiaru chunka, TTL wierszy, retencji sesji, okna rollbacku oraz partycji i retencji topiców.
+
+**Definicja ukończenia:**
+- tabela klucz → typ → domyślna → kto czyta
+- AutonomyPolicy ma @ConfigurationProperties z tymi samymi nazwami
+- test: domyślne w yml zgadzają się z domyślnymi w kodzie
+
+**Pliki:** `vidulum-app-ingestion/ingestion-conductor/`, `vidulum-app/src/main/resources/application.yml`
+**Specyfikacja:** [04](ingestion-conductor-design/04-ingestion-conductor.md)
+
+### K14 · Dopełnienie pól typów wyników kroków
+
+**PR:** `feat(ingestion): pełne sygnatury StepOutcome`  
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K7 · **Odblokowuje:** —
+
+Pięć wyników kroków ma w specyfikacji tylko podpis w tabeli (CategoriesResolved, GroupsClassified, DecisionsLearned, ImportProgress, ImportCompensated). Dopóki pola nie są rozpisane, każdy worker wymyśla je sobie, a koperta StepReply jest wspólna.
+
+**Definicja ukończenia:**
+- każdy rekord StepOutcome ma wypisane pola i typy
+- test wyczerpujący po StepOutcome.getPermittedSubclasses()
+
+**Pliki:** `vidulum-app-ingestion/ingestion-conductor-api/`
+**Specyfikacja:** [03](ingestion-conductor-design/03-ingestion-conductor-api.md)
+
 ### S1 · Encja sesji: jedna maszyna stanów z FAILED
 
 **PR:** `feat(ingestion): sesja jako jedyny rekord procesu`  
@@ -364,7 +415,7 @@ IngestionSessionEntity z jedną fazą (nie trzema statusami), steps[], counters,
 ### S2 · IngestionSaga jako czysta funkcja
 
 **PR:** `feat(ingestion): saga jako czysta funkcja decyzji o następnym kroku`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, S1 · **Odblokowuje:** L4, S3, S6, S8, W2
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, S1 · **Odblokowuje:** L4, S3, S6, S8, S13, W2
 
 next(session, reply, now) → NextAction (Dispatch | Ask | Finish | Compensate | Fail | Ignore). Bez repozytorium, bez Kafki, bez zegara w polu — więc cała decyzyjność procesu jest testowalna tabelą.
 
@@ -517,6 +568,21 @@ Topic na krok plus jeden topic odpowiedzi, klucz sessionId dla kolejności per s
 
 **Pliki:** `vidulum-app-ingestion/ingestion-conductor/.../infrastructure/`
 **Specyfikacja:** [projekt](2026-10-24-data-ingestion-conductor-saga.md) §10
+
+### S13 · Tabela przejść sagi jako dokument, nie tylko nazwy testów
+
+**PR:** `docs(ingestion): tabela przejść sagi (faza x status x polityka) do NextAction`  
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** S2 · **Odblokowuje:** —
+
+Najważniejsza klasa projektu jest dziś opisana wyłącznie dwudziestoma nazwami testów. Świeża sesja musi ją zrekonstruować z nazw, zamiast przeczytać. Tabela jest też wejściem dla testu parametryzowanego po IngestionPhase.values() x StepStatus.values().
+
+**Definicja ukończenia:**
+- tabela w specyfikacji 04, wiersz na kombinację
+- test parametryzowany czyta te same kombinacje
+- żadna kombinacja nie zwraca null
+
+**Pliki:** `docs/features-backlog/ingestion-conductor-design/04-ingestion-conductor.md`
+**Specyfikacja:** [04](ingestion-conductor-design/04-ingestion-conductor.md)
 
 ### M1 · Kontrakt magazynu wierszy, tylko do czytania
 
@@ -923,7 +989,7 @@ Wiersze mają TTL 24 h, sesja żyje do okna audytu po stanie końcowym, a EXPIRE
 ### T1 · Moduł testów integracyjnych i jego baza
 
 **PR:** `test(ingestion): vidulum-ingestion-tests z bazą, aktorami i atrapą klasyfikatora`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** M3, S12, Z2 · **Odblokowuje:** T2, T3, T4, T5, T6, T7, T8, T9, T10, T11
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K12, M3, S12, Z2 · **Odblokowuje:** T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12
 
 Bez src/main, Testcontainers, własny IngestionTestApplication, trzech aktorów HTTP i deterministyczna atrapa TransactionCategorizationApi. Zegar na 2026-01-15, NIE na 2022-01-01 — bo plik testowy ma transakcje z 2023–2025, a ImportWindow odrzuca przyszłość, więc test przechodziłby nie testując niczego.
 
@@ -982,7 +1048,7 @@ AWAITING_DECISION z nie więcej niż siedmioma pytaniami, jedno POST z pięcioma
 ### T5 · Walidacja i odmowy na działającym serwerze
 
 **PR:** `test(ingestion): odrzuty, duplikaty, miesiąc zaatestowany, kody HTTP`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M3, T1 · **Odblokowuje:** X4
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M3, T1 · **Odblokowuje:** X4, X6
 
 Wiersze przed startPeriod i z przyszłości odrzucone z ErrorCode, ten sam plik dwa razy to 402 duplikaty i zero nowych cash changes, miesiąc ATTESTED odrzuca swoje wiersze, nieznany cash flow to 404, sesja innego usera to 404 a nie 403.
 
@@ -1078,6 +1144,21 @@ Sześć zależności compile w vidulum-app (bez nich moduły się zbudują, ale 
 **Pliki:** `vidulum-app/pom.xml`, `vidulum-app/src/test/java/com/multi/vidulum/BootstrapWiresEveryModuleTest.java`
 **Specyfikacja:** [10](ingestion-conductor-design/10-granice-artefaktow.md) §8
 
+### T12 · Zegar testowy rodziny: stały i przesuwalny
+
+**PR:** `test(ingestion): FixedClockConfig i MutableClock dla modułu testów`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** T1 · **Odblokowuje:** —
+
+FixedClockConfig istnieje tylko w vidulum-cashflow-tests (inny artefakt), a MutableClock nie istnieje w repo wcale — a testy TTL decyzji, retencji i deadline kroku go wymagają. Zegar stały musi stać PO danych testowych (2026-01-15), nie na 2022-01-01, bo ImportWindow odrzuca przyszłość.
+
+**Definicja ukończenia:**
+- dwa beany: stały i przesuwalny, wybierane profilem testu
+- advanceClockBy przesuwa też harmonogramy
+- test: zegar przed danymi → wszystkie wiersze odrzucone (dowód, że data ma znaczenie)
+
+**Pliki:** `vidulum-ingestion-tests/src/test/java/`
+**Specyfikacja:** [09](ingestion-conductor-design/09-ingestion-tests.md)
+
 ### X1 · recategorize w cashflow-api → AUTOPILOT domyślnie
 
 **PR:** `feat(cashflow-api): recategorize jako warunek trybu AUTOPILOT`  
@@ -1148,6 +1229,20 @@ Tabela endpointów, wiersz w tabeli cleanerów, wiersz w Deciding the scope dla 
 **Pliki:** `CLAUDE.md`, `docs/manual-testing/CASHFLOW_IMPORT_TEST_GUIDE.md`
 **Specyfikacja:** [projekt](2026-10-24-data-ingestion-conductor-saga.md) §17
 
+### X6 · Lista kontrolna parytetu v1 do v2
+
+**PR:** `docs(ingestion): checklista parytetu — 20 endpointów v1 wobec v2`  
+**Priorytet:** P3 · **Status:** `open` · **Zależy od:** T5 · **Odblokowuje:** —
+
+X4 mówi wyłączyć v1 po parytecie, ale nie wylicza, co to parytet. Dwadzieścia endpointów v1 (staging, mapowania, klasyfikacja, import, rollback, finalize) trzeba odhaczyć wobec v2 albo świadomie uznać za niepotrzebne.
+
+**Definicja ukończenia:**
+- tabela endpoint v1 → odpowiednik v2 albo powód rezygnacji
+- każdy wiersz wskazuje test v2, który to pokrywa
+
+**Pliki:** `docs/features-backlog/ingestion-v2-tasks.md`
+**Specyfikacja:** [10](ingestion-conductor-design/10-granice-artefaktow.md)
+
 ## Dziennik
 
 Co zrobione i czego się przy tym nauczyliśmy — wpis z datą na każdą zamkniętą porcję pracy.
@@ -1187,6 +1282,30 @@ commit to pełny przebieg reaktora.
 cash flow w SETUP (**S7**). Obie mają pokrycie w domenie — to rozszerzenie kontraktu, nie projekt w
 agregacie.
 
+### 2026-10-24 — audyt samej dokumentacji: cztery luki blokujące
+
+Sprawdzenie, czy świeża sesja uniesie K4, K5, K9 i T1 mając tylko CLAUDE.md. **Mocne:** 228
+nazwanych przypadków testowych z given → then, granice zmierzone na kodzie, łańcuch wejścia działa.
+**Blokujące, dopisane jako zadania:**
+
+- **K12** — **pliku kanonicznego 402-wierszowego nie ma w repo.** Ten w zasobach jest surowy
+  (zaczyna się od `Numer rachunku:`), a jedyny kanoniczny ma 23 wiersze i **11 kolumn**, czyli stary
+  nagłówek bez `merchant`, `paymentMethod` i `classification`. Specyfikacje 02 i 09 stoją na pliku,
+  który nie istnieje.
+- **K13** — **jeden klucz konfiguracyjny na całą rodzinę.** Progi, TTL, `maxAttempts`, backoff,
+  deadline kroku, rozmiar chunka i retencja topiców nie mają ani nazw, ani domyślnych.
+- **K14** — pięć wyników kroków ma tylko podpis w tabeli, bez pól.
+- **S13** — tabela przejść sagi istnieje wyłącznie jako dwadzieścia nazw testów.
+- **T12** — `MutableClock` nie istnieje w repo, a testy TTL go wymagają; `FixedClockConfig` siedzi w
+  innym artefakcie.
+- **X6** — „parytet z v1" nie wylicza dwudziestu endpointów do odhaczenia.
+
+**Poprawione od razu, bo wprowadzało w błąd:** wszystkie liczby z przykładu (38 grup, 9/29, 18/8/3,
+11 kategorii, 381/15/6) są **ilustracyjne, nie zmierzone** — nie dało się ich zmierzyć, bo fixture z
+K12 nie istnieje. W definicjach ukończenia zastępują je asercje niezmiennikowe (suma `valueShare` ≈ 1,
+liczba grup = liczba unikalnych kluczy, `total = valid + duplicate + rejected`), a konkretne liczby
+wolno wpisać **po** pierwszym przebiegu na prawdziwym fixture.
+
 ## Graf zależności
 
 ```mermaid
@@ -1208,6 +1327,9 @@ flowchart LR
     K9["K9 Osiem ErrorCode w shared-kernel jedny…"]:::p0
     K10["K10 Testy kontraktowe protokołu"]:::p0
     K11["K11 GroupKey zgodny z ContextMapping siln…"]:::p0
+    K12["K12 Fixture kanoniczny: skąd wziąć 402 wi…"]:::p0
+    K13["K13 Katalog kluczy konfiguracyjnych z war…"]:::p0
+    K14["K14 Dopełnienie pól typów wyników kroków"]:::p0
     L1["L1 Worker klasyfikacji i mapowanie na ko…"]:::p1
     L2["L2 Cache odpowiedzi modelu z czyszczeniem"]:::p1
     L3["L3 Odwzorowanie odpowiedzi silnika na gr…"]:::p1
@@ -1238,6 +1360,7 @@ flowchart LR
     S10["S10 TTL decyzji: polityka zamiast utraty…"]:::p1
     S11["S11 Podgląd wierszy sesji przez staging-a…"]:::p1
     S12["S12 Kafka: topici komend, topic odpowiedz…"]:::p0
+    S13["S13 Tabela przejść sagi jako dokument, ni…"]:::p0
     T1["T1 Moduł testów integracyjnych i jego ba…"]:::p0
     T2["T2 Reguły architektoniczne rodziny, zero…"]:::p0
     T3["T3 Przepływ udany: AUTOPILOT na 402 wier…"]:::p0
@@ -1249,6 +1372,7 @@ flowchart LR
     T9["T9 Kafka jako kontrakt i parytet transpo…"]:::p1
     T10["T10 Test słownika klasyfikacji wobec adap…"]:::p1
     T11["T11 Bootstrap: wiring, zależności, cleane…"]:::p0
+    T12["T12 Zegar testowy rodziny: stały i przesu…"]:::p1
     W1["W1 Ponowienia, backoff i rozróżnienie FA…"]:::p2
     W2["W2 Łańcuch kompensacji per faza"]:::p2
     W3["W3 Odzysk po awarii: krok bez odpowiedzi"]:::p2
@@ -1260,6 +1384,7 @@ flowchart LR
     X3["X3 Topic faktów i pierwszy konsument w r…"]:::p3
     X4["X4 Parytet z v1 i wyłączenie bank-data-i…"]:::p3
     X5["X5 Dokumentacja: CLAUDE.md i przewodnik…"]:::p3
+    X6["X6 Lista kontrolna parytetu v1 do v2"]:::p3
     Z1["Z1 Tworzenie kategorii jako osobny, niep…"]:::p0
     Z2["Z2 Import wierszy do cash flow z postępem"]:::p0
     Z3["Z3 Wycofanie importu z prawdziwymi liczb…"]:::p1
@@ -1277,6 +1402,9 @@ flowchart LR
     K8 --> K10
     K5 --> K11
     K8 --> K11
+    K3 --> K12
+    K7 --> K13
+    K7 --> K14
     K8 --> L1
     M1 --> L1
     L1 --> L2
@@ -1324,6 +1452,8 @@ flowchart LR
     K8 --> S12
     S3 --> S12
     S6 --> S12
+    S2 --> S13
+    K12 --> T1
     M3 --> T1
     S12 --> T1
     Z2 --> T1
@@ -1352,6 +1482,7 @@ flowchart LR
     T1 --> T10
     S5 --> T11
     T1 --> T11
+    T1 --> T12
     S6 --> W1
     M5 --> W2
     R7 --> W2
@@ -1371,6 +1502,7 @@ flowchart LR
     T5 --> X4
     T6 --> X4
     X4 --> X5
+    T5 --> X6
     K8 --> Z1
     M1 --> Z1
     M2 --> Z2

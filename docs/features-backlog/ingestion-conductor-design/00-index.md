@@ -27,6 +27,24 @@ nie ma i gdzie to jest**.
 **Zadania, statusy i graf zależności:** [`../ingestion-v2-tasks.md`](../ingestion-v2-tasks.md) —
 67 zadań wyprowadzonych z tych plików, każde z tytułem gotowym do PR i definicją ukończenia.
 
+## Dwie rzeczy, o których trzeba wiedzieć przed pierwszym commitem
+
+**Liczby z przykładu są ilustracyjne, nie zmierzone.** 38 grup, 9 z 38 rozstrzygniętych darmowo,
+29 otwartych, 18/8/3 po progach, 11 kategorii w planie, 381 ważnych wierszy z 402 — to wartości
+*prawdopodobne*, wyprowadzone z kształtu wyciągu, a **nie** wynik przebiegu. Nie dało się ich
+zmierzyć, bo fixture, na którym miałyby powstać, nie istnieje (patrz niżej). W definicjach ukończenia
+używaj więc **asercji niezmiennikowych**: suma `valueShare` ≈ 1,0, liczba grup = liczba unikalnych
+kluczy, `total = valid + duplicate + rejected`, plan zwalidowany `plan.validated()`. Konkretne liczby
+wpisz dopiero **po** pierwszym przebiegu na prawdziwym pliku — i wtedy są już faktem, nie
+oczekiwaniem.
+
+**Pliku kanonicznego 402-wierszowego nie ma w repo.** `nestbank_lista_operacji_20260111.csv` (409
+linii) jest **surowy**: zaczyna się od `Numer rachunku:` i `Właściciel:`, ma kolumny Nest Banku. Jedyny
+fixture w formacie kanonicznym to `bank-data-ingestion/historical-transactions.csv` — **23 wiersze i
+11 kolumn**, czyli nagłówek bez `merchant`, `merchantConfidence`, `paymentMethod`, `classification`,
+`classificationReason` i `location`. Wytworzenie fixture'u 17-kolumnowego jest **zadaniem K12** i jest
+warunkiem wstępnym K6 (parser) oraz T1 (moduł testów).
+
 ## Zasady wspólne dla wszystkich plików
 
 **Poziomy testów** — z CLAUDE.md, „Test Levels". Asercja idzie na **najtańszy poziom, który potrafi

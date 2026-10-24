@@ -122,7 +122,7 @@ którą dzisiejszy `StageTransactionsCommandHandler` ma i którą trzeba przenie
 
 | test | given → then |
 |---|---|
-| `shouldGroupGoldenFileIntoThirtyEightGroups` | 402 wiersze pliku testowego → 38 `GroupSummary` |
+| `shouldGroupGoldenFileIntoAsManyGroupsAsThereAreKeys` | plik złoty (K12) → liczba `GroupSummary` **równa liczbie unikalnych kluczy** policzonych z wiersza po wierszu; konkretna liczba (szacunek: ~38) wpisana po pierwszym przebiegu, nie z góry |
 | `shouldSumValueSharesToOne` | `Σ valueShare` ≈ 1.0 |
 | `shouldCapSamplesAtThree` | grupa 34-wierszowa → `samples.size() == 3` |
 | `shouldGroupAutoCategorizableByClassification` | 18 wierszy `BANK_FEE` o różnych nazwach → jedna grupa |

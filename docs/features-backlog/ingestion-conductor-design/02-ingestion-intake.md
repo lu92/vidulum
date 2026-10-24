@@ -74,7 +74,7 @@ public final class BankTransactionIdFallback {
 
 | test | given → then |
 |---|---|
-| `shouldParseTheGoldenFile` | `lista_operacji_20260111.csv` (402 wiersze, Nest Bank) → `rows.size()==402`, `errors` puste, pierwszy i ostatni wiersz asercją **całoobiektową** przez konstruktor `CanonicalRow` |
+| `shouldParseTheGoldenFile` | fixture kanoniczny z **K12** (17 kolumn; ten w repo jest surowy i 11-kolumnowy) → `rows.size() == liczba linii danych`, `errors` puste, pierwszy i ostatni wiersz asercją **całoobiektową** przez konstruktor `CanonicalRow`. Liczba wierszy pochodzi z pliku, nie z tego dokumentu |
 | `shouldRefuseFileWithoutHeader` | CSV od razu z danymi → `BusinessException(INGESTION_INVALID_CSV)` |
 | `shouldRefuseHeaderWithMissingColumn` | nagłówek bez `type` → `BusinessException`, komunikat nazywa brakującą kolumnę |
 | `shouldRefuseEmptyFile` | 0 bajtów → `BusinessException(INGESTION_INVALID_CSV)` |
@@ -111,6 +111,10 @@ public final class BankTransactionIdFallback {
 | `shouldAnswerOtherForNullAndBlank` | `null`, `""`, `"   "` → `OTHER` |
 
 **Czas wykonania:** < 2 s z plikiem 402-wierszowym w zasobach testowych.
+
+**Blokada:** ten moduł nie da się przetestować na pliku złotym, dopóki nie powstanie fixture
+kanoniczny — **zadanie K12**. Do tego czasu testy stoją na fixture'ach ręcznych (kilka wierszy na
+przypadek), co i tak jest właściwym poziomem dla większości tabel powyżej.
 
 ## Reguły architektoniczne
 

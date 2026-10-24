@@ -70,7 +70,8 @@ public abstract class IngestionIntegrationTest {
     protected ForecastHttpActor forecast;
 
     protected String registerUserAndGetToken();          // JWT, jak w CashFlowIntegrationTest
-    protected byte[] goldenCanonicalCsv();               // 402 wiersze z resources
+    protected byte[] goldenCanonicalCsv();               // fixture 17-kolumnowy z K12 - NIE ten
+                                                         // surowy nestbank_*.csv, który jest w repo
     protected void advanceClockBy(Duration d);           // MutableClock - do testów TTL
 }
 ```
@@ -111,7 +112,7 @@ class ForecastHttpActor {
 
 | test | scenariusz → asercje |
 |---|---|
-| `shouldImportWholeStatementWithoutAnyUserDecision` | `AUTOPILOT`, 402 wiersze → faza `IMPORTED`; `counters` **całoobiektowo** (402/381/15/6/381/0); `decisions` **puste**; cash flow ma **381** cash changes; prognoza ma pozycje w 36 miesiącach; 11 kategorii utworzonych |
+| `shouldImportWholeStatementWithoutAnyUserDecision` | `AUTOPILOT`, plik złoty (K12) → faza `IMPORTED`; `decisions` **puste**; niezmienniki: `total == valid + duplicate + rejected`, liczba cash changes w cash flow `== counters.imported`, każdy zaimportowany wiersz ma `cashChangeId`, suma kwot miesiąca w prognozie `==` suma wierszy tego miesiąca. **Liczby bezwzględne (402/381/15/6) wpisz po pierwszym przebiegu** — dziś są szacunkiem |
 | `shouldAskOnlyAboutMaterialGroupsAndImportAfterOneAnswer` | `REVIEW_MATERIAL` → faza `AWAITING_DECISION`, `openDecisions.size() <= 7`; **jedno** `POST /decisions` z 5 odpowiedziami → `IMPORTED`; jedna z odpowiedzi tworzy podkategorię „Subskrypcje" pod „Rozrywka" i ta hierarchia **jest** w cash flow |
 | `shouldAskNothingOnSecondUploadOfTheSameBank` | po pierwszym imporcie drugi plik tego samego banku (inne `bankTransactionId`, te same merchanci) → `decisions` **puste**, faza `IMPORTED`; dowód, że `LEARN` działa |
 | `shouldCountOnlyTwoUserRequestsForTheWholeImport` | licznik żądań w aktorze → dokładnie **2** wywołania zmieniające stan (`start`, `decisions`); `GET`-y nie liczone |
