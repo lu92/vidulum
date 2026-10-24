@@ -24,6 +24,9 @@ nie ma i gdzie to jest**.
 > dzisiejszego `bank-data-ingestion` i poprawił sześć rzeczy w specyfikacjach 01, 05, 06, 07 i 09 —
 > każda poprawka jest w nich naniesiona i oznaczona.
 
+**Zadania, statusy i graf zależności:** [`../ingestion-v2-tasks.md`](../ingestion-v2-tasks.md) —
+67 zadań wyprowadzonych z tych plików, każde z tytułem gotowym do PR i definicją ukończenia.
+
 ## Zasady wspólne dla wszystkich plików
 
 **Poziomy testów** — z CLAUDE.md, „Test Levels". Asercja idzie na **najtańszy poziom, który potrafi

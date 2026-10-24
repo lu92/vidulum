@@ -128,9 +128,11 @@ Reguła „**żaden worker nie zależy od innego workera**" była za ostra — i
 w nieistotnym miejscu. Nowe sformułowanie:
 
 > Żaden worker nie zależy od **implementacji** innego workera. Magazyn wierszy wystawia kontrakt
-> **tylko do czytania** (`ingestion-staging-api`), z którego korzystają dwa workery:
-> `cashflow-writer` (import) i `ingestion-classification` (grupy do klasyfikacji). Pisać do
-> `ingestion_rows` może wyłącznie `ingestion-staging`, i tylko w odpowiedzi na komendę sagi.
+> **tylko do czytania** (`ingestion-staging-api`) i ma **trzech** czytających: `cashflow-writer`
+> (import), `ingestion-classification` (wiersze grup otwartych) i `ingestion-conductor` (podgląd
+> wierszy pod `GET /api/v2/ingestion/{id}/rows`). Pisać do `ingestion_rows` może wyłącznie
+> `ingestion-staging`, i tylko w odpowiedzi na komendę sagi — czego pilnuje osobna reguła, bo
+> kontrakt R nie ma metody zapisującej.
 
 Co to zmienia w plikach: **06** (classification zyskuje zależność `ingestion-staging-api`), **09**
 (reguła `noWorkerDependsOnAnotherWorker` przeformułowana), **01** (test zgodności `GroupKey` z
@@ -259,7 +261,7 @@ Konwencja `cf={id}` **zostaje w v1** i nie jest przenoszona.
 | `ingestion-canonical` | shared-kernel, cashflow-api (`Type`) | — | — |
 | `ingestion-intake` | canonical | — | — |
 | `ingestion-conductor-api` | shared-kernel, canonical, cashflow-api (`Type`) | — | — |
-| `ingestion-conductor` | conductor-api, canonical, intake, **cashflow-api** | `exists`, `skeletonOf` | `ingestion_sessions` |
+| `ingestion-conductor` | conductor-api, canonical, intake, **cashflow-api**, **staging-api (R)** | `exists`, `skeletonOf`, `rowsOf` | `ingestion_sessions` |
 | `ingestion-staging-api` | shared-kernel, canonical, conductor-api | — | — |
 | `ingestion-staging` | staging-api, conductor-api, canonical, **cashflow-api**, **user-financial-profile-api** | `skeletonOf`, `monthStatusesOf`, `alreadyImported`, konta własne | `ingestion_rows` |
 | `ingestion-classification` | conductor-api, canonical, **staging-api (R)**, **ai-categorization-api** | `suggestFor` | `ingestion_classifications` |
@@ -276,7 +278,8 @@ wywołuje z niego ani jednej metody. Drzewo kategorii przychodzi w komendzie.
 | plik | poprawka |
 |---|---|
 | **06** | + zależność `ingestion-staging-api` (czytanie wierszy grup z `open[]`); + testy odwzorowania `ContextMapping` → `GroupKey` |
-| **09** | reguła `noWorkerDependsOnAnotherWorker` → „nie zależy od **implementacji**; magazyn wierszy ma kontrakt R dla dwóch workerów" |
+| **09** | reguła `noWorkerDependsOnAnotherWorker` → „nie zależy od **implementacji**; magazyn wierszy ma kontrakt R, z trzema czytającymi i zerem piszących poza stagingiem" |
+| **04** | + zależność `ingestion-staging-api` (R) i endpoint `GET /api/v2/ingestion/{id}/rows` — podgląd wierszy musi skądś brać dane |
 | **01** | `GroupKey` — komponent merchanta **musi** być `effectiveMerchant()`, bo tym grupuje silnik; + test zgodności |
 | **05** | `OwnedAccountRegistry` nie potrzebuje `skeleton.owner()` — owner przychodzi w komendzie |
 | **07** | `forget` przestaje być martwą metodą kontraktu; krok `UNLEARN` jest jej pierwszym konsumentem |

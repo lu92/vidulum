@@ -151,9 +151,10 @@ nowego projektu: *nie dodajemy zdarzenia, które nie ma konsumenta.*
 
 Pięć zasad, każda z powodu wziętego z pomiaru powyżej:
 
-1. **Conductor nie zależy od żadnego workera.** Zależy od **własnego** kontraktu
-   (`ingestion-conductor-api`), od słownika (`ingestion-canonical`) i — tylko do czytania —
-   od `cashflow-api`. Workerzy zależą od protokołu conductora. Kontrakty nie zależą od siebie, więc
+1. **Conductor nie zależy od implementacji żadnego workera.** Zależy od **własnego** kontraktu
+   (`ingestion-conductor-api`), od słownika (`ingestion-canonical`), a tylko do czytania — od
+   `cashflow-api` (`exists`, `skeletonOf`) i od `ingestion-staging-api` (podgląd wierszy dla
+   endpointu REST). Workerzy zależą od protokołu conductora. Kontrakty nie zależą od siebie, więc
    cyklu w reaktorze nie ma, choć implementacje „widzą się" w obie strony.
 2. **Żaden worker nie zależy od implementacji innego workera.** Dziś `importing` czyta
    `StagingSessionMongoRepository` (11 plików), a `classification` woła metody cyklu życia na encji
@@ -542,8 +543,10 @@ implementacji):
    dokładnie dwa: `cashflow-writer` i `classification`.
 3. Do `ingestion_rows` pisze wyłącznie `ingestion-staging`; `staging-api` nie wystawia metody
    zapisującej.
-4. `ingestion-conductor` nie zależy od żadnego workera, również nie od `ingestion-staging-api` —
-   podgląd wierszy wystawia przez własny endpoint, pytając kontraktu.
+4. `ingestion-conductor` nie zależy od **implementacji** żadnego workera. Wolno mu
+   `ingestion-staging-api` — i tylko po to, by wystawić podgląd wierszy pod
+   `GET /api/v2/ingestion/{id}/rows`; kontrakt nie ma metody zapisującej, więc ta krawędź nie może
+   urosnąć w pisanie do cudzej kolekcji.
 5. Każda klasa z `@KafkaListener` implementuje `ModuleEventHandler` (reguła z
    `ModuleBoundariesArchTest`, tu **bez listy wyjątków** — moduł jest nowy, więc nie ma długu).
 6. Każda komenda i każda odpowiedź to `record` implementujący `IntegrationEvent` (też bez
@@ -739,10 +742,15 @@ Bo wiersze są liczone w setkach i tysiącach, a grupy w dziesiątkach: ten sam 
 **38 grup**. Wszystko, co człowiek i model mają do powiedzenia, dotyczy grupy — więc wszystko, co
 krąży po topicach po pierwszym kroku, jest grupowe i małe.
 
+**Jeden wyjątek, zmierzony na kontrakcie F66** (§10): `ingestion-classification` dostaje klucze grup
+i dociąga ich wiersze przez `ingestion-staging-api`, bo `CategorizationRequest` bierze transakcje i
+silnik grupuje je sam. Czyli „referencją" dotyczy tu dwóch workerów, nie jednego — i dlatego kontrakt
+magazynu wierszy jest **tylko do czytania**, a nie prywatnym repozytorium stagingu.
+
 | dane | liczność (testowy plik) | kolekcja | **jedyny piszący** | kto czyta |
 |---|---|---|---|---|
 | rekord procesu: fazy, kroki, decyzje, kompensacje, **grupy** | 1 dok. | `ingestion_sessions` | `ingestion-conductor` | REST (user), saga |
-| wiersz kanoniczny + walidacja + rozstrzygnięcie + wynik importu | 402 dok. | `ingestion_rows` | `ingestion-staging` | writer (import), REST (podgląd), conductor przez `staging-api` |
+| wiersz kanoniczny + walidacja + rozstrzygnięcie + wynik importu | 402 dok. | `ingestion_rows` | `ingestion-staging` | przez `staging-api` (R): `cashflow-writer` (import), `classification` (wiersze grup), conductor (podgląd dla REST) |
 | mapowanie bankCategory → kategoria | rośnie trwale | `ingestion_category_mappings` | `ingestion-category-resolution` | tylko drabina |
 | odpowiedź modelu (cache) | 1 dok./sesja | `ingestion_classifications` | `ingestion-classification` | ponowienie kroku |
 | wzorce wyuczone | trwałe | `pattern_mappings` | **obcy moduł** `bank-data-ai-categorization` | przez kontrakt `matchLearned` / `learn` |
@@ -906,7 +914,7 @@ Nest Bank, 402 wiersze, PLN, 2023-01-13 … 2025-12-31, `startPeriod = 2023-01`,
 |---|---|
 | odpala | **conductor** (komenda na topicu) |
 | kod | `ingestion-staging` → `ValidateRowsListener implements ValidateRowsHandler` → `ValidateRowsCommandHandler` |
-| woła | `cashFlowApi.skeletonOf` (okno importu + drzewo kategorii) · `cashFlowForecastApi.monthStatusesOf` · `cashFlowApi.alreadyImported` · `userFinancialProfileApi` (konta własne) — **4 pytania na 402 wiersze**, nie 1 608 |
+| woła | `cashFlowApi.skeletonOf` (okno importu + drzewo kategorii) · `cashFlowForecastApi.monthStatusesOf` · `cashFlowApi.alreadyImported` · `userFinancialProfileApi` (konta własne dla **ownera z komendy**, nie ze skeletonu — conductor zna go z JWT) — **4 pytania na 402 wiersze**, nie 1 608 |
 | praca per wiersz | 1) duplikat? `alreadyImported.find(bankTransactionId)` → `DUPLICATE` + id kolidującego cash change · 2) `skeleton.importWindow().refusalFor(paidDate, now)` → `REJECTED` z `ErrorCode` cashflow · 3) **tylko jeśli przeszło** `monthStatuses.acceptsImportAt(period)` → `REJECTED` (np. miesiąc `ATTESTED`) · 4) IBAN kontrahenta ∈ konta własne → `selfTransfer=true` · 5) nadaje `groupKey` |
 | zapis | `ingestion_rows`: **402 dokumenty**, każdy z `original` + `validation` + `groupKey`, TTL 24 h |
 | wynik liczbowy | `valid=381`, `duplicate=15`, `rejected=6` (4× data przed `startPeriod`, 2× miesiąc `ATTESTED`), `selfTransfer=4` wierszy, **grup = 38** |
@@ -943,10 +951,11 @@ Przykładowe grupy, jak wyglądają w sesji:
 |---|---|
 | odpala | **conductor** |
 | kod | `ingestion-classification` → `ClassifyGroupsListener` → `TransactionCategorizationApi.suggestFor(...)` (kontrakt z F66, bez zmian) |
-| wejście | `ClassifyGroupsCommand(sessionId, cashFlowId, detectedLanguage="pl", openGroups[29], categorySnapshot)` — **29 grup, nie 402 wiersze** |
-| woła | `bank-data-ai-categorization` przez kontrakt; ten moduł sam konsultuje własną pamięć wzorców i dopiero potem model |
+| wejście | `ClassifyGroupsCommand(sessionId, cashFlowId, detectedLanguage="pl", openGroups[29 **kluczy**], categorySnapshot)` — ~2 KB |
+| woła | `IngestionRowsApi.rowsOfGroup(...)` **29×** po wiersze tych grup (≈ 290 z 381 — kontrakt F66 bierze transakcje i grupuje je sam, §10) · potem **raz** `bank-data-ai-categorization` przez kontrakt; ten moduł sam konsultuje własną pamięć wzorców i dopiero potem model |
 | zapis | `ingestion_classifications`: 1 dokument (sugestie, statystyki, koszt) — cache, bo to odpowiedź za pieniądze; ponowienie kroku po awarii nie płaci drugi raz |
 | wynik | 29 sugestii: **18** z pewnością ≥ 90, **8** w 50–90, **3** < 50 |
+| odwzorowanie | odpowiedź silnika wraca na grupy bez zgadywania: `ContextMapping` po parze (pattern, bankCategory) → klucz `MERCHANT\|…`, `AutoCategorizableSuggestion` po słowie klasyfikacji → `CLASS\|…`, `BankCategoryFallback` dla grup o słabym merchancie |
 | odpowiedź | `StepReply(CLASSIFY, SUCCEEDED, GroupsClassified(suggestions[29], cost))` |
 | conductor | `groups[].suggestion`, `steps[CLASSIFY]`, `phase: CLASSIFIED` |
 | **gdy padnie** | `StepReply(FAILED, retryable=true)` → backoff, N prób → potem **krok pominięty**, nie porażka sesji: drabina ② jedzie bez sugestii i wszystko nierozstrzygnięte staje się pytaniem albo fallbackiem. Import **nie** jest tracony (dziś `classificationStatus=FAILED` zostawia sesję w sprzecznym stanie) |
@@ -1083,7 +1092,9 @@ grupowa staje się 381 zapisami.
 | `CashFlowModuleApi.alreadyImported` | 1 | staging |
 | `UserFinancialProfileApi` (konta własne) | 1 | staging |
 | `TransactionCategorizationApi.matchLearned` | 2 (RESOLVE ① i ②) | category-resolution |
-| `TransactionCategorizationApi.suggestFor` | **1, na 29 grup** | classification |
+| `IngestionRowsApi.rowsOfGroup` | 29 (po jednej na grupę otwartą) | classification |
+| `IngestionRowsApi.rowsOf` | ~4 strony po 100 | cashflow-writer |
+| `TransactionCategorizationApi.suggestFor` | **1, na wiersze 29 grup** | classification |
 | `TransactionCategorizationApi.learn` | 1 | category-resolution |
 | `CashFlowModuleApi.createCategory` | 11 | writer |
 | `CashFlowModuleApi.importHistorical` | 381 | writer |
@@ -1226,9 +1237,11 @@ sequenceDiagram
 
   alt open niepuste — tylko wtedy placimy modelowi
     rect rgb(255,240,245)
-    Note over C,AI: T5 CLASSIFY — 29 grup, nie 402 wiersze
-    C->>CL: ingestion.cmd.classify — ClassifyGroupsCommand(openGroups=29, jezyk=pl)
-    CL->>AI: suggestFor(CategorizationRequest)
+    Note over C,AI: T5 CLASSIFY — 29 kluczy grup w komendzie, wiersze dociagane
+    C->>CL: ingestion.cmd.classify — ClassifyGroupsCommand(openGroups=29 kluczy)
+    CL->>ST: rowsOfGroup(sessionId, key) x29 — staging-api, tylko czytanie
+    ST-->>CL: ~290 wierszy tych grup
+    CL->>AI: suggestFor(CategorizationRequest) — transakcje, silnik grupuje sam
     AI-->>CL: 29 sugestii — 18 conf>=90, 8 w 50..90, 3 <50
     Note right of CL: ingestion_classifications ← 1 dok.<br/>cache odpowiedzi za pieniadze
     CL->>C: ingestion.reply — GroupsClassified(29, cost=0.04 USD)
@@ -1307,8 +1320,10 @@ Co ten diagram pokazuje, a czego nie widać z tabel:
   a przy drugim uploadzie z tego samego banku ta gałąź się nie wykonuje.
 - **`opt` wokół decyzji** — w trybie `AUTOPILOT` cały ten blok nie istnieje i przebieg jest w pełni
   automatyczny.
-- **Jedna gruba strzałka i jedna cienka**: wiersze przechodzą przez topic dokładnie raz
-  (`ValidateRowsCommand`), a import czyta je referencją przez `staging-api`.
+- **Wiersze przechodzą przez topic dokładnie raz** (`ValidateRowsCommand`); potem czytają je
+  referencją przez `staging-api` trzy moduły — klasyfikacja (wiersze grup otwartych), import i
+  conductor (podgląd dla REST).
+  Komendy po pierwszym kroku są grupowe i małe: 2–15 KB.
 
 #### 26.2 Zoom na jeden krok — trzy znaczenia słowa „command"
 
@@ -1416,6 +1431,8 @@ flow w fazie SETUP, ta strzałka potrafi zabrać dane innej sesji.
 
 ## Powiązane
 
+- [`ingestion-v2-tasks.md`](ingestion-v2-tasks.md) — **tablica zadań: 67 zadań w 9 ścieżkach, graf
+  zależności, postęp i dziennik.** Źródło prawdy o statusach; ten dokument o uzasadnieniach
 - [`ingestion-conductor-design/`](ingestion-conductor-design/00-index.md) — **specyfikacje per moduł**:
   kontrakty, metody, scenariusze testowe i reguły architektoniczne, plik na artefakt
 - `2026-10-23-ingestion-process-monitor.md` — F68: pomiar dzisiejszego monitora i jego sześciu

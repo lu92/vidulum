@@ -14,6 +14,7 @@ merytorycznej — nie waliduje wierszy, nie rozstrzyga kategorii, nie pisze do c
 <dependency>vidulum-ingestion-canonical</dependency>
 <dependency>vidulum-ingestion-intake</dependency>          <!-- parser, in-process, liść -->
 <dependency>vidulum-cashflow-api</dependency>              <!-- TYLKO do czytania: exists, skeletonOf -->
+<dependency>vidulum-ingestion-staging-api</dependency>     <!-- TYLKO do czytania: podgląd wierszy w GET -->
 
 <dependency>spring-boot-starter-data-mongodb</dependency>  <!-- persystuje sesję -->
 <dependency>spring-boot-starter-webmvc</dependency>        <!-- ma endpointy /api/v2/ingestion -->
@@ -62,6 +63,7 @@ ingestion_conductor/
 | POST | `/api/v2/ingestion` | multipart: `file`, `cashFlowId`, `transformationId?`, `policy?` | **202** `IngestionSessionJson` (faza `PARSED`) |
 | GET | `/api/v2/ingestion/{sessionId}` | — | `IngestionSessionJson` — pełny stan |
 | GET | `/api/v2/ingestion?cashFlowId=` | — | lista skrótów sesji |
+| GET | `/api/v2/ingestion/{sessionId}/rows?status=` | — | wiersze sesji, stronicowo (przez `staging-api`) |
 | POST | `/api/v2/ingestion/{sessionId}/decisions` | `[{decisionId, action, category, parent?, remember}]` | `IngestionSessionJson` — **nowy stan w tej samej odpowiedzi** |
 | POST | `/api/v2/ingestion/{sessionId}/compensate` | `{reason}` | `IngestionSessionJson` (faza `COMPENSATED`) |
 
@@ -195,8 +197,9 @@ w 5 sekundach.
 
 ## Reguły architektoniczne (sprawdzane w 09)
 
-1. Nic w tym module nie zależy od żadnego workera (`ingestion-staging`, `-classification`,
-   `-category-resolution`, `-cashflow-writer`).
+1. Nic w tym module nie zależy od **implementacji** żadnego workera (`ingestion-staging`,
+   `-classification`, `-category-resolution`, `-cashflow-writer`). Jedyna dozwolona krawędź to
+   `ingestion-staging-api` (R), użyta wyłącznie w zapytaniu podglądu wierszy.
 2. Nic nie zależy od `bank_data_ai_categorization` ani od `spring-ai` — **conductor nie wie o AI**.
 3. Z `cashflow-api` używa **wyłącznie** `exists` i `skeletonOf`; `createCategory`,
    `importHistorical`, `rollbackImport` są zakazane — to robota writera (reguła na poziomie wywołań

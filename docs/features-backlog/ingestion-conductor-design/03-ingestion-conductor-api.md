@@ -13,10 +13,12 @@ wartości, którymi obie strony mówią o grupach i kategoriach.
 <dependency>vidulum-cashflow-api</dependency>        <!-- Type -->
 ```
 
-## To jest `ModuleSpi`, nie `ModuleApi` — i to korekta wobec §7
+## To jest `ModuleSpi`, nie `ModuleApi`
 
-W dokumencie nadrzędnym napisałem, że ten artefakt zawiera też `IngestionSagaApi extends ModuleApi`.
-Przy rozpisywaniu okazało się, że **nie powinien — jeszcze**:
+Pierwsza wersja projektu dawała temu artefaktowi również kontrakt wejściowy
+(`IngestionSagaApi extends ModuleApi`). Pomiar go unieważnił — żaden produkcyjny plik poza
+`bank-data-ingestion` nie importuje dziś typów ingestion, czyli taki kontrakt nie miałby konsumenta
+([plik 10, §7](10-granice-artefaktow.md)); dokument nadrzędny jest już z tym spójny (§8):
 
 > „`vidulum-pnl` i `vidulum-risk` nie mają `-api`, bo nikt ich o nic nie pyta. Kontrakt powstaje,
 > gdy istnieje konsument." — CLAUDE.md
