@@ -28,7 +28,9 @@ import com.multi.vidulum.cashflow.domain.DomainCashFlowRepository;
 import com.multi.vidulum.cashflow.domain.snapshots.CashChangeSnapshot;
 import com.multi.vidulum.cashflow.domain.snapshots.CashFlowSnapshot;
 import com.multi.vidulum.common.CashChangeId;
+import com.multi.vidulum.common.BankAccountId;
 import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.app.queries.GetCountOfCashChangesByStatusQuery;
 import com.multi.vidulum.shared.cqrs.CommandGateway;
@@ -82,6 +84,10 @@ class CashFlowModuleApiImpl implements CashFlowModuleApi {
                 snapshot.phase(),
                 snapshot.activePeriod(),
                 snapshot.startPeriod(),
+                // The contract takes a carrier, not cashflow's validating BankAccountNumber - so the
+                // IBAN crosses the boundary as text and nothing re-validates what was stored.
+                new BankAccountId(snapshot.bankAccount().bankAccountNumber().iban().value()),
+                Currency.of(snapshot.bankAccount().balance().getCurrency()),
                 nodesOf(snapshot.inflowCategories(), null),
                 nodesOf(snapshot.outflowCategories(), null));
     }

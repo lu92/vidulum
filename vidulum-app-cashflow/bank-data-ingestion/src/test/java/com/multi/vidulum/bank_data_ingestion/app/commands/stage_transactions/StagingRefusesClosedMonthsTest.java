@@ -16,6 +16,8 @@ import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
 import com.multi.vidulum.cashflow.api.view.ImportedTransactions;
 import com.multi.vidulum.common.CashFlowId;
+import com.multi.vidulum.common.BankAccountId;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.common.Money;
 import com.multi.vidulum.common.UserId;
@@ -166,6 +168,8 @@ class StagingRefusesClosedMonthsTest {
                 CashFlowSkeletonView.LifecyclePhase.OPEN,
                 MARCH,
                 JANUARY,
+                new BankAccountId("PL61109010140000071219812874"),
+                Currency.of("PLN"),
                 List.of(),
                 List.of(new CategoryNodeView(new CategoryName("Zakupy"), null, false, List.of())));
     }

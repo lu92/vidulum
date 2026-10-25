@@ -156,6 +156,8 @@ class ImportWindowTest {
                 SETUP,
                 YearMonth.of(2022, 1),
                 YearMonth.of(2021, 10),
+                new com.multi.vidulum.common.BankAccountId("PL61109010140000071219812874"),
+                com.multi.vidulum.common.Currency.of("PLN"),
                 java.util.List.of(),
                 java.util.List.of());
 

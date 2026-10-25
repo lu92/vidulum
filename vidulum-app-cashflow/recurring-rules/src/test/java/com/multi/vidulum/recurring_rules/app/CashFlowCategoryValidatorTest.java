@@ -6,6 +6,8 @@ import com.multi.vidulum.cashflow.api.view.CashFlowSkeletonView;
 import com.multi.vidulum.cashflow.api.view.CategoryNodeView;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.common.CategoryName;
+import com.multi.vidulum.common.BankAccountId;
+import com.multi.vidulum.common.Currency;
 import com.multi.vidulum.common.UserId;
 import com.multi.vidulum.recurring_rules.domain.exceptions.CategoryNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -97,6 +99,8 @@ class CashFlowCategoryValidatorTest {
                 CashFlowSkeletonView.LifecyclePhase.OPEN,
                 YearMonth.of(2022, 1),
                 YearMonth.of(2022, 1),
+                new BankAccountId("PL61109010140000071219812874"),
+                Currency.of("PLN"),
                 inflow,
                 outflow));
     }

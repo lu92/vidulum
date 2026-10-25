@@ -1,10 +1,8 @@
 package com.multi.vidulum.bank_data_ingestion.classification.commands.accept_classification;
 import com.multi.vidulum.common.CashFlowId;
 import com.multi.vidulum.bank_data_ingestion.mappings.commands.configure_mapping.ConfigureCategoryMappingCommand;
-import com.multi.vidulum.bank_data_ingestion.mappings.commands.configure_mapping.ConfigureCategoryMappingCommandHandler;
 import com.multi.vidulum.bank_data_ingestion.mappings.commands.configure_mapping.ConfigureCategoryMappingResult;
 import com.multi.vidulum.bank_data_ingestion.staging.commands.revalidate_staging.RevalidateStagingCommand;
-import com.multi.vidulum.bank_data_ingestion.staging.commands.revalidate_staging.RevalidateStagingCommandHandler;
 import com.multi.vidulum.bank_data_ingestion.staging.commands.revalidate_staging.RevalidateStagingResult;
 import com.multi.vidulum.bank_data_ai_categorization.api.PatternSource;
 import com.multi.vidulum.bank_data_ai_categorization.api.PatternToLearn;
@@ -15,6 +13,7 @@ import com.multi.vidulum.common.CategoryName;
 import com.multi.vidulum.cashflow.api.CashFlowModuleApi;
 import com.multi.vidulum.cashflow.api.error.CashFlowNotFoundException;
 import com.multi.vidulum.cashflow.api.error.CategoryAlreadyExistsException;
+import com.multi.vidulum.shared.cqrs.CommandGateway;
 import com.multi.vidulum.shared.cqrs.commands.CommandHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,13 +24,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Handler for accepting AI categorization suggestions.
+ * Handler for accepting classification suggestions.
  *
- * Flow:
- * 1. Create new categories in CashFlow
- * 2. Create category mappings (bank → CashFlow)
- * 3. Save pattern mappings to user cache (optional)
- * 4. Revalidate staging session
+ * <p>Flow:
+ * <ol>
+ *   <li>Create new categories in CashFlow</li>
+ *   <li>Create category mappings (bank → CashFlow)</li>
+ *   <li>Let the categorizer remember what the person accepted (optional)</li>
+ *   <li>Revalidate the staging session</li>
+ * </ol>
+ *
+ * <p><b>Steps 2 and 4 go through the {@link CommandGateway}, not through an injected handler.</b>
+ * They belong to other sections - {@code mappings} and {@code staging} - and this used to hold
+ * {@code ConfigureCategoryMappingCommandHandler} and {@code RevalidateStagingCommandHandler} as
+ * fields. What is left is a dependency on their <i>commands</i>, which is what every controller in
+ * this module already depends on: the four REST controllers know no handler at all. So replacing
+ * the {@code mappings} section now means registering a handler for its command, not recompiling
+ * this class.
+ *
+ * <p>The trade is deliberate and worth naming: {@code send} casts its result unchecked, so a wrong
+ * result type here fails at runtime rather than at compile time, and a handler missing from the
+ * context fails on the first request instead of at startup. The HTTP tests cover this path, which
+ * is what makes that acceptable.
  */
 @Slf4j
 @Component
@@ -42,8 +56,7 @@ public class AcceptClassificationCommandHandler
     private final CashFlowModuleApi cashFlowApi;
     private final TransactionCategorizationApi categorizationApi;
     private final StagedTransactionRepository stagedTransactionRepository;
-    private final ConfigureCategoryMappingCommandHandler mappingHandler;
-    private final RevalidateStagingCommandHandler revalidateHandler;
+    private final CommandGateway commandGateway;
     private final Clock clock;
 
     @Override
@@ -116,7 +129,7 @@ public class AcceptClassificationCommandHandler
                         mappingConfigs
                 );
 
-                ConfigureCategoryMappingResult mappingResult = mappingHandler.handle(mappingCommand);
+                ConfigureCategoryMappingResult mappingResult = commandGateway.send(mappingCommand);
                 mappingsApplied = mappingResult.mappingsConfigured();
                 log.info("Applied {} category mappings", mappingsApplied);
             }
@@ -144,7 +157,7 @@ public class AcceptClassificationCommandHandler
                         bankMappingConfigs
                 );
 
-                ConfigureCategoryMappingResult bankMappingResult = mappingHandler.handle(bankMappingCommand);
+                ConfigureCategoryMappingResult bankMappingResult = commandGateway.send(bankMappingCommand);
                 bankCategoryMappingsApplied = bankMappingResult.mappingsConfigured();
                 log.info("Applied {} bank category mappings", bankCategoryMappingsApplied);
             }
@@ -178,7 +191,7 @@ public class AcceptClassificationCommandHandler
                 command.sessionId()
         );
 
-        RevalidateStagingResult revalidateResult = revalidateHandler.handle(revalidateCommand);
+        RevalidateStagingResult revalidateResult = commandGateway.send(revalidateCommand);
 
         // Build validation summary
         AcceptClassificationResult.StagingValidationSummary validationSummary =
