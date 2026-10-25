@@ -186,6 +186,15 @@ się pokazać testem komponentowym**, bo każdy zależy od tego, co atestacja zr
 | `shouldRecategoriseImportedRowsInBulk` | po imporcie w `AUTOPILOT` 147 wierszy prowizorycznych (BADOO 94 + ZABKA 53) → **jedno** wywołanie przekategoryzowania → kategorie zmienione, prognoza przeliczona, kwoty nietknięte. **Dziś ten test jest niewykonalny** i to jest jego wartość: zapina X1 |
 | `shouldTreatGenericBankCategoryAsUnresolved` | cash flow ma już kategorię `Inne`, wgrywany Pekao ma 265 wierszy z `Inne`/`Bez kategorii` → **żaden** nie rozstrzyga się priorytetem 0, wszystkie idą do wzorców i AI |
 | `shouldNotPolluteTheCategoryTreeWithTailGroups` | Pekao z progiem 3 wierszy → plan tworzy mniej niż 38 kategorii, grupy po 1–2 wiersze idą do rodzica albo fallbacku; po wycofaniu importu kategorie **zostają** (świadomie) |
+| `shouldDetectAGapBetweenTwoUploads` | wgranie grudnia, potem lutego → `coverage.gaps` zawiera styczeń, **import lutego przechodzi**, a wyrównanie jest **zablokowane**, bo różnica salda ≠ 0 |
+| `shouldNotBlockWhenBalanceAgreesDespiteAGap` | luka jednodniowa (wgrane 1–9 i 11–20 stycznia), saldo **zgodne** → luka **zgłoszona**, nic nie zablokowane: nie ma korekty do utworzenia |
+| `shouldReportTheGapBeforeTheFirstStatement` | `startPeriod` 2025-01, pierwszy wyciąg od 11 stycznia → luka `2025-01-01 … 2025-01-10` z podpowiedzią `ACCOUNT_OPENED_LATER` |
+| `shouldMergeAdjacentStatementPeriods` | wyciągi `[1–9]` i `[10–31]` → **jeden** przedział `[1–31]`, zero luk; `[1–9]` i `[11–31]` → luka `[10–10]` |
+| `shouldReopenAGapWhenASessionIsCompensated` | wycofanie sesji grudniowej → grudzień **wraca** do luk, bo jego wiersze zniknęły z cash flow |
+| `shouldDistinguishACoveredEmptyMonthFromAGap` | wgranie wyciągu za styczeń z **zerem wierszy** → styczeń jest **pokryty**, `gaps` puste; to jest przypadek, którego wysoka woda nie odróżnia |
+| `shouldRecogniseAFileThatFillsAKnownGap` | przy znanej luce styczniowej wgranie pliku za styczeń → komunikat „zapełnia lukę", a po imporcie `gaps` puste i wyrównanie odblokowane |
+| `shouldStopNaggingAboutAnAcknowledgedGap` | luka uznana z powodem `ACCOUNT_OPENED_LATER` → kolejne wgrania **nie pytają o nią ponownie**, a wyrównanie działa |
+| `shouldNotReportManuallyEnteredTransactionsAsAGap` | transakcja dodana ręcznie poza pokryciem → `gaps` bez zmian; rozjazd widoczny jako kontrola krzyżowa, nie jako luka |
 | `shouldCollapseCardAuthorisationSettlementAndReversal` | 43 rozliczenia kartowe i 45 storn o identycznych kwotach → suma per merchant **bez podwójnego liczenia**: BADOO ma tyle transakcji, ile było zakupów, nie 94 wiersze; `valueShare` liczone po zwinięciu (**M12**) |
 
 ### F. `IngestionBoundariesArchTest` — reguły rodziny

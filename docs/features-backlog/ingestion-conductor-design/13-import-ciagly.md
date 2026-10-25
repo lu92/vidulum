@@ -452,6 +452,180 @@ Co z tego wynika dla przepływu:
 | plik nachodzi na wysoką wodę | „61 z 75 wierszy już masz" — i to jest normalny wynik, nie ostrzeżenie |
 | cały plik starszy niż wysoka woda | „Ten plik jest w całości starszy niż Twoje dane — na pewno ten?" Dziś taki wyciąg wchodzi jako same duplikaty i nikt nie pyta |
 
+### Projekt pokrycia: wyprowadzone z sesji, nie z transakcji
+
+**Pierwsza wersja tego pomysłu — „maksimum `paidDate` z `alreadyImported`" — jest za wąska i warto
+powiedzieć dlaczego**, bo błąd jest pouczający. Wysoka woda to jedna data, więc nie odróżnia dwóch
+rzeczy, które dla ownera są zupełnie różne:
+
+> **styczeń pusty, bo nie wgrano wyciągu** ≠ **styczeń pusty, bo nic się nie wydarzyło**
+
+Z samych transakcji w cash flow to jest **nierozróżnialne**. Z historii wgrań — doskonale: „wgrano
+wyciąg za 1–31 stycznia, zawierał 0 wierszy" to inna informacja niż „żaden wyciąg nie objął
+stycznia". Stąd decyzja: **pokrycie jest twierdzeniem o tym, co wgrano, a nie o tym, jakie
+transakcje istnieją** — więc należy do ingestion, a nie do cashflow, i mieszka w **conductorze**,
+bo to on ma sesje i on blokuje wyrównanie.
+
+Druga wada jednej daty: widzi tylko lukę **przed bieżącym plikiem**. Nie powie o dziurze z zeszłego
+roku i nie rozpozna, że wgrywany plik **zapełnia** znaną lukę — pokaże go jako „cały starszy niż
+Twoje dane".
+
+```java
+// czysta funkcja: bez Springa, bez bazy, testowalna tabelą
+Coverage coverage(List<IngestionSession> imported, YearMonth startPeriod, LocalDate today);
+
+record Coverage(List<CoveredRange> ranges, List<Gap> gaps, LocalDate highWaterMark) {}
+record CoveredRange(LocalDate from, LocalDate to, PeriodSource source, int rows, String sessionId) {}
+record Gap(LocalDate from, LocalDate to, Acknowledgement ack) {}   // ack == null → nieuznana
+
+record Acknowledgement(Reason reason, String note, Instant at) {}
+enum Reason { ACCOUNT_OPENED_LATER, BANK_CANNOT_EXPORT, NO_TRANSACTIONS, OTHER }
+```
+
+**Jedyne nowe pole na sesji** — wypełniane w kroku `PARSE`, resztę funkcja wylicza:
+
+```java
+record StatementPeriod(LocalDate from, LocalDate to, PeriodSource source) {}
+
+enum PeriodSource { UPLOAD_PARAM, STATEMENT_HEADER, DERIVED_FROM_ROWS }
+```
+
+#### Algorytm, sześć kroków
+
+```java
+Coverage coverage(List<IngestionSession> sessions, YearMonth startPeriod, LocalDate today) {
+
+    // 1. tylko sesje, które naprawdę coś wniosły — skompensowane wypadają, więc luka wraca
+    var periods = sessions.stream()
+            .filter(s -> s.phase() == IMPORTED || s.phase() == PARTIALLY_IMPORTED)
+            .map(IngestionSession::statementPeriod)
+            .sorted(comparing(StatementPeriod::from))
+            .toList();
+
+    // 2. scalanie: przedziały nachodzące ORAZ stykające się dniem (to + 1 dzień == from)
+    var ranges = merge(periods);
+
+    // 3. horyzont: od pierwszego dnia startPeriod do dziś — bez tego luka PRZED
+    //    pierwszym wyciągiem jest niewidoczna
+    var horizon = new Range(startPeriod.atDay(1), today);
+
+    // 4. luki = dopełnienie scalonych przedziałów w tym horyzoncie
+    var gaps = horizon.minus(ranges);
+
+    // 5. nakładamy trwałe uznania; uznanie jest przypisane do PRZEDZIAŁU, więc po częściowym
+    //    zapełnieniu zostaje na resztę i nie pytamy od nowa
+    gaps = gaps.stream().map(g -> g.withAck(acknowledgementFor(g))).toList();
+
+    // 6. ostatni dzień pokrycia — osobny od wysokiej wody transakcji z alreadyImported,
+    //    która służy tylko jako kontrola krzyżowa
+    return new Coverage(ranges, gaps, ranges.isEmpty() ? null : last(ranges).to());
+}
+```
+
+Krok 2 jest całą regułą scalania: `[1–9]` + `[10–31]` → **jeden** przedział `[1–31]` i zero luk;
+`[1–9]` + `[11–31]` → luka `[10–10]`. Krok 3 jest tym, co odróżnia ten algorytm od wysokiej wody:
+dolna granica bierze się z deklaracji cash flow, nie z danych, więc dziura na początku historii
+istnieje, zamiast być z definicji poza zasięgiem.
+
+Nie wymaga nowej kolekcji ani nowego żądania: sesje są już trwałe, mają indeks po `cashFlowId` i
+przeżywają wygaśnięcie wierszy. Liczą się sesje `IMPORTED` i `PARTIALLY_IMPORTED`, a skompensowane
+wypadają.
+
+#### Skąd brać przedział — i dlaczego nie z min/max wierszy
+
+Tylko **okres wyciągu** potrafi powiedzieć „ten miesiąc jest pokryty, choć pusty". Źródła w
+kolejności zaufania:
+
+| # | źródło | dostępność |
+|---|---|---|
+| 1 | **parametry wgrania** — owner właśnie wybrał zakres dat w bankowości, więc UI go zna | zawsze, jeśli UI go przekaże |
+| 2 | **metadane wyciągu** — surowy Nest ma w nagłówku `Historia operacji za okres od 01.01.2023 do 11.01.2026` | **tylko część banków**: Nest tak, Pekao nie — **ten sam wzorzec co z saldem**, a transformacja i tak to wyrzuca |
+| 3 | min/max wierszy | zawsze, ale wtedy `source = DERIVED_FROM_ROWS`, żeby było widać, że pokrycie jest **wnioskowane**, nie zadeklarowane |
+
+#### Granulacja: dni, nie miesiące
+
+Wyciągi przychodzą jako zakresy dni, a dziura 10–14 stycznia to pięć dni prawdziwych transakcji.
+Liczymy więc w dniach, a UI rysuje miesiące: miesiąc jest **częściowo pokryty**, gdy brakuje w nim
+choć jednego dnia. Przedziały stykające się dniem (`to + 1 == from`) scalają się; `[1–9]` i `[11–31]`
+zostawiają lukę `[10–10]`.
+
+#### Luka wiąże się z RÓŻNICĄ, nie z samym swoim istnieniem
+
+Pierwsza wersja mówiła „luka blokuje wyrównanie". **Za grubo** — tworzyłoby to fałszywe alarmy:
+wgrywasz 1–9 i 11–20 stycznia, dziesiątego nic się nie wydarzyło, a system blokuje.
+
+| różnica salda | luka | reakcja |
+|---|---|---|
+| **0** | brak | cisza |
+| **0** | jest | **informacja** o luce — nie ma czego blokować, bo nie ma żadnej korekty do utworzenia |
+| **≠ 0** | brak | różnica + kandydaci + wyrównanie dozwolone |
+| **≠ 0** | **jest** | **blokada**: „zanim wyrównasz, wgraj brakujące 2026-01-10 … 2026-02-28" |
+
+Domyka się to logicznie: **luka blokuje wyłącznie tworzenie korekty, a korekta istnieje tylko przy
+niezerowej różnicy** — więc fałszywy alarm znika sam. Jedno zastrzeżenie, którego nie ukrywamy:
+różnica zero **nie dowodzi**, że w luce nie było transakcji (mogło być `+100` i `−100`), dlatego w
+drugim wierszu nadal informujemy — dla raportów miesięcznych ta luka ma znaczenie, choć dla salda nie.
+
+Import wierszy z pliku **nigdy** nie jest blokowany, w żadnym z czterech przypadków.
+
+#### Przykład na naszych danych, w tym luka, której bym nie wymyślił
+
+Trzy wgrania do cash flow Pekao, `startPeriod = 2025-01`:
+
+| sesja | okres wyciągu | wierszy |
+|---|---|---|
+| A | 2025-01-11 … 2025-11-30 | 716 |
+| B | 2025-12-01 … 2025-12-31 | 61 |
+| C | 2026-01-01 … 2026-01-09 | 14 |
+
+Scalone pokrycie: **2025-01-11 … 2026-01-09**. A luka:
+**2025-01-01 … 2025-01-10** — dziesięć dni, bo cash flow deklaruje `startPeriod` na styczeń, a
+pierwszy wyciąg zaczyna się jedenastego. To realna sytuacja z fixture'u i naturalny przypadek dla
+uznania z powodem `ACCOUNT_OPENED_LATER`; bez horyzontu liczonego od `startPeriod` byłaby niewidoczna.
+
+#### Przypadki brzegowe, rozstrzygnięte
+
+| przypadek | odpowiedź |
+|---|---|
+| wyciąg jednodniowy | zwykły przedział `[d, d]`, scala się normalnie |
+| dwa wyciągi w jednym miesiącu | dwa przedziały, scalane; miesiąc pokryty tylko gdy razem pokrywają wszystkie dni |
+| wyciąg przez granicę roku | przedział dni nie zna miesięcy; podział na bloki robi UI przy rysowaniu |
+| luka uznana, potem **częściowo** zapełniona | uznanie jest przypisane do przedziału — po zapełnieniu części zostaje na resztę, bez pytania od nowa |
+| sesja skompensowana | wypada z pokrycia, bo jej wiersze zniknęły z cash flow, i **luka wraca** |
+| pierwsze wgranie w ogóle | brak sesji → pokrycie puste, horyzont cały; luka jest, a blokada działa tą samą regułą |
+
+#### API
+
+```
+GET  /api/v2/ingestion/coverage?cashFlowId=CF10000001
+     → { ranges: [{from, to, source, rows, sessionId}],
+         gaps:   [{from, to, days, ack}],
+         highWaterMark: "2026-01-09" }
+
+POST /api/v2/ingestion/coverage/gaps/acknowledge
+     { cashFlowId, from, to, reason: ACCOUNT_OPENED_LATER, note }
+```
+
+Pierwsze jest też odpowiedzią na pytanie, którego dziś nie da się zadać: **jak daleko sięgają moje
+dane**.
+
+Uznanie jest **trwałe i ma powód** — inaczej system pytałby o to samo przy każdym wgraniu. Cztery
+powody wystarczają na realne przypadki: konto otwarte później, bank nie wyeksportuje tego okresu,
+miesiąc bez transakcji, inne.
+
+#### Zapełnienie luki to zwykłe wgranie
+
+I dopiero stąd płynie korzyść z trzymania pokrycia zamiast jednej daty: plik za styczeń, wgrany w
+marcu, przestaje być „plikiem starszym niż dane" i staje się **„ten plik zapełnia Twoją lukę
+1–31 stycznia"**. Po imporcie luka znika z osi, a wyrównanie się odblokowuje.
+
+#### Wysoka woda zostaje — jako kontrola krzyżowa
+
+Maksimum z `alreadyImported` nie idzie do kosza. Jeśli cash flow ma transakcje **poza** jakimkolwiek
+przedziałem pokrycia, weszły inną drogą: ręcznie, z reguł cyklicznych albo z wyrównania. To stan
+**legalny**, więc nie wolno go raportować jako luki — ale rozjazd między „co wgrano" a „co jest" to
+dokładnie ta informacja, która kiedyś wyjaśni dziwną różnicę salda.
+
 ### Trzy różne punkty odniesienia, i tylko jeden z nich to „dziś"
 
 Pytanie, które to wywołało: *czy nie porównywać z datą ostatniej wgranej transakcji zamiast z

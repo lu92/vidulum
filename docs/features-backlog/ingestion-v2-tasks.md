@@ -59,8 +59,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
 | `finished` | 5 | 0 | 0 | 0 | **5** |
-| `open` | 33 | 40 | 15 | 5 | **93** |
-| **razem** | 38 | 40 | 15 | 5 | **98** |
+| `open` | 33 | 40 | 16 | 5 | **94** |
+| **razem** | 38 | 40 | 16 | 5 | **99** |
 
 ## Gotowe do wzięcia
 
@@ -113,9 +113,10 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **S13** | P0 | `open` | Tabela przejść sagi jako dokument, nie tylko nazwy testów | S2 | — |
 | **S15** | P1 | `open` | Endpoint przerwania sesji | S5 | U7 |
 | **S16** | P1 | `open` | Jaki procent wartości pokryły zadane pytania | S8 | U4 |
-| **S17** | P1 | `open` | Tryb sesji: backfill czy dowgranie | S4 | S18, U8, X8 |
-| **S18** | P1 | `open` | Wyrównanie salda na koniec każdego wgrania | M13, S17, X9 | U9 |
+| **S17** | P1 | `open` | Tryb sesji: backfill czy dowgranie | S4 | S18, S20, U8, X8 |
+| **S18** | P1 | `open` | Wyrównanie salda na koniec każdego wgrania | S17, S20, X9 | U9 |
 | **S19** | P2 | `open` | Osiemnasta kolumna: saldo po operacji | K5 | — |
+| **S20** | P1 | `open` | Pokrycie danych: luki, nachodzenie, zapełnianie | S17 | S18, U10 |
 
 ### M — Magazyn wierszy
 
@@ -123,7 +124,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 |---|---|---|---|---|---|
 | **M1** | P0 | `open` | Kontrakt magazynu wierszy, tylko do czytania | K7 | L1, M2, Z1 |
 | **M2** | P0 | `open` | Encja wiersza, indeksy, TTL, cleaner | M1 | M3, M5, S11, T8, W6, Z2 |
-| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, M13, T1, T5, U3 |
+| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, T1, T5, U3 |
 | **M4** | P0 | `open` | Grupowanie wierszy i udział w wartości | K11, M3 | M12, Z4 |
 | **M5** | P0 | `open` | Zastosowanie rozstrzygnięcia, oznaczenie importu, kasowanie | K8, M2 | W2 |
 | **M6** | P1 | `open` | Chunkowanie komendy walidacji | M3 | T9 |
@@ -131,7 +132,6 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **M8** | P0 | `open` | Wyciąg musi należeć do tego cash flow | M3, X7 | — |
 | **M9** | P2 | `open` | Która data rządzi miesiącem transakcji | M3 | — |
 | **M12** | P1 | `open` | Autoryzacja, storno i rozliczenie to jedna płatność | M4 | — |
-| **M13** | P1 | `open` | Wysoka woda: luka, nachodzenie, stary plik | M3 | S18 |
 
 ### Z — Zapis do cash flow
 
@@ -202,11 +202,12 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **U2** | P1 | `open` | Warstwa pollingu i jedno źródło stanu | S5 | U3, U4, U5, U6, U7 |
 | **U3** | P1 | `open` | Ekran przetwarzania z krokami i odrzutami | M3, U2 | — |
 | **U4** | P1 | `open` | Ekran decyzji: jeden ekran, jedno żądanie | S9, S16, U2 | — |
-| **U5** | P1 | `open` | Ekran importu, sukcesu i atestacji | U2, Z2 | U8, U9 |
+| **U5** | P1 | `open` | Ekran importu, sukcesu i atestacji | U2, Z2 | U8, U9, U10 |
 | **U6** | P2 | `open` | Ekrany porażki, importu częściowego i kompensacji | U2, W2, W5 | — |
 | **U7** | P2 | `open` | Sesja zamknięta: TTL, przerwanie, wygaśnięcie | S10, S15, U2 | — |
 | **U8** | P2 | `open` | Ekrany trybu ciągłego | S17, U5 | — |
 | **U9** | P1 | `open` | Ekran potwierdzenia salda i wyrównania | S18, U5 | — |
+| **U10** | P2 | `open` | Oś pokrycia danych | S20, U5 | — |
 
 ### X — Wygaszenie v1 i obserwacja
 
@@ -667,7 +668,7 @@ Na wyciągu przelewowym 4 pytania to 90 % wartości, na kartowym 7 pytań to zna
 ### S17 · Tryb sesji: backfill czy dowgranie
 
 **PR:** `feat(ingestion): IngestionMode wyprowadzony z fazy cash flow`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S4 · **Odblokowuje:** S18, U8, X8
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S4 · **Odblokowuje:** S18, S20, U8, X8
 
 Cały projekt opisuje backfill, a po atestacji cash flow jest OPEN i kolejne wyciągi wgrywa się w innym reżimie: duplikaty są normą, pytań zwykle nie ma, kompensacja nie działa, a domknięciem jest atestacja miesiąca. Tryb jest FAKTEM o cash flow, nie preferencją — SETUP daje BACKFILL, OPEN daje ONGOING, CLOSED odmowę.
 
@@ -682,7 +683,7 @@ Cały projekt opisuje backfill, a po atestacji cash flow jest OPEN i kolejne wyc
 ### S18 · Wyrównanie salda na koniec każdego wgrania
 
 **PR:** `feat(ingestion): potwierdzenie salda po wgraniu i korekta wyrównująca`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M13, S17, X9 · **Odblokowuje:** U9
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S17, S20, X9 · **Odblokowuje:** U9
 
 Uogólnienie mechanizmu, który już istnieje dla importu historycznego: AttestHistoricalImportCommand ma createAdjustment, agregat tworzy cash change Balance Adjustment (CONFIRMED, Uncategorized, bankTransactionId=null), a projekcja dokłada go do miesiąca ACTIVE. Tutaj to samo, ale po KAŻDYM wgraniu — i to zastępuje atestację miesiąca jako mechanizm kontroli.
 
@@ -692,7 +693,7 @@ Uogólnienie mechanizmu, który już istnieje dla importu historycznego: AttestH
 - korekta nazwana okresem, nie Balance Adjustment: Wyrównanie salda za XII 2025 – II 2026
 - ekran różnicy pokazuje kandydatów na przyczynę: wiersze w obcej walucie, odrzucone, prowizoryczne
 - działa dla ownera logującego się raz na kwartał: jedna korekta na wgranie, w miesiącu bieżącym
-- WARUNEK (M13): przy wykrytej luce w danych wyrównanie jest ZABLOKOWANE — zmierzone, że pominięty wyciąg dałby korektę 1583,31 albo 2105,58 PLN, czyli cały brakujący miesiąc jako jedna transakcja zatwierdzona jednym kliknięciem
+- WARUNEK (S20): przy wykrytej luce w danych wyrównanie jest ZABLOKOWANE — zmierzone, że pominięty wyciąg dałby korektę 1583,31 albo 2105,58 PLN, czyli cały brakujący miesiąc jako jedna transakcja zatwierdzona jednym kliknięciem
 
 **Pliki:** `vidulum-app-ingestion/ingestion-conductor/`, `vidulum-app-cashflow/cashflow/`
 **Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
@@ -711,6 +712,29 @@ Wyciąg Nest nosi kolumnę Saldo po operacji, a jej ostatnia wartość to 76 047
 - fixture kanoniczny Nest dostaje tę kolumnę, Pekao zostaje bez niej — i test to pinuje
 
 **Pliki:** `vidulum-app-ingestion/ingestion-canonical/`, `vidulum-cashflow-tests/src/test/resources/canonical/`
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
+
+### S20 · Pokrycie danych: luki, nachodzenie, zapełnianie
+
+**PR:** `feat(ingestion): pokrycie wyprowadzone z sesji, z lukami i ich uznawaniem`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S17 · **Odblokowuje:** S18, U10
+
+Pokrycie jest twierdzeniem o tym, CO WGRANO, a nie o tym, jakie transakcje istnieją — i dlatego mieszka w conductorze, nie w stagingu. Pierwsza wersja (maksimum paidDate z alreadyImported) była za wąska: jedna data nie odróżnia miesiąca pustego od niewgranego i nie rozpoznaje pliku, który zapełnia znaną lukę. Czysta funkcja nad sesjami cash flow, bez nowej kolekcji.
+
+**Definicja ukończenia:**
+- Coverage(ranges, gaps) jako czysta funkcja nad sesjami IMPORTED i PARTIALLY_IMPORTED, skompensowane wypadają
+- przedział z parametrów wgrania (owner wybrał zakres w bankowości), potem z metadanych wyciągu (Nest je ma, Pekao nie), na końcu z min/max wierszy jako DERIVED_FROM_ROWS
+- miesiąc pokryty wyciągiem o ZERO wierszach jest pokryty, nie jest luką — tego wysoka woda nie umie
+- granulacja DNI, nie miesięcy: przedziały stykające się dniem scalają się, a dziura 10-14 stycznia to pięć dni prawdziwych transakcji
+- luka blokuje wyrównanie TYLKO gdy różnica salda jest niezerowa — przy zgodnym saldzie nie ma korekty do zablokowania, więc fałszywy alarm znika sam
+- import wierszy nie jest blokowany w żadnym przypadku
+- horyzont liczony od startPeriod: pierwszy wyciąg Pekao zaczyna się 11 stycznia przy startPeriod 2025-01, więc 10 dni jest luką i prosi o uznanie ACCOUNT_OPENED_LATER
+- sesja skompensowana wypada z pokrycia i luka wraca
+- uznanie luki jest trwałe i ma powód (konto otwarte później, bank nie wyeksportuje, brak transakcji) — system nie pyta o to samo dwa razy
+- plik zapełniający lukę rozpoznany jako taki, nie jako plik starszy niż dane
+- wysoka woda z alreadyImported zostaje jako kontrola krzyżowa: transakcje poza pokryciem weszły inną drogą i to jest stan legalny
+
+**Pliki:** `vidulum-app-ingestion/ingestion-conductor/`
 **Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
 
 ### M1 · Kontrakt magazynu wierszy, tylko do czytania
@@ -744,7 +768,7 @@ IngestionRowEntity (original + validation + groupKey + resolution + importResult
 ### M3 · Walidacja wiersza w jednej, zamrożonej kolejności
 
 **PR:** `feat(ingestion): walidacja wierszy — duplikaty, okno importu, miesiące, przelewy własne`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, M7, M8, M9, M13, T1, T5, U3
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, M7, M8, M9, T1, T5, U3
 
 Duplikat po bankTransactionId, potem okno importu cashflow, i TYLKO jeśli przeszło — statusy miesięcy prognozy, żeby jedna zła data nie dała dwóch komunikatów. Plus wykrycie przelewu własnego po IBAN-ie i nadanie groupKey.
 
@@ -864,23 +888,6 @@ Zmierzone na wyciągu Pekao: 492 autoryzacje kartą, 43 rozliczenia i 45 storn, 
 
 **Pliki:** `vidulum-app-ingestion/ingestion-staging/`
 **Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
-
-### M13 · Wysoka woda: luka, nachodzenie, stary plik
-
-**PR:** `feat(ingestion): data ostatniej zaimportowanej transakcji jako punkt odniesienia pliku`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M3 · **Odblokowuje:** S18
-
-Projekt nie zna pojęcia wysokiej wody, a jest ona DARMOWA: alreadyImported, wołane raz na wgranie dla deduplikacji, zwraca ImportedTransaction z polem paidDate. Maksimum z tego daje trzy odpowiedzi, których dziś nie ma: czy plik ma lukę wobec danych, czy nachodzi, czy jest w całości starszy.
-
-**Definicja ukończenia:**
-- wysoka woda liczona z danych, które już mamy — zero dodatkowych żądań i zero nowych kolumn
-- luka: plik zaczyna się po wysokiej wodzie → coverage.gapBefore i BLOKADA wyrównania salda
-- nachodzenie prezentowane jako normalny wynik, nie ostrzeżenie
-- plik w całości starszy niż dane → pytanie, czy to właściwy plik, zamiast cichej serii duplikatów
-- sprawdzenie przyszłości ZOSTAJE przy zegarze: wysoka woda jest w przeszłości, a transakcja nowsza od niej to normalny przypadek
-
-**Pliki:** `vidulum-app-ingestion/ingestion-staging/`
-**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
 
 ### Z1 · Tworzenie kategorii jako osobny, nieprzemilczany krok
 
@@ -1464,7 +1471,7 @@ Do siedmiu pytań per grupa, każde z licznikiem, sumą, trzema próbkami, rekom
 ### U5 · Ekran importu, sukcesu i atestacji
 
 **PR:** `feat(ui): postęp importu i podsumowanie z oknem wycofania`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** U2, Z2 · **Odblokowuje:** U8, U9
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** U2, Z2 · **Odblokowuje:** U8, U9, U10
 
 Postęp jako stan sesji, nie jako długie żądanie — kartę można zamknąć. Podsumowanie pokazuje, co weszło ORAZ co pominięte i dlaczego, plus listę prowizorycznych. Atestacja musi powiedzieć wprost, że kończy okno wycofania.
 
@@ -1537,6 +1544,21 @@ Wyciąg nosi saldo → sprawdzenie bezgłośne, zero kliknięć. Nie nosi → je
 
 **Pliki:** `frontend`
 **Specyfikacja:** [12](ingestion-conductor-design/12-ui-flow.md)
+
+### U10 · Oś pokrycia danych
+
+**PR:** `feat(ui): widok pokrycia z lukami i ich uznawaniem`  
+**Priorytet:** P2 · **Status:** `open` · **Zależy od:** S20, U5 · **Odblokowuje:** —
+
+Miesiące jako bloki: pokryty, luka, luka uznana. Odpowiada na pytanie, którego dziś nie da się zadać — jak daleko sięgają moje dane i czego brakuje. Przy luce ekran salda mówi, dlaczego wyrównanie jest niedostępne, i oferuje dwa wyjścia: wgraj brakujący wyciąg albo uznaj lukę z powodem.
+
+**Definicja ukończenia:**
+- oś pokazuje pokryte, brakujące i uznane okresy
+- plik zapełniający lukę zapowiedziany przed importem
+- uznanie luki wymaga wybrania powodu, nie samego kliknięcia OK
+
+**Pliki:** `frontend`
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
 
 ### X1 · recategorize: dziś NIE MA jak poprawić kategorii importu
 
@@ -1937,7 +1959,6 @@ flowchart LR
     M8["M8 Wyciąg musi należeć do tego cash flow"]:::p0
     M9["M9 Która data rządzi miesiącem transakcji"]:::p2
     M12["M12 Autoryzacja, storno i rozliczenie to…"]:::p1
-    M13["M13 Wysoka woda: luka, nachodzenie, stary…"]:::p1
     R1["R1 Moduł rozstrzygania i trwałe mapowania"]:::p1
     R2["R2 CategoryLadder: sześć priorytetów w j…"]:::p1
     R3["R3 Przebieg pierwszy: darmowa drabina be…"]:::p1
@@ -1966,6 +1987,7 @@ flowchart LR
     S17["S17 Tryb sesji: backfill czy dowgranie"]:::p1
     S18["S18 Wyrównanie salda na koniec każdego wg…"]:::p1
     S19["S19 Osiemnasta kolumna: saldo po operacji"]:::p2
+    S20["S20 Pokrycie danych: luki, nachodzenie, z…"]:::p1
     T1["T1 Moduł testów integracyjnych i jego ba…"]:::p0
     T2["T2 Reguły architektoniczne rodziny, zero…"]:::p0
     T3["T3 Przepływ udany: AUTOPILOT na 402 wier…"]:::p0
@@ -1987,6 +2009,7 @@ flowchart LR
     U7["U7 Sesja zamknięta: TTL, przerwanie, wyg…"]:::p2
     U8["U8 Ekrany trybu ciągłego"]:::p2
     U9["U9 Ekran potwierdzenia salda i wyrównania"]:::p1
+    U10["U10 Oś pokrycia danych"]:::p2
     W1["W1 Ponowienia, backoff i rozróżnienie FA…"]:::p2
     W2["W2 Łańcuch kompensacji per faza"]:::p2
     W3["W3 Odzysk po awarii: krok bez odpowiedzi"]:::p2
@@ -2046,7 +2069,6 @@ flowchart LR
     X7 --> M8
     M3 --> M9
     M4 --> M12
-    M3 --> M13
     K7 --> R1
     K8 --> R2
     R1 --> R2
@@ -2084,10 +2106,11 @@ flowchart LR
     S5 --> S15
     S8 --> S16
     S4 --> S17
-    M13 --> S18
     S17 --> S18
+    S20 --> S18
     X9 --> S18
     K5 --> S19
+    S17 --> S20
     K12 --> T1
     M3 --> T1
     S12 --> T1
@@ -2138,6 +2161,8 @@ flowchart LR
     U5 --> U8
     S18 --> U9
     U5 --> U9
+    S20 --> U10
+    U5 --> U10
     S6 --> W1
     M5 --> W2
     R7 --> W2
