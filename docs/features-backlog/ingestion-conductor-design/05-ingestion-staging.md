@@ -150,6 +150,10 @@ którą dzisiejszy `StageTransactionsCommandHandler` ma i którą trzeba przenie
 |---|---|
 | `shouldStoreEveryRowWithValidationAndGroup` | `ValidateRowsCommand(402)` → 402 dokumenty; losowy wiersz asercją **całoobiektową** przez konstruktor `StagedRowView` |
 | `shouldReplyWithCountsAndGroups` | → `RowsValidated(total=402, valid=381, duplicate=15, rejected=6, groups=38)`, asercja całoobiektowa |
+| `shouldDeriveTheHighWaterMarkFromAlreadyImported` | `alreadyImported` zwraca `ImportedTransaction` z `paidDate` → maksimum policzone **bez dodatkowego żądania**; pusty cash flow → brak wysokiej wody, zero odmów |
+| `shouldReportAGapWhenTheFileStartsAfterTheHighWaterMark` | wysoka woda 31 XII, plik od 1 II → `coverage.gapBefore` wypełnione; wyrównanie salda **zablokowane**, dopóki owner nie potwierdzi świadomie |
+| `shouldReportOverlapWithoutTreatingItAsAProblem` | wysoka woda 31 XII, plik od 1 XII → nachodzenie policzone, status sesji bez ostrzeżenia |
+| `shouldFlagAFileEntirelyOlderThanTheData` | cały plik starszy niż wysoka woda → ostrzeżenie „na pewno ten plik?", a nie cicha seria duplikatów |
 | `shouldAskExactlyFourExternalQuestions` | atrapy liczące wywołania → `skeletonOf` 1×, `monthStatusesOf` 1×, `alreadyImported` 1×, profil 1× na **cały** batch 402 wierszy |
 | `shouldHandleChunkedCommand` | 3 chunki po 150 wierszy → jedna odpowiedź po ostatnim, 402 dokumenty, zero duplikatów |
 | `shouldBeIdempotentOnRetry` | ta sama komenda z tym samym `commandId` dwa razy → 402 dokumenty, nie 804 |

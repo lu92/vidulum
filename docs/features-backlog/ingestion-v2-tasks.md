@@ -59,8 +59,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
 | `finished` | 5 | 0 | 0 | 0 | **5** |
-| `open` | 33 | 39 | 15 | 5 | **92** |
-| **razem** | 38 | 39 | 15 | 5 | **97** |
+| `open` | 33 | 40 | 15 | 5 | **93** |
+| **razem** | 38 | 40 | 15 | 5 | **98** |
 
 ## Gotowe do wzięcia
 
@@ -114,7 +114,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **S15** | P1 | `open` | Endpoint przerwania sesji | S5 | U7 |
 | **S16** | P1 | `open` | Jaki procent wartości pokryły zadane pytania | S8 | U4 |
 | **S17** | P1 | `open` | Tryb sesji: backfill czy dowgranie | S4 | S18, U8, X8 |
-| **S18** | P1 | `open` | Wyrównanie salda na koniec każdego wgrania | S17, X9 | U9 |
+| **S18** | P1 | `open` | Wyrównanie salda na koniec każdego wgrania | M13, S17, X9 | U9 |
 | **S19** | P2 | `open` | Osiemnasta kolumna: saldo po operacji | K5 | — |
 
 ### M — Magazyn wierszy
@@ -123,7 +123,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 |---|---|---|---|---|---|
 | **M1** | P0 | `open` | Kontrakt magazynu wierszy, tylko do czytania | K7 | L1, M2, Z1 |
 | **M2** | P0 | `open` | Encja wiersza, indeksy, TTL, cleaner | M1 | M3, M5, S11, T8, W6, Z2 |
-| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, T1, T5, U3 |
+| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, M13, T1, T5, U3 |
 | **M4** | P0 | `open` | Grupowanie wierszy i udział w wartości | K11, M3 | M12, Z4 |
 | **M5** | P0 | `open` | Zastosowanie rozstrzygnięcia, oznaczenie importu, kasowanie | K8, M2 | W2 |
 | **M6** | P1 | `open` | Chunkowanie komendy walidacji | M3 | T9 |
@@ -131,6 +131,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **M8** | P0 | `open` | Wyciąg musi należeć do tego cash flow | M3, X7 | — |
 | **M9** | P2 | `open` | Która data rządzi miesiącem transakcji | M3 | — |
 | **M12** | P1 | `open` | Autoryzacja, storno i rozliczenie to jedna płatność | M4 | — |
+| **M13** | P1 | `open` | Wysoka woda: luka, nachodzenie, stary plik | M3 | S18 |
 
 ### Z — Zapis do cash flow
 
@@ -681,7 +682,7 @@ Cały projekt opisuje backfill, a po atestacji cash flow jest OPEN i kolejne wyc
 ### S18 · Wyrównanie salda na koniec każdego wgrania
 
 **PR:** `feat(ingestion): potwierdzenie salda po wgraniu i korekta wyrównująca`  
-**Priorytet:** P1 · **Status:** `open` · **Zależy od:** S17, X9 · **Odblokowuje:** U9
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M13, S17, X9 · **Odblokowuje:** U9
 
 Uogólnienie mechanizmu, który już istnieje dla importu historycznego: AttestHistoricalImportCommand ma createAdjustment, agregat tworzy cash change Balance Adjustment (CONFIRMED, Uncategorized, bankTransactionId=null), a projekcja dokłada go do miesiąca ACTIVE. Tutaj to samo, ale po KAŻDYM wgraniu — i to zastępuje atestację miesiąca jako mechanizm kontroli.
 
@@ -691,6 +692,7 @@ Uogólnienie mechanizmu, który już istnieje dla importu historycznego: AttestH
 - korekta nazwana okresem, nie Balance Adjustment: Wyrównanie salda za XII 2025 – II 2026
 - ekran różnicy pokazuje kandydatów na przyczynę: wiersze w obcej walucie, odrzucone, prowizoryczne
 - działa dla ownera logującego się raz na kwartał: jedna korekta na wgranie, w miesiącu bieżącym
+- WARUNEK (M13): przy wykrytej luce w danych wyrównanie jest ZABLOKOWANE — zmierzone, że pominięty wyciąg dałby korektę 1583,31 albo 2105,58 PLN, czyli cały brakujący miesiąc jako jedna transakcja zatwierdzona jednym kliknięciem
 
 **Pliki:** `vidulum-app-ingestion/ingestion-conductor/`, `vidulum-app-cashflow/cashflow/`
 **Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
@@ -742,7 +744,7 @@ IngestionRowEntity (original + validation + groupKey + resolution + importResult
 ### M3 · Walidacja wiersza w jednej, zamrożonej kolejności
 
 **PR:** `feat(ingestion): walidacja wierszy — duplikaty, okno importu, miesiące, przelewy własne`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, M7, M8, M9, T1, T5, U3
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, M7, M8, M9, M13, T1, T5, U3
 
 Duplikat po bankTransactionId, potem okno importu cashflow, i TYLKO jeśli przeszło — statusy miesięcy prognozy, żeby jedna zła data nie dała dwóch komunikatów. Plus wykrycie przelewu własnego po IBAN-ie i nadanie groupKey.
 
@@ -862,6 +864,23 @@ Zmierzone na wyciągu Pekao: 492 autoryzacje kartą, 43 rozliczenia i 45 storn, 
 
 **Pliki:** `vidulum-app-ingestion/ingestion-staging/`
 **Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
+
+### M13 · Wysoka woda: luka, nachodzenie, stary plik
+
+**PR:** `feat(ingestion): data ostatniej zaimportowanej transakcji jako punkt odniesienia pliku`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M3 · **Odblokowuje:** S18
+
+Projekt nie zna pojęcia wysokiej wody, a jest ona DARMOWA: alreadyImported, wołane raz na wgranie dla deduplikacji, zwraca ImportedTransaction z polem paidDate. Maksimum z tego daje trzy odpowiedzi, których dziś nie ma: czy plik ma lukę wobec danych, czy nachodzi, czy jest w całości starszy.
+
+**Definicja ukończenia:**
+- wysoka woda liczona z danych, które już mamy — zero dodatkowych żądań i zero nowych kolumn
+- luka: plik zaczyna się po wysokiej wodzie → coverage.gapBefore i BLOKADA wyrównania salda
+- nachodzenie prezentowane jako normalny wynik, nie ostrzeżenie
+- plik w całości starszy niż dane → pytanie, czy to właściwy plik, zamiast cichej serii duplikatów
+- sprawdzenie przyszłości ZOSTAJE przy zegarze: wysoka woda jest w przeszłości, a transakcja nowsza od niej to normalny przypadek
+
+**Pliki:** `vidulum-app-ingestion/ingestion-staging/`
+**Specyfikacja:** [13](ingestion-conductor-design/13-import-ciagly.md)
 
 ### Z1 · Tworzenie kategorii jako osobny, nieprzemilczany krok
 
@@ -1918,6 +1937,7 @@ flowchart LR
     M8["M8 Wyciąg musi należeć do tego cash flow"]:::p0
     M9["M9 Która data rządzi miesiącem transakcji"]:::p2
     M12["M12 Autoryzacja, storno i rozliczenie to…"]:::p1
+    M13["M13 Wysoka woda: luka, nachodzenie, stary…"]:::p1
     R1["R1 Moduł rozstrzygania i trwałe mapowania"]:::p1
     R2["R2 CategoryLadder: sześć priorytetów w j…"]:::p1
     R3["R3 Przebieg pierwszy: darmowa drabina be…"]:::p1
@@ -2026,6 +2046,7 @@ flowchart LR
     X7 --> M8
     M3 --> M9
     M4 --> M12
+    M3 --> M13
     K7 --> R1
     K8 --> R2
     R1 --> R2
@@ -2063,6 +2084,7 @@ flowchart LR
     S5 --> S15
     S8 --> S16
     S4 --> S17
+    M13 --> S18
     S17 --> S18
     X9 --> S18
     K5 --> S19

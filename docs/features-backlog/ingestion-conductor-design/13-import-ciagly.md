@@ -429,6 +429,52 @@ Drugi koszt jest wprost proporcjonalny do rzadkości logowania: im dłuższa prz
 pochłania jedna korekta i tym trudniej powiedzieć, **co** ją spowodowało. Dlatego ekran różnicy
 pokazuje kandydatów (wiersze w obcej walucie, odrzucone, prowizoryczne) — a nie samą liczbę.
 
+### Warunek, bez którego wyrównanie jest niebezpieczne: wykrycie luki
+
+**Wyrównanie salda bez wiedzy o lukach w danych pochłonie cały brakujący miesiąc jako jedną
+korektę** — i owner zatwierdzi to jednym kliknięciem, nie wiedząc, co właśnie zaakceptował.
+
+Zmierzone na fixture Pekao: gdyby owner pominął jeden wyciąg, różnica salda wyniosłaby
+**−1 583,31 PLN** dla stycznia (12 transakcji) albo **+2 105,58 PLN** dla grudnia (58 transakcji).
+Ekran pokazałby jedną liczbę i przycisk „Utwórz wyrównanie", a cash flow dostałby jedną transakcję
+zamiast pięćdziesięciu ośmiu — z poprawną sumą i **bezużytecznym** rozbiciem na kategorie.
+
+Dlatego kontrola salda wymaga **wysokiej wody**: daty ostatniej zaimportowanej transakcji w tym cash
+flow. I to jest darmowe — `alreadyImported`, które staging woła raz na wgranie dla deduplikacji,
+zwraca `ImportedTransaction` z polem **`paidDate`**, więc maksimum liczy się z danych, które już mamy.
+Bez dodatkowego żądania, bez nowej kolumny, bez zmiany kontraktu.
+
+Co z tego wynika dla przepływu:
+
+| sytuacja | co widzi owner **zanim** cokolwiek zatwierdzi |
+|---|---|
+| plik zaczyna się po wysokiej wodzie | **„Masz dane do 31 XII, ten plik zaczyna się 1 II — brakuje stycznia."** Wyrównanie jest **zablokowane**, dopóki owner nie wgra brakującego wyciągu albo nie potwierdzi świadomie, że go nie ma |
+| plik nachodzi na wysoką wodę | „61 z 75 wierszy już masz" — i to jest normalny wynik, nie ostrzeżenie |
+| cały plik starszy niż wysoka woda | „Ten plik jest w całości starszy niż Twoje dane — na pewno ten?" Dziś taki wyciąg wchodzi jako same duplikaty i nikt nie pyta |
+
+### Trzy różne punkty odniesienia, i tylko jeden z nich to „dziś"
+
+Pytanie, które to wywołało: *czy nie porównywać z datą ostatniej wgranej transakcji zamiast z
+obecnym dniem?* Odpowiedź: **to trzy osobne pytania i każde ma inny punkt odniesienia** — mieszanie
+ich byłoby błędem.
+
+| punkt odniesienia | odpowiada na pytanie | używany dziś |
+|---|---|---|
+| **zegar** (`now`) | czy ta transakcja już się wydarzyła | **tak** — jedyne użycie zegara w walidacji: `paidDate.isAfter(now)` → `IMPORT_DATE_IN_FUTURE` |
+| **wysoka woda** (max `paidDate` w cash flow) | czy ten plik ma lukę, nachodzi, czy jest stary | **nie — brak w projekcie** |
+| **zakres pliku** (max data w pliku) | czy w samym pliku jest data odstająca | **nie — brak** |
+
+**Czego nie wolno zrobić:** zastąpić zegara wysoką wodą w sprawdzeniu przyszłości. Wysoka woda jest
+z definicji w przeszłości, a transakcja nowsza od niej to **normalny przypadek** — na tym polega
+wgrywanie kolejnego wyciągu. Sprawdzenie przyszłości zostaje przy zegarze, bo pieniądze nie mogą
+ruszyć się w przyszłości, i to jest reguła o świecie, nie o naszych danych.
+
+**Co warto zapisać jako znaną własność:** to jedno sprawdzenie czyni walidację zależną od **momentu
+wgrania** — ten sam plik z wierszem o dacie jutrzejszej (bank potrafi nadać przyszłą datę waluty)
+zostanie odrzucony dziś i przyjęty pojutrze. Na obu zmierzonych wyciągach **nie ma ani jednego
+wiersza z przyszłą datą**, więc nie dorabiamy tolerancji na zapas — ale gdy pierwszy taki plik się
+pojawi, to jest miejsce, które trzeba obejrzeć, a nie zgadywać.
+
 ### Co ta propozycja **usuwa** z planu
 
 | było | po |
