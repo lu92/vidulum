@@ -1248,10 +1248,10 @@ odpowiednio `AUTOPILOT` i kompensacja selektywna. Obie mają już pokrycie w dom
 (`CashChangeEditedEvent` nosi `categoryName`, `ImportRolledBackEvent` istnieje) — więc to
 rozszerzenie kontraktu, nie projekt w agregacie.
 
-#### 25.2 Cztery luki z drugiego wyciągu — Pekao, 791 wierszy, kartowy
+#### 25.2 Pięć luk z drugiego wyciągu — Pekao, 791 wierszy, kartowy
 
 Wszystko wyżej było mierzone na Nest: 402 wiersze, przelewowy, jedna waluta, cztery wartości
-kategorii banku. Pekao jest innym kształtem danych i pokazał cztery rzeczy, których jeden bank
+kategorii banku. Pekao jest innym kształtem danych i pokazał **pięć** rzeczy, których jeden bank
 pokazać nie mógł. Poniżej wnioski; **mechanizmy, dowody i scenariusze są w
 [`11-znaleziska-z-danych.md`](ingestion-conductor-design/11-znaleziska-z-danych.md)**, a pomiary w
 [README fixture'u](../../vidulum-cashflow-tests/src/test/resources/canonical/README.md).
@@ -1290,8 +1290,18 @@ Kontrakt silnika już zna to pojęcie (`BankCategoryFallback` pomija generyczne)
 Zadanie **R9** — plus **R10**, bo plan kategorii rośnie z 4 pozycji (Nest) do 38 (Pekao), z czego 11
 to grupy po 1–2 wiersze, a kategorie zostają nawet po wycofaniu importu.
 
-**Wniosek metodyczny:** cztery z siedmiu zadań z tej rundy to rzeczy, których **nie dało się
-zobaczyć na jednym banku** — defekt w shared-kernelu, brakujące pole w kontrakcie cashflow i dwie
+**(e) Opłata banku nie ma kontrahenta, a `name` jest polem wymaganym.** W surowym Pekao **7 z 791**
+wierszy ma pustą kolumnę `Nadawca / Odbiorca`, i wszystkie siedem to prowizje własne banku
+(`PROWIZJE AUT.` ×6, `POBRANIE ZALEGŁEJ OPŁATY` ×1). Kolumna jest pusta **zgodnie z prawdą** —
+kontrahentem jest sam bank — więc taki wiersz będzie w każdym wyciągu z każdego banku, i jest stanem
+normalnym, nie brudnymi danymi. A pusta nazwa jest potem **kluczem grupowania** w klasyfikacji, więc
+zebrałaby wszystkie opłaty w jedną grupę. Zadanie **M14**: łańcuch `kontrahent → tytuł → typ
+operacji`. Pomiar mówi, że wystarcza — wszystkie 7 wierszy mają niepusty tytuł, a fixture kanoniczny
+ma **0 pustych `name`** na 791 wierszy. Nie jest to to samo co (b): tam kontrahent **jest**, tylko
+nieprawdziwy jako merchant; tu go **nie ma i nie powinno być** — wydobywanie kontra uzupełnianie.
+
+**Wniosek metodyczny:** pięć z ośmiu zadań z tej rundy to rzeczy, których **nie dało się
+zobaczyć na jednym banku** — defekt w shared-kernelu, brakujące pole w kontrakcie cashflow i trzy
 reguły walidacji. Trzeci bank (inny kraj, inna waluta główna) jest jedynym obszarem, w którym nadal
 nie ma żadnych danych pomiarowych.
 

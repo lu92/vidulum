@@ -1,13 +1,13 @@
 # 11 · Znaleziska z danych — co pokazał drugi wyciąg bankowy
 
-**Data:** 2026-10-24 · **Status:** zmierzone, siedem zadań otwartych ·
+**Data:** 2026-10-24 (uzupełnione 2026-10-25) · **Status:** zmierzone, X7 zrobione, siedem otwartych ·
 **Źródło pomiarów:** [fixture kanoniczny](../../../vidulum-cashflow-tests/src/test/resources/canonical/README.md)
-(Nest 402 wiersze, Pekao 791) · **Zadania:** M7, M8, M9, K15, X7, R9, R10 w
+(Nest 402 wiersze, Pekao 791) · **Zadania:** M7, M8, M9, M14, K15, X7, R9, R10 w
 [tablicy](../ingestion-v2-tasks.md)
 
 Cały projekt ingestion v2 był mierzony na jednym banku: Nest, 402 wiersze, wyciąg **przelewowy**,
 jedna waluta, cztery wartości kategorii banku. Pekao jest innym kształtem danych — 791 wierszy,
-**kartowy**, 36 kategorii semantycznych, dwie waluty — i pokazał cztery rzeczy, których jeden bank
+**kartowy**, 36 kategorii semantycznych, dwie waluty — i pokazał **pięć** rzeczy, których jeden bank
 pokazać nie mógł. Dwie z nich leżą **poza** rodziną ingestion: w `vidulum-shared-kernel` i w
 kontrakcie `cashflow-api`.
 
@@ -155,7 +155,7 @@ public record CashFlowSkeletonView(
         YearMonth activePeriod,
         YearMonth startPeriod,
         BankAccountId bankAccount,          // NOWE
-        String currency,                    // NOWE — waluta rachunku, nie saldo
+        Currency currency,                  // NOWE — waluta rachunku, nie saldo
         List<CategoryNodeView> inflowCategories,
         List<CategoryNodeView> outflowCategories) {
 
@@ -168,8 +168,19 @@ public record CashFlowSkeletonView(
      * Czy ta kwota w ogóle może wejść do tego cash flow. Pusty Optional = może.
      */
     public Optional<BusinessException> refusalFor(Money money) { … }
+
+    /** refusalFor dla wołających, którym wystarczy werdykt. */
+    public boolean accepts(Money money) { … }
 }
 ```
+
+**Typ waluty to `Currency`, nie `String`.** Pierwszy szkic tej sekcji mówił `String`, i to był ten
+sam błąd, przed którym broni §„Don't let a port invent a poorer type" w CLAUDE.md: oba końce trzymają
+`Currency`, więc kontrakt pośrodku nie ma powodu schodzić do tekstu. **Wiersz kanoniczny zostaje
+przy `String` i to nie jest niespójność**: tam waluta jest kolumną CSV, czyli granicą tekstową — tą
+samą regułą, którą `TransactionClassification` przekracza granicę jako słowo, a nie jako typ Javy
+(CLAUDE.md, „Measure how a value crosses a boundary"). Porównanie dzieje się w stagingu, gdzie
+`String` z wiersza spotyka `Currency` ze skeletonu — i to staging jest miejscem konwersji.
 
 #### Dlaczego `BankAccountId`, a nie `BankAccountNumber` cashflow
 
@@ -234,6 +245,25 @@ umarła na NPE, podczas gdy **każdy zapis nadal odpowiadał 2xx**.
 Pinuje to: `CashFlowSkeletonViewTest` (wartości i `isSameAccount` z czterema postaciami numeru z
 tabeli wyżej), `CashFlowSkeletonViewComponentTest` (że payload nie rośnie z historią) oraz
 `BootstrapWiresEveryModuleTest` (że bean jest dokładnie jeden i nie jest tym po HTTP).
+
+#### Czego nauczyła implementacja (X7 zrobione, 45 przypadków, reaktor 1094 zielone)
+
+Trzy rzeczy wyszły dopiero przy pisaniu kodu i żadna nie była w projekcie:
+
+1. **Puste `Currency` jest konstruowalne.** `Currency` to klasa Lomboka z konstruktorem
+   bezargumentowym, więc `new Currency()` przechodzi, a `currency.getId()` jest wtedy `null`. Bez
+   `Objects.requireNonNull(currency.getId(), "currency id is required")` **każda odmowa waluty
+   wysypałaby się na NPE w `equalsIgnoreCase`** — czyli walidacja, która ma chronić import, byłaby
+   jego nową przyczyną awarii. Sprawdzenie samego `currency != null` tego nie łapie.
+2. **Prefiks kraju wolno urwać tylko wtedy, gdy ma go dokładnie jedna strona.** Wyciąg Nest pisze
+   NRB bez prefiksu, a owner wpisuje IBAN z `PL`, więc porównanie musi tolerować brak prefiksu. Ale
+   urywanie go **zawsze** zrównałoby `PL61…` z `DE61…` — ten sam numer krajowy w innym kraju. Stąd
+   reguła warunkowa i test `shouldNotCollapseTwoCountriesWhenBothCarryAPrefix`.
+3. **Transport HTTP musi czytać IBAN jako tekst.** `HttpCashFlowModuleApi` dostał własne rekordy
+   odpowiedzi (`BankAccountResponse`/`BankAccountNumberResponse`/`IbanResponse`
+   z `@JsonIgnoreProperties`), bo deserializacja do domenowego `BankAccountNumber`
+   **re-walidowałaby IBAN przez iban4j przy każdej odpowiedzi** — dokładnie wpadka opisana w
+   CLAUDE.md przy `OwnedAccountNumber`.
 
 ### Jak ma działać walidacja
 
@@ -338,12 +368,64 @@ które mogły już zostać użyte (§13 projektu). Stąd P2, a nie P0, i stąd p
 
 ---
 
+## 5 · Nazwa: opłata nie ma kontrahenta, a `name` jest polem wymaganym
+
+**Zadanie: M14** (łańcuch zapasowy dla `name` w parserze kanonicznym)
+
+### Pomiar
+
+```bash
+# kolumna 'Nadawca / Odbiorca' w surowym wyciągu Pekao
+pustych: 7 z 791
+```
+
+Wszystkie siedem to **opłaty własne banku**, nie braki w danych:
+
+| data | kwota | typ operacji | tytuł |
+|---|---|---|---|
+| 2025-10-03 | −5,00 PLN | `PROWIZJE AUT.` | Opłata za polecenie przelewu krajowego w złotych |
+| 2025-07-16 | −3,00 PLN | `PROWIZJE AUT.` | Opłata za obsługę karty MasterCard Debit*6302 |
+| 2025-06-18 | −3,00 PLN | `PROWIZJE AUT.` | — jak wyżej |
+| 2025-05-23 | −3,00 PLN | `PROWIZJE AUT.` | — jak wyżej |
+| 2025-05-07 | −21,00 PLN | `POBRANIE ZALEGŁEJ OPŁATY` | POBRANIE ZALEGŁEJ OPŁATY |
+| 2025-04-03 | −5,00 PLN | `PROWIZJE AUT.` | Opłata za polecenie przelewu krajowego w złotych |
+| 2025-03-03 | −5,00 PLN | `PROWIZJE AUT.` | Opłata za polecenie przelewu krajowego w złotych |
+
+### Mechanizm — i dlaczego to nie jest brudne dane
+
+**Kontrahentem opłaty jest sam bank**, więc kolumna jest pusta **zgodnie z prawdą**, a nie przez
+błąd eksportu. Każdy wyciąg z każdego banku będzie miał takie wiersze, bo każdy bank pobiera własne
+prowizje. To znaczy, że pusty kontrahent jest **stanem normalnym**, który parser musi obsłużyć
+regułą, a nie odrzuceniem.
+
+Tymczasem `name` w formacie kanonicznym jest **polem wymaganym** (`01-ingestion-canonical.md`), więc
+bez reguły zapasowej te siedem wierszy albo wywaliłoby parsowanie, albo weszłoby z pustą nazwą — a
+pusta nazwa jest potem kluczem grupowania w klasyfikacji, czyli zebrałaby **wszystkie** opłaty
+różnych banków w jedną grupę.
+
+### Reguła do zapisania
+
+Łańcuch zapasowy dla `name`: **kontrahent → tytuł → typ operacji**, pierwszy niepusty wygrywa.
+
+Pomiar mówi, że ten łańcuch nigdy nie dojdzie do końca pusty: **wszystkie 7 wierszy mają niepusty
+`Tytułem`**, a w fixturze kanonicznym jest **0 pustych `name`** na 791 wierszy — czyli reguła, którą
+generator już stosuje, została właśnie zmierzona jako wystarczająca. Trzeci element łańcucha
+(`typ operacji`) zostaje mimo to, bo `POBRANIE ZALEGŁEJ OPŁATY` pokazuje, że tytuł potrafi być
+kopią typu, a nie opisem — więc istnieje bank, który zostawi oba puste.
+
+**Dlaczego to nie jest to samo co rozliczenia kartowe z §2.** Tam kontrahent **jest** (`BANK PEKAO
+S.A.`), tylko jest nieprawdziwy jako merchant, a prawdziwy siedzi w tytule po `WYKONANEJ:`. Tu
+kontrahenta **nie ma w ogóle i nie powinno być**. Pierwsze to wydobywanie, drugie to uzupełnianie —
+dwie różne reguły, które łatwo pomylić w jednym `if`.
+
+---
+
 ## Wniosek metodyczny
 
 | | |
 |---|---|
-| zadań z tej rundy | 7 |
-| takich, których **nie dało się zobaczyć na jednym banku** | **4** (M7, M8, M9, R9) |
+| zadań z tej rundy | 8 |
+| takich, których **nie dało się zobaczyć na jednym banku** | **5** (M7, M8, M9, R9, M14) |
 | leżących **poza** rodziną ingestion | **2** (K15 w shared-kernelu, X7 w `cashflow-api`) |
 | koszt | jeden plik wyciągu i pół godziny pomiarów |
 

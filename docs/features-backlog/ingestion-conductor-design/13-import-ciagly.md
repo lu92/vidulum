@@ -448,7 +448,7 @@ Co z tego wynika dla przepływu:
 
 | sytuacja | co widzi owner **zanim** cokolwiek zatwierdzi |
 |---|---|
-| plik zaczyna się po wysokiej wodzie | **„Masz dane do 31 XII, ten plik zaczyna się 1 II — brakuje stycznia."** Wyrównanie jest **zablokowane**, dopóki owner nie wgra brakującego wyciągu albo nie potwierdzi świadomie, że go nie ma |
+| plik zaczyna się po wysokiej wodzie | **„Masz dane do 31 XII, ten plik zaczyna się 1 II — brakuje stycznia."** Wyrównanie jest **zablokowane**, dopóki owner nie wgra brakującego wyciągu albo nie potwierdzi świadomie, że go nie ma — **ale tylko wtedy, gdy różnica salda jest niezerowa**, co doprecyzowuje macierz w §„Luka wiąże się z RÓŻNICĄ" niżej |
 | plik nachodzi na wysoką wodę | „61 z 75 wierszy już masz" — i to jest normalny wynik, nie ostrzeżenie |
 | cały plik starszy niż wysoka woda | „Ten plik jest w całości starszy niż Twoje dane — na pewno ten?" Dziś taki wyciąg wchodzi jako same duplikaty i nikt nie pyta |
 

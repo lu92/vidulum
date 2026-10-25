@@ -20,11 +20,11 @@ to, co czyni ten moduł słownikiem, a nie biblioteką.
 /** 17 kolumn, dokładnie jak je produkuje bank-data-adapter. */
 public record CanonicalRow(
         String bankTransactionId,      // opcjonalne; null → hash(date+amount+name) nadaje intake
-        String name,                   // WYMAGANE
+        String name,                   // WYMAGANE — łańcuch zapasowy w parserze, patrz M14
         String description,
         String bankCategory,
         BigDecimal amount,             // zawsze dodatnia; kierunek mówi type
-        String currency,
+        String currency,               // tekst CELOWO: to kolumna CSV, nie typ domenowy
         Type type,                     // WYMAGANE
         LocalDate operationDate,       // WYMAGANE
         LocalDate bookingDate,
@@ -104,6 +104,14 @@ definicja czyni odwzorowanie odpowiedzi silnika na grupy stratnym. Analogicznie
    `OriginalTransactionData` nosi `Money`, a `BankCsvRow` parę pól, więc konwersja żyje w trzech
    miejscach. Tu jest jedna, i to ona pilnuje skali (`1234.50` nie staje się `1234.5` — lekcja
    `BigDecimal.valueOf(double)` z CLAUDE.md).
+
+**Czego świadomie nie zmieniamy, żeby nikt tego nie „naprawił":** pole `currency` zostaje `String`,
+choć `CashFlowSkeletonView` po X7 nosi `Currency`. Powód jest ten sam, dla którego
+`TransactionClassification` przekracza granicę jako słowo: **wiersz kanoniczny jest kształtem
+kolumny CSV**, a kontraktem między adapterem a ingestion jest nazwa kolumny i wartość tekstowa.
+Konwersja na `Currency` należy do **stagingu** — tam `String` z wiersza spotyka `Currency` ze
+skeletonu, i tam zapada odmowa (**M7**). `money()` oddaje `Money`, więc konsument i tak nie dotyka
+tekstu.
 
 ## Scenariusze testowe — poziom unit, bez Springa
 

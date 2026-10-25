@@ -19,7 +19,7 @@ nie ma i gdzie to jest**.
 | 08 | [`08-ingestion-cashflow-writer.md`](08-ingestion-cashflow-writer.md) | `vidulum-ingestion-cashflow-writer` | **nie** | unit + component |
 | 09 | [`09-ingestion-tests.md`](09-ingestion-tests.md) | `vidulum-ingestion-tests` | nie (bez `src/main`) | integration + ArchUnit |
 | 10 | [`10-granice-artefaktow.md`](10-granice-artefaktow.md) | — | **audyt granic** zmierzony na dzisiejszym kodzie + potwierdzenie `/api/v2` | — |
-| 11 | [`11-znaleziska-z-danych.md`](11-znaleziska-z-danych.md) | — | **znaleziska z drugiego wyciągu bankowego**: mechanizmy, pomiary i scenariusze dla zadań M7, M8, M9, K15, X7, R9, R10 | — |
+| 11 | [`11-znaleziska-z-danych.md`](11-znaleziska-z-danych.md) | — | **znaleziska z drugiego wyciągu bankowego**: mechanizmy, pomiary i scenariusze dla zadań M7, M8, M9, M14, K15, X7, R9, R10 | — |
 | 13 | [`13-import-ciagly.md`](13-import-ciagly.md) | — | **wgrywanie kolejnych wyciągów po atestacji**: co cashflow już przewiduje, która blokada jest wyłączona przez brak endpointu, tryb `BACKFILL` vs `ONGOING` | S17, X8, X2, U8 |
 | 12 | [`12-ui-flow.md`](12-ui-flow.md) | — | **przepływ po stronie UI**: faza → ekran, dostępność endpointów, czego userowi nie wolno policzyć samemu, poprawa w liczbach. Mockupy: [`docs/design/ingestion-v2-ui-mockups.html`](../../design/ingestion-v2-ui-mockups.html) | ścieżka U |
 

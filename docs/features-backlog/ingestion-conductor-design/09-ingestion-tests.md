@@ -194,6 +194,7 @@ się pokazać testem komponentowym**, bo każdy zależy od tego, co atestacja zr
 | `shouldDistinguishACoveredEmptyMonthFromAGap` | wgranie wyciągu za styczeń z **zerem wierszy** → styczeń jest **pokryty**, `gaps` puste; to jest przypadek, którego wysoka woda nie odróżnia |
 | `shouldRecogniseAFileThatFillsAKnownGap` | przy znanej luce styczniowej wgranie pliku za styczeń → komunikat „zapełnia lukę", a po imporcie `gaps` puste i wyrównanie odblokowane |
 | `shouldStopNaggingAboutAnAcknowledgedGap` | luka uznana z powodem `ACCOUNT_OPENED_LATER` → kolejne wgrania **nie pytają o nią ponownie**, a wyrównanie działa |
+| `shouldFallBackToTheTitleWhenTheCounterpartyIsEmpty` | siedem wierszy opłat Pekao (`PROWIZJE AUT.`, `POBRANIE ZALEGŁEJ OPŁATY`) ma pustą kolumnę kontrahenta, bo kontrahentem jest bank → `name` bierze się z tytułu, **żaden wiersz nie wchodzi z pustą nazwą** i nie powstaje zbiorcza grupa „bez nazwy" w klasyfikacji (M14) |
 | `shouldNotReportManuallyEnteredTransactionsAsAGap` | transakcja dodana ręcznie poza pokryciem → `gaps` bez zmian; rozjazd widoczny jako kontrola krzyżowa, nie jako luka |
 | `shouldCollapseCardAuthorisationSettlementAndReversal` | 43 rozliczenia kartowe i 45 storn o identycznych kwotach → suma per merchant **bez podwójnego liczenia**: BADOO ma tyle transakcji, ile było zakupów, nie 94 wiersze; `valueShare` liczone po zwinięciu (**M12**) |
 

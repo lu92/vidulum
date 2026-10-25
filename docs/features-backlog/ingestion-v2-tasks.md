@@ -59,8 +59,8 @@ Przeliczane skryptem. Nie edytuj ręcznie.
 | | P0 | P1 | P2 | P3 | razem |
 |---|---|---|---|---|---|
 | `finished` | 5 | 0 | 0 | 0 | **5** |
-| `open` | 33 | 40 | 16 | 5 | **94** |
-| **razem** | 38 | 40 | 16 | 5 | **99** |
+| `open` | 33 | 41 | 16 | 5 | **95** |
+| **razem** | 38 | 41 | 16 | 5 | **100** |
 
 ## Gotowe do wzięcia
 
@@ -124,7 +124,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 |---|---|---|---|---|---|
 | **M1** | P0 | `open` | Kontrakt magazynu wierszy, tylko do czytania | K7 | L1, M2, Z1 |
 | **M2** | P0 | `open` | Encja wiersza, indeksy, TTL, cleaner | M1 | M3, M5, S11, T8, W6, Z2 |
-| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, T1, T5, U3 |
+| **M3** | P0 | `open` | Walidacja wiersza w jednej, zamrożonej kolejności | K8, M2 | M4, M6, M7, M8, M9, M14, T1, T5, U3 |
 | **M4** | P0 | `open` | Grupowanie wierszy i udział w wartości | K11, M3 | M12, Z4 |
 | **M5** | P0 | `open` | Zastosowanie rozstrzygnięcia, oznaczenie importu, kasowanie | K8, M2 | W2 |
 | **M6** | P1 | `open` | Chunkowanie komendy walidacji | M3 | T9 |
@@ -132,6 +132,7 @@ Zadania otwarte, których **wszystkie zależności są zrobione**.
 | **M8** | P0 | `open` | Wyciąg musi należeć do tego cash flow | M3, X7 | — |
 | **M9** | P2 | `open` | Która data rządzi miesiącem transakcji | M3 | — |
 | **M12** | P1 | `open` | Autoryzacja, storno i rozliczenie to jedna płatność | M4 | — |
+| **M14** | P1 | `open` | Pusty kontrahent: opłata banku nie ma drugiej strony | M3 | — |
 
 ### Z — Zapis do cash flow
 
@@ -768,7 +769,7 @@ IngestionRowEntity (original + validation + groupKey + resolution + importResult
 ### M3 · Walidacja wiersza w jednej, zamrożonej kolejności
 
 **PR:** `feat(ingestion): walidacja wierszy — duplikaty, okno importu, miesiące, przelewy własne`  
-**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, M7, M8, M9, T1, T5, U3
+**Priorytet:** P0 · **Status:** `open` · **Zależy od:** K8, M2 · **Odblokowuje:** M4, M6, M7, M8, M9, M14, T1, T5, U3
 
 Duplikat po bankTransactionId, potem okno importu cashflow, i TYLKO jeśli przeszło — statusy miesięcy prognozy, żeby jedna zła data nie dała dwóch komunikatów. Plus wykrycie przelewu własnego po IBAN-ie i nadanie groupKey.
 
@@ -887,6 +888,23 @@ Zmierzone na wyciągu Pekao: 492 autoryzacje kartą, 43 rozliczenia i 45 storn, 
 - test na fixture Pekao: 43 pary rozliczenie/storno rozpoznane, 2 storna bez pary zostają osobno
 
 **Pliki:** `vidulum-app-ingestion/ingestion-staging/`
+**Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
+
+### M14 · Pusty kontrahent: opłata banku nie ma drugiej strony
+
+**PR:** `feat(ingestion): łańcuch zapasowy dla wymaganej nazwy transakcji`  
+**Priorytet:** P1 · **Status:** `open` · **Zależy od:** M3 · **Odblokowuje:** —
+
+W surowym wyciągu Pekao 7 z 791 wierszy ma pustą kolumnę 'Nadawca / Odbiorca', i wszystkie siedem to opłaty własne banku (PROWIZJE AUT. x6, POBRANIE ZALEGŁEJ OPŁATY x1). Kontrahent jest pusty ZGODNIE Z PRAWDĄ, bo kontrahentem jest sam bank — więc każdy wyciąg z każdego banku będzie miał takie wiersze. Tymczasem name w formacie kanonicznym jest polem WYMAGANYM, a jednocześnie kluczem grupowania w klasyfikacji: pusta nazwa zebrałaby wszystkie opłaty w jedną grupę.
+
+**Definicja ukończenia:**
+- łańcuch kontrahent -> tytuł -> typ operacji, pierwszy niepusty wygrywa
+- pomiar potwierdza wystarczalność: wszystkie 7 wierszy mają niepusty Tytułem, a fixture kanoniczny ma 0 pustych name na 791 wierszy
+- trzeci element łańcucha zostaje mimo to, bo POBRANIE ZALEGŁEJ OPŁATY pokazuje tytuł będący kopią typu — istnieje bank, który zostawi oba puste
+- to NIE to samo co rozliczenia kartowe (M11): tam kontrahent jest, tylko nieprawdziwy jako merchant; tu kontrahenta nie ma i nie powinno być. Wydobywanie kontra uzupełnianie — dwie reguły, łatwe do pomylenia w jednym if
+- test na siedmiu wierszach opłat z fixture Pekao
+
+**Pliki:** `vidulum-app-ingestion/ingestion-canonical/`
 **Specyfikacja:** [11](ingestion-conductor-design/11-znaleziska-z-danych.md)
 
 ### Z1 · Tworzenie kategorii jako osobny, nieprzemilczany krok
@@ -1655,7 +1673,7 @@ X4 mówi wyłączyć v1 po parytecie, ale nie wylicza, co to parytet. Dwadzieśc
 CashFlow ma JEDEN bankAccount, więc Nest i Pekao to dwa osobne cash flow — ale skeleton nie wystawia rachunku, więc ingestion nie ma czym sprawdzić, czy wyciąg należy do tego cash flow. Jedno pole w widoku, bez którego walidacja z M8 jest niewykonalna.
 
 **Definicja ukończenia:**
-- dwa pola (BankAccountId bankAccount, String currency) i dwie metody (isSameAccount, refusalFor(Money)) — kształt rozpisany w specyfikacji 11
+- dwa pola (BankAccountId bankAccount, Currency currency) i trzy metody (isSameAccount, refusalFor(Money), accepts(Money)) — kształt rozpisany w specyfikacji 11
 - BankAccountId z shared-kernela, NIE BankAccountNumber z domeny cashflow — kontrakt nie ciąga iban4j i nie re-waliduje zapisanego numeru
 - saldo NIE wchodzi: skeleton nosi kształt, nie zawartość, i musi zostać O(1)
 - oba transporty wypełniają nowe pola; CashFlowSkeletonViewComponentTest pilnuje, że payload nie rośnie z historią
@@ -1794,11 +1812,11 @@ Plus dwa defekty danych złapane przez test pinujący, nie przez przeglądanie: 
 Pekao ma **puste pole kontrahenta** (`name` jest w kontrakcie wymagane, więc spada na tytuł), a kwoty
 ≥ 1000 mają **spację jako separator tysięcy** (`3 000,00`).
 
-### 2026-10-24 — wyciąg Pekao wywraca cztery rzeczy (M7, M8, M9, K15, X7, R9, R10)
+### 2026-10-24 — wyciąg Pekao wywraca pięć rzeczy (M7, M8, M9, M14, K15, X7, R9, R10)
 
 Cały projekt był mierzony na Nest: 402 wiersze, przelewowy, jedna waluta, cztery wartości kategorii
 banku. Pekao jest **innym kształtem danych** — 791 wierszy, kartowy, 36 kategorii semantycznych, dwie
-waluty — i to on pokazał cztery rzeczy, których Nest nie mógł pokazać.
+waluty — i to on pokazał pięć rzeczy, których Nest nie mógł pokazać.
 
 1. **Wiersz w obcej walucie cicho psuje saldo, i to nie jest wina ingestion.**
    `Money.plus` to `new Money(amount.add(other.amount), currency)` — kwota z drugiej strony, waluta z
@@ -1824,7 +1842,7 @@ Plus jedno mniejsze: plan kategorii dla Nest ma **4** pozycje, dla Pekao **38**,
 grup po 1–2 transakcje — jeden wyciąg kartowy zaśmieca drzewo kategorii na stałe, bo kategorie
 zostają nawet po wycofaniu importu → **R10** (próg tworzenia).
 
-**Wniosek metodyczny, ważniejszy od każdego z tych punktów:** cztery z siedmiu nowych zadań to
+**Wniosek metodyczny, ważniejszy od każdego z tych punktów:** pięć z ośmiu nowych zadań to
 rzeczy, których **nie dało się zobaczyć na jednym banku**. Drugi wyciąg kosztował jeden plik i
 pół godziny pomiarów, a znalazł defekt w shared-kernelu, brakujące pole w kontrakcie cashflow i dwie
 reguły walidacji, których w projekcie nie było.
@@ -1832,14 +1850,24 @@ reguły walidacji, których w projekcie nie było.
 ### 2026-10-24 — skeleton zna swój rachunek i walutę (X7 zrobione)
 
 Zmiana zaprojektowana w [specyfikacji 11](ingestion-conductor-design/11-znaleziska-z-danych.md) i
-wprowadzona: **dwa pola i dwie metody, zero nowych typów.**
+wprowadzona: **dwa pola i trzy metody.**
 
 ```java
 BankAccountId bankAccount,   // nie BankAccountNumber: kontrakt nie ciąga iban4j
-String currency,             // waluta rachunku, nigdy saldo
+Currency currency,           // waluta rachunku, nigdy saldo
 boolean isSameAccount(BankAccountId candidate);
 Optional<BusinessException> refusalFor(Money money);
+boolean accepts(Money money);          // refusalFor dla wołających, którym wystarczy werdykt
 ```
+
+**Waluta jako `Currency`, nie `String`** — pierwszy szkiec specyfikacji mówił `String`, i to był ten
+sam błąd, przed którym broni „Don't let a port invent a poorer type" w CLAUDE.md: oba końce trzymają
+`Currency`, więc kontrakt pośrodku nie ma powodu schodzić do tekstu. Inaczej niż w wierszu
+kanonicznym, gdzie `String` zostaje **celowo**, bo tam waluta jest kolumną CSV — tą samą regułą,
+którą `TransactionClassification` przekracza granicę jako tekst.
+
+**Jeden nowy typ jednak wszedł**, więc zapis „zero nowych typów" był nieścisły:
+`CurrencyMismatchException` w `cashflow-api/error/` — bez niego `refusalFor` nie ma czym odmówić.
 
 - **`isSameAccount` jest tolerancyjne, bo dane tego wymagają.** Ten sam rachunek występuje w czterech
   postaciach (NRB 26 znaków, NRB z apostrofem, IBAN 28 znaków, IBAN ze spacjami); `BankAccountId`
@@ -1854,16 +1882,22 @@ Optional<BusinessException> refusalFor(Money money);
   walidację iban4j **na każdej odpowiedzi** — to jest ta wpadka, którą CLAUDE.md zapisuje przy
   profilu finansowym.
 
-**Jeden kod błędu musiał wejść od razu:** `CASHFLOW_CURRENCY_MISMATCH` plus
-`CurrencyMismatchException` w `cashflow-api/error/`, bo bez nich `refusalFor` nie ma czym odmówić.
+**Jeden kod błędu musiał wejść od razu:** `CASHFLOW_CURRENCY_MISMATCH`.
 `ErrorHttpHandler` mapuje go sam, bo ma handler na `BusinessException` i czyta `getErrorCode()`.
 **K9 schodzi więc z ośmiu kodów na siedem.**
 
 Zmiana rekordu wywaliła **6 miejsc konstrukcji w testach** — i to był cel, nie koszt: dwa w
 `cashflow-api`, po jednym w `bank-data-ai-categorization-api`, `cashflow`, `bank-data-ingestion` i
 `recurring-rules`. Kod produkcyjny skompilował się od razu, bo oba transporty poprawiłem razem z
-kontraktem. Testy kontraktu: **44** (było 37), nowe siedem pokrywa cztery postacie numeru, kolizję
-dwóch krajów, odmowę waluty z kodem i komunikatem oraz wymagalność obu pól.
+kontraktem. Testy kontraktu: **44** w module (było 37), z czego **15** w `CashFlowSkeletonViewTest`; nowe siedem
+pokrywa cztery postacie numeru, kolizję dwóch krajów, odmowę waluty z kodem i komunikatem oraz
+wymagalność obu pól.
+
+**Jedna rzecz wyszła dopiero w kodzie i jest nieoczywista:** `Currency` to klasa Lomboka z
+konstruktorem bezargumentowym, więc `new Currency()` przechodzi, a `getId()` jest wtedy `null`. Bez
+`Objects.requireNonNull(currency.getId(), …)` **każda odmowa waluty wysypałaby się na NPE w
+`equalsIgnoreCase`** — walidacja chroniąca import byłaby jego nową przyczyną awarii. Sprawdzenie
+samego `currency != null` tego nie łapie, i to jest cała lekcja.
 
 ### 2026-10-24 — import ciągły: przewidziany w cashflow, nieprzewidziany w ingestion (S17, X8, U8)
 
@@ -1959,6 +1993,7 @@ flowchart LR
     M8["M8 Wyciąg musi należeć do tego cash flow"]:::p0
     M9["M9 Która data rządzi miesiącem transakcji"]:::p2
     M12["M12 Autoryzacja, storno i rozliczenie to…"]:::p1
+    M14["M14 Pusty kontrahent: opłata banku nie ma…"]:::p1
     R1["R1 Moduł rozstrzygania i trwałe mapowania"]:::p1
     R2["R2 CategoryLadder: sześć priorytetów w j…"]:::p1
     R3["R3 Przebieg pierwszy: darmowa drabina be…"]:::p1
@@ -2069,6 +2104,7 @@ flowchart LR
     X7 --> M8
     M3 --> M9
     M4 --> M12
+    M3 --> M14
     K7 --> R1
     K8 --> R2
     R1 --> R2
